@@ -37,6 +37,18 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    # Local apps
+    'apps.accounts',
+    'apps.organizations',
+    'apps.hazards',
+    'apps.accidents',
+    'apps.inspections',
+    'apps.dashboards',
+    'apps.notifications',
+    'apps.ENVdata.apps.EnvdataConfig',
+    'apps.environmental_mis',
+    'apps.training',
+
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -53,15 +65,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_celery_beat',
 
-    # Local apps
-    'apps.accounts',
-    'apps.organizations',
-    'apps.hazards',
-    'apps.accidents',
-    'apps.inspections',
-    'apps.dashboards',
-    'apps.notifications',
-    'apps.ENVdata.apps.EnvdataConfig',
 ]
 
 MIDDLEWARE = [
