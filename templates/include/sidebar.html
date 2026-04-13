@@ -698,6 +698,44 @@
           </ul>
         </li>
         {% endif %}
+        {% if request.user.can_access_env_data_module or request.user.is_superuser %}
+        <li class="nav-item 
+        {% if request.resolver_match.url_name in 'environment_dashboard waste_dashboard safety_dashboard' %}menu-open{% endif %}">
+          <a href="#" class="nav-link 
+          {% if request.resolver_match.url_name in 'environment_dashboard waste_dashboard safety_dashboard' %}active{% endif %}">
+            <i class="nav-icon fas fa-chart-pie"></i>
+            <p>Environmental MIS <i class="right fas fa-angle-left"></i></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <!-- Environment Dashboard -->
+            <li class="nav-item">
+              <a href="{% url 'environmental_mis:environment_dashboard' %}"
+                class="nav-link {% if request.resolver_match.url_name == 'environment_dashboard' %}active{% endif %}">
+                <i class="nav-icon far fa-circle"></i>
+                <p>Environment Dashboard</p>
+              </a>
+            </li>
+
+            <!-- Waste Dashboard -->
+            <li class="nav-item">
+              <a href="{% url 'environmental_mis:waste_dashboard' %}"
+                class="nav-link {% if request.resolver_match.url_name == 'waste_dashboard' %}active{% endif %}">
+                <i class="nav-icon far fa-circle"></i>
+                <p>Waste Dashboard</p>
+              </a>
+            </li>
+
+            <!-- Safety Dashboard -->
+            <li class="nav-item">
+              <a href="{% url 'environmental_mis:safety_dashboard' %}"
+                class="nav-link {% if request.resolver_match.url_name == 'safety_dashboard' %}active{% endif %}">
+                <i class="nav-icon far fa-circle"></i>
+                <p>Safety Dashboard</p>
+              </a>
+            </li>
+          </ul>
+        </li>
+        {% endif %}
       </ul>
     </nav>
   </div>
