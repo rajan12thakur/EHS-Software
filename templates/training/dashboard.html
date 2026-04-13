@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load permission_tags %}
 {% load static %}
 
 {% block title %}Training Management Dashboard{% endblock %}
@@ -28,7 +29,7 @@
 <!-- Quick Actions -->
 <div class="row mb-3">
   <div class="col-12 d-flex flex-wrap gap-2">
-    {% if request.user.can_create_training_session or request.user.is_superuser %}
+    {% if request.user|has_perm:'CREATE_TRAINING_SESSION' or request.user.is_superuser %}
     <a href="{% url 'training:session_create' %}" class="btn btn-primary">
       <i class="fas fa-plus mr-1"></i> Schedule Session
     </a>

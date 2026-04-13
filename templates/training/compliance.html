@@ -12,99 +12,159 @@
 
 {% block extra_css %}
 <style>
-  .compliance-table th, .compliance-table td {
-    white-space: nowrap;
-    font-size: 0.82rem;
+  .ehs-card {
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    border: none;
+  }
+  .filter-card {
+    background: linear-gradient(135deg, #f8f9fa, #eef2f7);
+    border-radius: 10px;
+    padding: 14px 18px;
+    border: 1px solid #e3e6ea;
+  }
+  .compliance-table th,
+  .compliance-table td {
+    font-size: 0.99rem;   
     vertical-align: middle;
-    text-align: center;
+    text-align: center;   
   }
-  .compliance-table td:first-child, .compliance-table td:nth-child(2) {
+  .compliance-table td:nth-child(2) {
     text-align: left;
-    white-space: normal;
-    min-width: 140px;
+    min-width: 180px;
   }
-  .status-cell { width: 70px; }
+  .compliance-table tbody tr:hover {
+    background-color: #f5faff;
+    transition: 0.2s ease;
+  }
+  .compliance-table th {
+    background: #2c3e50 !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .sticky-col {
+    position: sticky;
+    background: #fff !important;
+    z-index: 4;
+  }
+  .sticky-col-1 { left: 0; }
+  .sticky-col-2 { left: 60px; }
   .dot {
-    display: inline-block;
-    width: 26px; height: 26px;
+    width: 30px;   
+    height: 30px;
     border-radius: 50%;
-    line-height: 26px;
-    font-size: 0.7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
     font-weight: 700;
-    color: #fff;
-    cursor: default;
+    transition: transform 0.2s ease;
   }
-  .dot-compliant  { background-color: #28a745; }
-  .dot-expiring   { background-color: #ffc107; color:#333; }
-  .dot-expired    { background-color: #dc3545; }
-  .dot-not-done   { background-color: #adb5bd; }
-  .compliance-bar { height: 8px; border-radius: 4px; }
+  .dot:hover {
+    transform: scale(1.15);
+  }
+  .dot-compliant  { background: #28a745; color: #fff; }
+  .dot-expiring   { background: #ffc107; color: #333; }
+  .dot-expired    { background: #dc3545; color: #fff; }
+  .dot-not-done   { background: #adb5bd; color: #fff; }
+  .compliance-bar {
+    height: 12px; 
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .progress {
+    background-color: #e9ecef;
+  }
+  .legend-box {
+    background: #fff;
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin-right: 10px;
+    border: 1px solid #e3e6ea;
+    font-size: 0.9rem; 
+  }
+
   .legend-dot {
-    display: inline-block; width: 14px; height: 14px;
-    border-radius: 50%; margin-right: 4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
   }
-  .sticky-header { position: sticky; top: 0; z-index: 2; }
-  .sticky-col    { position: sticky; left: 0; background: #fff; z-index: 1; }
-  .filter-card { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 12px 16px; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- Filter Row -->
-<div class="filter-card mb-3">
-  <form method="GET" class="form-inline flex-wrap">
-    <label class="mr-2">Filter by Plant:</label>
-    <select name="plant" class="form-control form-control-sm mr-2">
-      <option value="">All Plants</option>
-      {% for plant in plants %}
-        <option value="{{ plant.id }}" {% if selected_plant == plant.id|stringformat:"s" %}selected{% endif %}>
-          {{ plant.name }}
-        </option>
-      {% endfor %}
-    </select>
-    <button type="submit" class="btn btn-sm btn-primary mr-2">
+<!-- FILTER -->
+<div class="filter-card mb-3 d-flex align-items-center flex-wrap">
+  <form method="GET" class="form-inline flex-wrap w-100">
+
+    <div class="d-flex align-items-center mr-3 mb-2">
+      <label class="mr-2 mb-0 font-weight-semibold">Plant:</label>
+      <select name="plant" class="form-control form-control-sm">
+        <option value="">All</option>
+        {% for plant in plants %}
+          <option value="{{ plant.id }}" {% if selected_plant == plant.id|stringformat:"s" %}selected{% endif %}>
+            {{ plant.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-sm btn-primary mr-2 mb-2">
       <i class="fas fa-filter mr-1"></i>Apply
     </button>
-    <a href="{% url 'training:compliance' %}" class="btn btn-sm btn-outline-secondary">
-      <i class="fas fa-times mr-1"></i>Clear
+
+    <a href="{% url 'training:compliance' %}" class="btn btn-sm btn-outline-secondary mb-2">
+      Clear
     </a>
-    <span class="ml-auto text-muted small">
-      Showing {{ total_employees }} employee(s) | {{ mandatory_topics.count }} mandatory topic(s)
-    </span>
+
+    <div class="ml-auto small text-muted">
+      <strong>{{ total_employees }}</strong> employees |
+      <strong>{{ mandatory_topics.count }}</strong> topics
+    </div>
+
   </form>
 </div>
 
-<!-- Legend -->
-<div class="mb-3 d-flex flex-wrap align-items-center">
-  <strong class="mr-3">Legend:</strong>
-  <span class="mr-3"><span class="legend-dot" style="background:#28a745"></span>Compliant</span>
-  <span class="mr-3"><span class="legend-dot" style="background:#ffc107"></span>Expiring ≤30 days</span>
-  <span class="mr-3"><span class="legend-dot" style="background:#dc3545"></span>Expired</span>
-  <span class="mr-3"><span class="legend-dot" style="background:#adb5bd"></span>Not Done</span>
+<!-- LEGEND -->
+<div class="d-flex flex-wrap mb-3">
+  <div class="legend-box"><span class="legend-dot" style="background:#28a745"></span> Compliant</div>
+  <div class="legend-box"><span class="legend-dot" style="background:#ffc107"></span> Expiring</div>
+  <div class="legend-box"><span class="legend-dot" style="background:#dc3545"></span> Expired</div>
+  <div class="legend-box"><span class="legend-dot" style="background:#adb5bd"></span> Not Done</div>
 </div>
 
-<!-- Matrix Table -->
+<!-- TABLE -->
 <div class="ehs-card">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <h5 class="card-title mb-0">
+    <h5 class="mb-0">
       <i class="fas fa-table mr-2"></i>Compliance Matrix
     </h5>
-    <small class="text-muted">First 50 employees shown. Use filters to narrow down.</small>
+    <small class="text-muted">Showing first 50 employees</small>
   </div>
   <div class="card-body p-0">
     {% if compliance_matrix %}
     <div class="table-responsive">
       <table class="table table-bordered compliance-table mb-0">
-        <thead class="thead-dark sticky-header">
+        <thead class="sticky-header">
           <tr>
-            <th class="sticky-col">#</th>
-            <th class="sticky-col" style="left:40px;">Employee</th>
-            <th>Overall %</th>
+            <th class="sticky-col sticky-col-1">#</th>
+            <th class="sticky-col sticky-col-2">Employee</th>
+            <th>Compliance</th>
             {% for topic in mandatory_topics %}
-            <th class="status-cell" title="{{ topic.name }}">
+            <th title="{{ topic.name }}">
               {{ topic.code }}<br>
-              <small style="font-size:0.65rem;">{{ topic.name|truncatechars:15 }}</small>
+              <small style="font-size:0.7rem; color:#dcdcdc;">
+                {{ topic.name|truncatechars:12 }}
+              </small>
             </th>
             {% endfor %}
           </tr>
@@ -112,19 +172,23 @@
         <tbody>
           {% for row in compliance_matrix %}
           <tr>
-            <td class="sticky-col text-muted">{{ forloop.counter }}</td>
-            <td class="sticky-col" style="left:40px;">
-              <strong style="font-size:0.85rem;">{{ row.employee.get_full_name }}</strong><br>
+            <td class="sticky-col sticky-col-1">
+              {{ forloop.counter }}
+            </td>
+            <td class="sticky-col sticky-col-2" style="text-align:center;">
+              <strong>{{ row.employee.get_full_name }}</strong><br>
               <small class="text-muted">{{ row.employee.employee_id }}</small><br>
               <small class="text-muted">{{ row.employee.department.name|default:"—" }}</small>
             </td>
-            <td>
+            <!-- COMPLIANCE -->
+            <td style="min-width:130px;">
               <div class="progress compliance-bar mb-1">
                 <div class="progress-bar
                   {% if row.compliance_percentage >= 80 %}bg-success
                   {% elif row.compliance_percentage >= 50 %}bg-warning
                   {% else %}bg-danger{% endif %}"
-                  style="width:{{ row.compliance_percentage }}%"></div>
+                  style="width: {{ row.compliance_percentage }}%">
+                </div>
               </div>
               <strong class="
                 {% if row.compliance_percentage >= 80 %}text-success
@@ -134,15 +198,15 @@
               </strong>
             </td>
             {% for item in row.compliance %}
-            <td title="{{ item.topic.name }} — {{ item.status }}{% if item.record %} | Valid until: {{ item.record.valid_until|date:'d M Y' }}{% endif %}">
+            <td>
               {% if item.status == 'COMPLIANT' %}
-                <span class="dot dot-compliant" title="Valid until {{ item.record.valid_until|date:'d M Y' }}">✓</span>
+                <span class="dot dot-compliant">✓</span>
               {% elif item.status == 'EXPIRING' %}
-                <span class="dot dot-expiring" title="{{ item.record.days_until_expiry }}d left">!</span>
+                <span class="dot dot-expiring">!</span>
               {% elif item.status == 'EXPIRED' %}
-                <span class="dot dot-expired" title="Expired {{ item.record.valid_until|date:'d M Y' }}">✗</span>
+                <span class="dot dot-expired">✗</span>
               {% else %}
-                <span class="dot dot-not-done" title="Not Done">—</span>
+                <span class="dot dot-not-done">—</span>
               {% endif %}
             </td>
             {% endfor %}
@@ -154,7 +218,7 @@
     {% else %}
     <div class="text-center py-5 text-muted">
       <i class="fas fa-table fa-3x mb-2"></i>
-      <p>No employee data to show compliance for.</p>
+      <p>No compliance data available.</p>
     </div>
     {% endif %}
   </div>

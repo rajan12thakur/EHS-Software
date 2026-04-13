@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load permission_tags %}
 {% load static %}
 
 {% block title %}Training Sessions{% endblock %}
@@ -9,23 +10,58 @@
 <li class="breadcrumb-item"><a href="{% url 'training:dashboard' %}">Training Management</a></li>
 <li class="breadcrumb-item active">Sessions</li>
 {% endblock %}
+{% block extra_css %}
+<style>
+.ehs-card {
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+}
+.table thead th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+.badge {
+  font-size: 0.7rem;
+  padding: 5px 8px;
+}
+.filter-card input,
+.filter-card select {
+  border-radius: 6px;
+}
+.page-header {
+  background: #fff;
+  padding: 12px 18px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row mb-3">
-  <div class="col-12 d-flex justify-content-between align-items-center">
-    <h5 class="mb-0">All Training Sessions</h5>
-    {% if request.user.can_create_training_session or request.user.is_superuser %}
-    <a href="{% url 'training:session_create' %}" class="btn btn-primary">
-      <i class="fas fa-plus mr-1"></i> Schedule Session
+  <div class="col-12 d-flex justify-content-between align-items-center page-header">
+    <div>
+      <h5 class="mb-0">All Training Sessions</h5>
+      <small class="text-muted">Manage and track all sessions</small>
+    </div>
+
+    {% if request.user|has_perm:'CREATE_TRAINING_SESSION' or request.user.is_superuser %}
+    <a href="{% url 'training:session_create' %}" class="btn btn-primary shadow-sm">
+      <i class="fas fa-plus mr-1"></i> Add Session
     </a>
     {% endif %}
   </div>
 </div>
 
 <!-- Filters -->
-<div class="ehs-card mb-3">
+<div class="ehs-card mb-3 filter-card">
   <div class="card-body">
-    <form method="GET" id="filterForm">
+    <form method="GET">
       <div class="row">
         <div class="col-md-3 mb-2">
           <input type="text" name="search" class="form-control form-control-sm"
@@ -35,7 +71,7 @@
           <select name="status" class="form-control form-control-sm">
             <option value="">All Status</option>
             {% for val, label in status_choices %}
-              <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </div>
@@ -43,9 +79,9 @@
           <select name="topic" class="form-control form-control-sm">
             <option value="">All Topics</option>
             {% for topic in topics %}
-              <option value="{{ topic.id }}" {% if selected_topic == topic.id|stringformat:"s" %}selected{% endif %}>
-                {{ topic.name }}
-              </option>
+            <option value="{{ topic.id }}" {% if selected_topic == topic.id|stringformat:"s" %}selected{% endif %}>
+              {{ topic.name }}
+            </option>
             {% endfor %}
           </select>
         </div>
@@ -53,9 +89,9 @@
           <select name="plant" class="form-control form-control-sm">
             <option value="">All Plants</option>
             {% for plant in plants %}
-              <option value="{{ plant.id }}" {% if selected_plant == plant.id|stringformat:"s" %}selected{% endif %}>
-                {{ plant.name }}
-              </option>
+            <option value="{{ plant.id }}" {% if selected_plant == plant.id|stringformat:"s" %}selected{% endif %}>
+              {{ plant.name }}
+            </option>
             {% endfor %}
           </select>
         </div>
@@ -63,7 +99,7 @@
           <select name="training_mode" class="form-control form-control-sm">
             <option value="">All Modes</option>
             {% for val, label in mode_choices %}
-              <option value="{{ val }}" {% if selected_mode == val %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ val }}" {% if selected_mode == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
         </div>
@@ -73,12 +109,14 @@
           </button>
         </div>
       </div>
-      <div class="row">
+      <div class="row mt-1">
         <div class="col-md-3 mb-2">
-          <input type="date" name="date_from" class="form-control form-control-sm" placeholder="From Date" value="{{ request.GET.date_from }}">
+          <input type="date" name="date_from" class="form-control form-control-sm"
+                 value="{{ request.GET.date_from }}">
         </div>
         <div class="col-md-3 mb-2">
-          <input type="date" name="date_to" class="form-control form-control-sm" placeholder="To Date" value="{{ request.GET.date_to }}">
+          <input type="date" name="date_to" class="form-control form-control-sm"
+                 value="{{ request.GET.date_to }}">
         </div>
         <div class="col-md-2">
           <a href="{% url 'training:session_list' %}" class="btn btn-sm btn-outline-secondary">
@@ -104,7 +142,7 @@
             <th>Scheduled Date</th>
             <th>Plant / Location</th>
             <th>Trainer</th>
-            <th>Participants</th>
+            <th class="text-center">Participants</th>
             <th>Status</th>
             <th>Actions</th>
           </tr>
@@ -128,7 +166,7 @@
               {{ session.scheduled_date|date:"d M Y" }}<br>
               <small class="text-muted">{{ session.scheduled_time|time:"H:i" }}</small>
               {% if session.is_overdue %}
-                <br><span class="badge badge-danger">Overdue</span>
+              <br><span class="badge badge-danger">Overdue</span>
               {% endif %}
             </td>
             <td>
@@ -138,7 +176,7 @@
             <td>
               {{ session.trainer_name }}<br>
               {% if session.trainer_is_external %}
-                <small class="badge badge-secondary">External</small>
+              <small class="badge badge-secondary">External</small>
               {% endif %}
             </td>
             <td class="text-center">
@@ -148,30 +186,27 @@
             </td>
             <td>
               {% if session.status == 'SCHEDULED' %}
-                <span class="badge badge-warning">Scheduled</span>
+              <span class="badge badge-warning">Scheduled</span>
               {% elif session.status == 'COMPLETED' %}
-                <span class="badge badge-success">Completed</span>
+              <span class="badge badge-success">Completed</span>
               {% elif session.status == 'CANCELLED' %}
-                <span class="badge badge-danger">Cancelled</span>
+              <span class="badge badge-danger">Cancelled</span>
               {% elif session.status == 'ONGOING' %}
-                <span class="badge badge-info">Ongoing</span>
+              <span class="badge badge-info">Ongoing</span>
               {% endif %}
             </td>
             <td>
-              <a href="{% url 'training:session_detail' session.pk %}"
-                 class="btn btn-sm btn-outline-primary" title="View">
+              <a href="{% url 'training:session_detail' session.pk %}" class="btn btn-sm btn-outline-primary">
                 <i class="fas fa-eye"></i>
               </a>
               {% if session.status == 'SCHEDULED' %}
-                {% if request.user.can_mark_training_attendance or request.user.is_superuser %}
-                <a href="{% url 'training:mark_attendance' session.pk %}"
-                   class="btn btn-sm btn-outline-success" title="Mark Attendance">
+                {% if request.user|has_perm:'MARK_TRAINING_ATTENDANCE' or request.user.is_superuser %}
+                <a href="{% url 'training:mark_attendance' session.pk %}" class="btn btn-sm btn-outline-success">
                   <i class="fas fa-user-check"></i>
                 </a>
                 {% endif %}
-                {% if request.user.can_edit_training_session or request.user.is_superuser %}
-                <a href="{% url 'training:session_edit' session.pk %}"
-                   class="btn btn-sm btn-outline-secondary" title="Edit">
+                {% if request.user|has_perm:'EDIT_TRAINING_SESSION' or request.user.is_superuser %}
+                <a href="{% url 'training:session_edit' session.pk %}" class="btn btn-sm btn-outline-secondary">
                   <i class="fas fa-edit"></i>
                 </a>
                 {% endif %}
@@ -214,10 +249,10 @@
     <div class="text-center py-5 text-muted">
       <i class="fas fa-chalkboard-teacher fa-3x mb-3"></i>
       <h5>No training sessions found</h5>
-      <p>Try adjusting your filters or schedule a new session.</p>
-      {% if request.user.can_create_training_session or request.user.is_superuser %}
+      <p>Try adjusting your filters or create a new session.</p>
+      {% if request.user|has_perm:'CREATE_TRAINING_SESSION' or request.user.is_superuser %}
       <a href="{% url 'training:session_create' %}" class="btn btn-primary">
-        <i class="fas fa-plus mr-1"></i> Schedule Session
+        <i class="fas fa-plus mr-1"></i> Add Session
       </a>
       {% endif %}
     </div>

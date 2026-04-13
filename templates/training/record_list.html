@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load permission_tags %}
 {% load static %}
 
 {% block title %}Training Records{% endblock %}
@@ -10,11 +11,38 @@
 <li class="breadcrumb-item active">Records</li>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.ehs-card {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ehs-card .card-header {
+  padding: 12px 16px;
+  font-weight: 600;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.filter-row .form-control {
+  min-width: 160px;
+}
+
+.badge {
+  font-size: 12px;
+  padding: 5px 8px;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row mb-3">
   <div class="col-12 d-flex justify-content-between align-items-center">
     <h5 class="mb-0">Training Records & Certificates</h5>
-    {% if request.user.can_upload_training_certificate or request.user.is_superuser %}
+    {% if request.user|has_perm:'UPLOAD_TRAINING_CERTIFICATE' or request.user.is_superuser %}
     <a href="{% url 'training:manual_certificate' %}" class="btn btn-primary">
       <i class="fas fa-upload mr-1"></i> Upload Certificate
     </a>
@@ -22,43 +50,67 @@
   </div>
 </div>
 
-<!-- Filters -->
-<div class="ehs-card mb-3">
-  <div class="card-body py-2">
-    <form method="GET" class="form-inline flex-wrap">
-      <input type="text" name="search" class="form-control form-control-sm mr-2 mb-1"
-             placeholder="Name, ID or Cert #" value="{{ search_query }}">
-      <select name="topic" class="form-control form-control-sm mr-2 mb-1">
-        <option value="">All Topics</option>
-        {% for topic in topics %}
-          <option value="{{ topic.id }}" {% if selected_topic == topic.id|stringformat:"s" %}selected{% endif %}>
-            {{ topic.name }}
-          </option>
-        {% endfor %}
-      </select>
-      <select name="status" class="form-control form-control-sm mr-2 mb-1">
-        <option value="">All Status</option>
-        {% for val, label in status_choices %}
-          <option value="{{ val }}" {% if selected_status == val %}selected{% endif %}>{{ label }}</option>
-        {% endfor %}
-      </select>
-      <select name="expiry" class="form-control form-control-sm mr-2 mb-1">
-        <option value="">All Expiry</option>
-        <option value="30" {% if selected_expiry == '30' %}selected{% endif %}>Expiring in 30 days</option>
-        <option value="60" {% if selected_expiry == '60' %}selected{% endif %}>Expiring in 60 days</option>
-        <option value="expired" {% if selected_expiry == 'expired' %}selected{% endif %}>Expired</option>
-      </select>
-      <button type="submit" class="btn btn-sm btn-primary mr-2 mb-1">
-        <i class="fas fa-filter"></i>
-      </button>
-      <a href="{% url 'training:record_list' %}" class="btn btn-sm btn-outline-secondary mb-1">
-        <i class="fas fa-times"></i>
-      </a>
+<!-- FILTER CARD -->
+<div class="ehs-card card shadow-sm mb-3">
+  <div class="card-body">
+    <form method="GET">
+      <div class="row filter-row">
+        <div class="col-md-3 mb-2">
+          <input type="text" name="search"
+                 class="form-control form-control-sm"
+                 placeholder="Name, ID or Cert #"
+                 value="{{ search_query }}">
+        </div>
+        <div class="col-md-2 mb-2">
+          <select name="topic" class="form-control form-control-sm">
+            <option value="">All Topics</option>
+            {% for topic in topics %}
+              <option value="{{ topic.id }}"
+                {% if selected_topic == topic.id|stringformat:"s" %}selected{% endif %}>
+                {{ topic.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 mb-2">
+          <select name="status" class="form-control form-control-sm">
+            <option value="">All Status</option>
+            {% for val, label in status_choices %}
+              <option value="{{ val }}"
+                {% if selected_status == val %}selected{% endif %}>
+                {{ label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 mb-2">
+          <select name="expiry" class="form-control form-control-sm">
+            <option value="">All Expiry</option>
+            <option value="30" {% if selected_expiry == '30' %}selected{% endif %}>
+              Expiring in 30 days
+            </option>
+            <option value="60" {% if selected_expiry == '60' %}selected{% endif %}>
+              Expiring in 60 days
+            </option>
+            <option value="expired" {% if selected_expiry == 'expired' %}selected{% endif %}>
+              Expired
+            </option>
+          </select>
+        </div>
+        <div class="col-md-3 mb-2 d-flex">
+          <button type="submit" class="btn btn-sm btn-primary mr-2">
+            <i class="fas fa-filter"></i>
+          </button>
+          <a href="{% url 'training:record_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-times"></i>
+          </a>
+        </div>
+      </div>
     </form>
   </div>
 </div>
 
-<div class="ehs-card">
+<div class="ehs-card card shadow-sm">
   <div class="card-body p-0">
     {% if records %}
     <div class="table-responsive">
@@ -97,17 +149,18 @@
                 <span class="badge badge-warning ml-1">{{ record.days_until_expiry }}d</span>
               {% endif %}
             </td>
+
             <td>
               {% if record.added_manually %}
                 <span class="badge badge-secondary">Manual Upload</span>
               {% else %}
-                <span class="badge badge-info">
-                  <a href="{% url 'training:session_detail' record.session.pk %}" class="text-white">
-                    Session
-                  </a>
-                </span>
+                <a href="{% url 'training:session_detail' record.session.pk %}"
+                   class="badge badge-info text-white">
+                  Session
+                </a>
               {% endif %}
             </td>
+
             <td>
               {% if record.status == 'ACTIVE' and record.days_until_expiry > 0 %}
                 <span class="badge badge-success">Active</span>
@@ -117,32 +170,41 @@
                 <span class="badge badge-danger">Expired</span>
               {% endif %}
             </td>
+
           </tr>
           {% endfor %}
         </tbody>
+
       </table>
     </div>
 
+    <!-- PAGINATION -->
     {% if is_paginated %}
     <div class="card-footer">
       <nav>
         <ul class="pagination pagination-sm mb-0 justify-content-center">
+
           {% if page_obj.has_previous %}
-            <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">
-                <i class="fas fa-chevron-left"></i>
-              </a>
-            </li>
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ page_obj.previous_page_number }}&{{ request.GET.urlencode }}">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
           {% endif %}
+
           <li class="page-item active">
-            <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+            <span class="page-link">
+              {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+            </span>
           </li>
           {% if page_obj.has_next %}
-            <li class="page-item">
-              <a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">
-                <i class="fas fa-chevron-right"></i>
-              </a>
-            </li>
+          <li class="page-item">
+            <a class="page-link"
+               href="?page={{ page_obj.next_page_number }}&{{ request.GET.urlencode }}">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
           {% endif %}
         </ul>
       </nav>
@@ -151,8 +213,8 @@
 
     {% else %}
     <div class="text-center py-5 text-muted">
-      <i class="fas fa-certificate fa-3x mb-2"></i>
-      <p>No training records found.</p>
+      <i class="fas fa-certificate fa-3x mb-3"></i>
+      <h6>No training records found</h6>
     </div>
     {% endif %}
   </div>

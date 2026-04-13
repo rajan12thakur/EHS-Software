@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load permission_tags %}
 {% load static %}
 
 {% block title %}Training Topics{% endblock %}
@@ -103,7 +104,7 @@
   <div class="col-12 d-flex justify-content-between align-items-center flex-wrap">
     <h5 class="mb-2">📘 Training Topics</h5>
 
-    {% if request.user.can_manage_training_topics or request.user.is_superuser %}
+    {% if request.user|has_perm:'MANAGE_TRAINING_TOPICS' or request.user.is_superuser %}
     <a href="{% url 'training:topic_create' %}" class="btn btn-primary btn-sm">
       <i class="fas fa-plus mr-1"></i> Add Topic
     </a>
@@ -214,7 +215,7 @@
 
             <!-- ACTION -->
             <td data-label="Actions" class="text-center">
-              {% if request.user.can_manage_training_topics or request.user.is_superuser or request.user.is_admin_user %}
+              {% if request.user|has_perm:'MANAGE_TRAINING_TOPICS' or request.user.is_superuser %}
               <div class="btn-group">
 
                 <a href="{% url 'training:topic_edit' topic.pk %}" 
@@ -262,7 +263,7 @@
       <i class="fas fa-book fa-3x mb-3"></i>
       <p>No training topics found.</p>
 
-      {% if request.user.can_manage_training_topics or request.user.is_superuser %}
+      {% if request.user|has_perm:'MANAGE_TRAINING_TOPICS' or request.user.is_superuser %}
       <a href="{% url 'training:topic_create' %}" class="btn btn-primary">
         + Add First Topic
       </a>

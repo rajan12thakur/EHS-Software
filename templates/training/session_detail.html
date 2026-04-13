@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load permission_tags %}
 {% load static %}
 
 {% block title %}{{ session.session_number }} — Session Detail{% endblock %}
@@ -21,7 +22,11 @@
         {% if session.status == 'COMPLETED' %}bg-success text-white
         {% elif session.status == 'CANCELLED' %}bg-danger text-white
         {% elif session.status == 'SCHEDULED' %}bg-primary text-white
-        {% else %}bg-info text-white{% endif %}">
+        {% else %}bg-info text-white{% endif %}" 
+        style="{% if session.status == 'SCHEDULED' %}background: #1E90FF !important;
+        {% elif session.status == 'COMPLETED' %}background: #28a745 !important;
+        {% elif session.status == 'CANCELLED' %}background: #dc3545 !important;
+        {% else %}background: #17a2b8 !important;{% endif %}">
         <h4 class="card-title mb-0">
           <i class="fas fa-chalkboard-teacher mr-2"></i>
           {{ session.session_number }}
@@ -135,7 +140,7 @@
       <div class="card-body">
         {% if session.status == 'SCHEDULED' %}
 
-          {% if request.user.can_mark_training_attendance or request.user.is_superuser %}
+          {% if request.user|has_perm:'CREATE_TRAINING_SESSION' or request.user.is_superuser %}
           <a href="{% url 'training:add_participants' session.pk %}"
              class="btn btn-outline-primary btn-block mb-2">
             <i class="fas fa-user-plus mr-1"></i> Add Participants
@@ -146,14 +151,14 @@
           </a>
           {% endif %}
 
-          {% if request.user.can_edit_training_session or request.user.is_superuser %}
+          {% if request.user|has_perm:'EDIT_TRAINING_SESSION' or request.user.is_superuser %}
           <a href="{% url 'training:session_edit' session.pk %}"
              class="btn btn-outline-secondary btn-block mb-2">
             <i class="fas fa-edit mr-1"></i> Edit Session
           </a>
           {% endif %}
 
-          {% if can_complete and request.user.can_close_training_session or request.user.is_superuser %}
+          {% if can_complete and request.user|has_perm:'CLOSE_TRAINING_SESSION' or request.user.is_superuser %}
           <a href="{% url 'training:session_complete' session.pk %}"
              class="btn btn-primary btn-block mb-2">
             <i class="fas fa-check-circle mr-1"></i> Complete Session
@@ -198,7 +203,7 @@
       <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="fas fa-users mr-2"></i>Participants</h5>
         {% if session.status == 'SCHEDULED' %}
-          {% if request.user.can_mark_training_attendance or request.user.is_superuser %}
+          {% if request.user|has_perm:'MARK_TRAINING_ATTENDANCE' or request.user.is_superuser %}
           <a href="{% url 'training:add_participants' session.pk %}" class="btn btn-sm btn-outline-primary">
             <i class="fas fa-user-plus mr-1"></i> Add Participants
           </a>

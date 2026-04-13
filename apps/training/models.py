@@ -350,7 +350,7 @@ class TrainingRecord(models.Model):
                             default=False,
                             help_text="True = uploaded manually for external training. False = auto-created from system session."
                           )
-
+    remarks = models.TextField(blank=True)
     revoked_reason      = models.TextField(blank=True)
     created_by          = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='training_records_created')
     created_at          = models.DateTimeField(auto_now_add=True)

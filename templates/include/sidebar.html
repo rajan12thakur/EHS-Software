@@ -612,7 +612,7 @@
           </ul>
         </li>
         {% endif %}
-        {% if user.can_access_training_module or user.is_admin_user or user.is_superuser %}
+        {% if request.user|has_perm:'ACCESS_TRAINING_MODULE' or request.user.is_admin_user or request.user.is_superuser %}
         <li class="nav-item {% if 'training' in request.path %}menu-open{% endif %}">
           <a href="#" class="nav-link {% if 'training' in request.path %}active{% endif %}">
             <i class="nav-icon fas fa-chalkboard-teacher"></i>
@@ -628,7 +628,7 @@
               </a>
             </li>
 
-            {% if user.can_create_training_session or user.is_superuser %}
+            {% if request.user|has_perm:'CREATE_TRAINING_SESSION' or request.user.is_superuser %}
             <li class="nav-item">
               <a href="{% url 'training:session_create' %}"
                  class="nav-link {% if request.resolver_match.url_name == 'session_create' %}active{% endif %}">
@@ -654,7 +654,7 @@
               </a>
             </li>
 
-            {% if user.can_view_training_compliance or user.is_superuser %}
+            {% if request.user|has_perm:'VIEW_TRAINING_COMPLIANCE' or request.user.is_superuser %}
             <li class="nav-item">
               <a href="{% url 'training:compliance' %}"
                  class="nav-link {% if request.resolver_match.url_name == 'compliance' %}active{% endif %}">
@@ -672,23 +672,20 @@
               </a>
             </li>
 
-            <li class="nav-item">
+            {% comment %}<li class="nav-item">
               <a href="{% url 'training:notifications' %}"
                  class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}">
                 <i class="nav-icon fas fa-bell"></i>
                 <p>
                   Notifications
-                  {# Uncomment below once TrainingNotification unread count is in context #}
-                  {% comment %}
                   {% if training_unread_count > 0 %}
                     <span class="badge badge-danger right">{{ training_unread_count }}</span>
                   {% endif %}
-                  {% endcomment %}
                 </p>
               </a>
-            </li>
+            </li> {% endcomment %}
 
-            {% if user.can_manage_training_topics or user.is_admin_user or user.is_superuser%}
+            {% if request.user|has_perm:'MANAGE_TRAINING_TOPICS' or request.user.is_admin_user or request.user.is_superuser %}
             <li class="nav-item">
               <a href="{% url 'training:topic_list' %}"
                  class="nav-link {% if request.resolver_match.url_name == 'topic_list' %}active{% endif %}">

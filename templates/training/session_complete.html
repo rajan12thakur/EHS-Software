@@ -1,0 +1,215 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Complete Session — {{ object.session_number }}{% endblock %}
+{% block page_title %}Complete Training Session{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'training:dashboard' %}">Training</a></li>
+<li class="breadcrumb-item"><a href="{% url 'training:session_list' %}">Sessions</a></li>
+<li class="breadcrumb-item">
+    <a href="{% url 'training:session_detail' object.pk %}">
+        {{ object.session_number }}
+    </a>
+</li>
+<li class="breadcrumb-item active">Complete</li>
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+    <!-- LEFT: Session Info -->
+    <div class="col-md-5">
+        <div class="ehs-card">
+            <div class="card-header bg-primary text-white"
+                 style="background:#1E90FF !important;">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Session Info
+                </h5>
+            </div>
+
+            <div class="card-body">
+                <table class="table table-sm table-borderless mb-0">
+                    <tr>
+                        <td class="text-muted">Session #</td>
+                        <td><strong>{{ object.session_number }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Topic</td>
+                        <td>{{ object.topic.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Trainer</td>
+                        <td>{{ object.trainer_name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Scheduled Date</td>
+                        <td>{{ object.scheduled_date|date:"d M Y" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Participants</td>
+                        <td>{{ present_participants.count }}</td>
+                    </tr>
+                </table>
+
+                <hr>
+
+                <div class="alert alert-info mb-0">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Certificates will be generated for 
+                    <strong>present & passed</strong> participants.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: Complete Form -->
+    <div class="col-md-7">
+        <div class="ehs-card">
+            <div class="card-header bg-success text-white"
+                 style="background:#28a745 !important;">
+                <h5 class="mb-0">
+                    <i class="fas fa-check-circle mr-2"></i>
+                    Complete Session
+                </h5>
+            </div>
+
+            <div class="card-body">
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <!-- Actual Date -->
+                    <div class="form-group">
+                        <label>{{ form.actual_date.label }}</label>
+                        {{ form.actual_date }}
+                        {% if form.actual_date.errors %}
+                            <small class="text-danger">
+                                {{ form.actual_date.errors.0 }}
+                            </small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Remarks -->
+                    <div class="form-group">
+                        <label>{{ form.completion_remarks.label }}</label>
+                        {{ form.completion_remarks }}
+                        {% if form.completion_remarks.errors %}
+                            <small class="text-danger">
+                                {{ form.completion_remarks.errors.0 }}
+                            </small>
+                        {% endif %}
+                    </div>
+
+                    <!-- Attachment -->
+                    <div class="form-group">
+                        <label>{{ form.completion_attachment.label }}</label>
+                        {{ form.completion_attachment }}
+                        {% if form.completion_attachment.errors %}
+                            <small class="text-danger">
+                                {{ form.completion_attachment.errors.0 }}
+                            </small>
+                        {% endif %}
+                    </div>
+
+                    <hr>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'training:session_detail' object.pk %}"
+                           class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left mr-1"></i> Back
+                        </a>
+
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check-circle mr-1"></i>
+                            Confirm & Complete Session
+                        </button>
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Participants Preview -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="ehs-card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-users mr-2"></i>
+                    Present Participants
+                </h6>
+            </div>
+
+            <div class="card-body p-0">
+                {% if present_participants %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Employee</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in present_participants %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>
+                                    {{ p.employee.get_full_name }}<br>
+                                    <small class="text-muted">
+                                        {{ p.employee.employee_id }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {{ p.assessment_score|default:"—" }}%
+                                </td>
+                                <td>
+                                    {% if p.passed %}
+                                        <span class="badge badge-success">Pass</span>
+                                    {% else %}
+                                        <span class="badge badge-danger">Fail</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-3 text-muted">
+                    No present participants found.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.querySelector('input[type="date"]');
+        if (dateInput) {
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.setAttribute('max', today);
+            dateInput.addEventListener('change', function(){
+                if(this.value > today){
+                    alert("Actual date cannot be in the future.");
+                    this.value = today;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

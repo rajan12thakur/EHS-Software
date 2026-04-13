@@ -15,7 +15,7 @@
 <div class="row">
   <div class="col-md-8 offset-md-2">
     <div class="ehs-card">
-      <div class="card-header bg-primary text-white">
+      <div class="card-header">
         <h3 class="card-title mb-0">
           <i class="fas fa-upload mr-2"></i>Upload External Training Certificate
         </h3>
@@ -73,6 +73,26 @@
           </div>
 
           <div class="row">
+            <div class="col-md-6 mb-3">
+              <label>Status <span class="text-danger">*</span></label>
+              {{ form.status }}
+              <small class="form-text text-muted">
+                Select certificate status (Active / Expired / Revoked)
+              </small>
+            </div>
+          </div>
+
+          <div class="row" id="revoked-reason-container" style="display: none;">
+          <div class="col-md-12 mb-3">
+            <label>Revoked Reason <span class="text-danger">*</span></label>
+            {{ form.revoked_reason }}
+            <small class="form-text text-muted">
+              Please provide reason for revoking this certificate
+            </small>
+          </div>
+        </div>
+
+          <div class="row">
             <div class="col-md-12 mb-3">
               <label>Remarks</label>
               {{ form.remarks }}
@@ -100,4 +120,41 @@
     </div>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const today = new Date().toISOString().split('T')[0];
+    const completedDate = document.getElementById('id_completed_date');
+    if (completedDate) {
+        completedDate.setAttribute('max', today);
+        if (!completedDate.value) {
+            completedDate.value = today;
+        }
+    }
+    const validUntil = document.getElementById('id_valid_until');
+    if (validUntil) {
+        validUntil.setAttribute('min', today);
+    }
+
+});
+document.addEventListener('DOMContentLoaded', function () {
+    const statusField = document.getElementById('id_status');
+    const revokedContainer = document.getElementById('revoked-reason-container');
+    const revokedField = document.getElementById('id_revoked_reason');
+
+    function toggleRevokedField() {
+        if (statusField.value === 'REVOKED') {
+            revokedContainer.style.display = 'block';
+            revokedField.setAttribute('required', 'required');
+        } else {
+            revokedContainer.style.display = 'none';
+            revokedField.removeAttribute('required');
+            revokedField.value = '';
+        }
+    }
+    toggleRevokedField();
+    statusField.addEventListener('change', toggleRevokedField);
+});
+</script>
 {% endblock %}

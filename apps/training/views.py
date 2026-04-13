@@ -177,10 +177,7 @@ class TrainingTopicUpdateView(TrainingAccessMixin, UpdateView):
 # ============================================================
 
 class TrainingSessionDashboardView(TrainingAccessMixin, TemplateView):
-    """
-    Training Dashboard — like IncidentDashboardView
-    Shows stats, upcoming sessions, compliance overview
-    """
+    """ Training Dashboard - overall stats, charts, upcoming sessions, expiring certificates, etc. """
     template_name = 'training/dashboard.html'
 
     def get_context_data(self, **kwargs):
@@ -205,14 +202,6 @@ class TrainingSessionDashboardView(TrainingAccessMixin, TemplateView):
         context['total_sessions'] = sessions.count()
         context['scheduled_sessions'] = sessions.filter(status='SCHEDULED').count()
         context['completed_sessions'] = sessions.filter(status='COMPLETED').count()
-        context['cancelled_sessions'] = sessions.filter(status='CANCELLED').count()
-
-        # This month
-        context['this_month_sessions'] = sessions.filter(
-            scheduled_date__month=today.month,
-            scheduled_date__year=today.year
-        ).count()
-
         # Overdue sessions (scheduled date passed but still SCHEDULED)
         context['overdue_sessions'] = sessions.filter(
             status='SCHEDULED',
@@ -220,34 +209,87 @@ class TrainingSessionDashboardView(TrainingAccessMixin, TemplateView):
         ).count()
 
         # Certificate stats
-        context['active_certificates'] = records.filter(status='ACTIVE').count()
+        context['active_certs'] = records.filter(status='ACTIVE').count()
+        context['expired_certs'] = records.filter(valid_until__lt=today).count()
         context['expiring_soon'] = records.filter(
             status='ACTIVE',
             valid_until__lte=today + datetime.timedelta(days=30),
             valid_until__gte=today
         ).count()
-        context['expired_certificates'] = records.filter(
-            valid_until__lt=today
-        ).count()
+        # Monthly Trend (Last 6 months)
+        labels = []
+        totals = []
+        completed = []
 
-        # Upcoming sessions (next 7 days)
+        for i in range(5, -1, -1):
+            month = today - datetime.timedelta(days=30*i)
+            labels.append(month.strftime("%b"))
+
+            monthly_qs = sessions.filter(
+                scheduled_date__month=month.month,
+                scheduled_date__year=month.year
+            )
+
+            totals.append(monthly_qs.count())
+            completed.append(monthly_qs.filter(status='COMPLETED').count())
+
+        context['monthly_labels'] = labels
+        context['monthly_totals'] = totals
+        context['monthly_completed'] = completed
+
+        # Category Chart
+        cat_data = sessions.values('topic__category').annotate(count=Count('id'))
+        context['category_labels'] = [c['topic__category'] or 'Other' for c in cat_data]
+        context['category_counts'] = [c['count'] for c in cat_data]
+
+        # Mode Chart
+        mode_data = sessions.values('training_mode').annotate(count=Count('id'))
+        context['mode_labels'] = [m['training_mode'] for m in mode_data]
+        context['mode_counts'] = [m['count'] for m in mode_data]
+
+        # Attendance Chart
+        last_sessions = sessions.filter(status='COMPLETED')[:10]
+        context['att_labels'] = [s.session_number for s in last_sessions]
+        context['att_rates'] = [s.attendance_percentage for s in last_sessions]
+
+        # Certificate Chart
+        context['cert_labels'] = ['Active', 'Expiring', 'Expired']
+        context['cert_counts'] = [
+            context['active_certs'],
+            context['expiring_soon'],
+            context['expired_certs']
+        ]
+
+        # Top Topics
+        topic_data = sessions.values('topic__name').annotate(count=Count('id'))[:5]
+        context['topic_labels'] = [t['topic__name'] for t in topic_data]
+        context['topic_totals'] = [t['count'] for t in topic_data]
+        context['topic_completed'] = [
+            sessions.filter(topic__name=t['topic__name'], status='COMPLETED').count()
+            for t in topic_data
+        ]
+
+        # Pass Rate
+        context['passrate_labels'] = context['topic_labels']
+        context['passrate_values'] = [75, 60, 85, 50, 90][:len(context['topic_labels'])]  # placeholder
+
+        # Lists
         context['upcoming_sessions'] = sessions.filter(
             status='SCHEDULED',
             scheduled_date__gte=today,
-            scheduled_date__lte=today + datetime.timedelta(days=7)
-        ).select_related('topic', 'plant', 'location').order_by('scheduled_date')[:5]
+            scheduled_date__lte=today + datetime.timedelta(days=30)
+        ).order_by('scheduled_date')[:5]
 
         # Recent completed sessions
         context['recent_sessions'] = sessions.filter(
             status='COMPLETED'
-        ).select_related('topic', 'plant').order_by('-actual_date')[:5]
+        ).order_by('-actual_date')[:5]
 
         # Expiring certificates
         context['expiring_records'] = records.filter(
-            status='ACTIVE',
             valid_until__lte=today + datetime.timedelta(days=30),
             valid_until__gte=today
-        ).select_related('employee', 'topic').order_by('valid_until')[:10]
+        ).order_by('valid_until')[:10]
 
         return context
 
@@ -891,7 +933,7 @@ class ManualCertificateUploadView(TrainingAccessMixin, CreateView):
     def form_valid(self, form):
         record = form.save(commit=False)
         record.added_manually = True
-        record.status = 'ACTIVE'
+        record.status = form.cleaned_data.get('status')
         record.created_by = self.request.user
         record.save()
 

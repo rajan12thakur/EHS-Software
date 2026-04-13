@@ -281,8 +281,8 @@ class TrainingRecordManualForm(forms.ModelForm):
         fields = [
             'employee', 'topic',
             'completed_date', 'valid_until',
-            'certificate_file',
-            'status',
+            'certificate_file', 'remarks',
+            'status', 'revoked_reason',
         ]
         widgets = {
             'employee':       forms.Select(attrs=SELECT),
@@ -290,6 +290,8 @@ class TrainingRecordManualForm(forms.ModelForm):
             'completed_date': forms.DateInput(attrs=DATE_INPUT),
             'valid_until':    forms.DateInput(attrs=DATE_INPUT),
             'certificate_file': forms.FileInput(attrs=FILE_INPUT),
+            'remarks':        forms.Textarea(attrs={**TEXTAREA, 'rows': 4}),
+            'revoked_reason': forms.Textarea(attrs={**TEXTAREA, 'rows': 4}),
             'status':         forms.Select(attrs=SELECT),
         }
         labels = {
@@ -298,6 +300,8 @@ class TrainingRecordManualForm(forms.ModelForm):
             'completed_date':   'Training Completion Date',
             'valid_until':      'Certificate Valid Until',
             'certificate_file': 'Attach Certificate (PDF / Image)',
+            'remarks':          'Remarks',
+            'revoked_reason':   'Revoked Reason',
         }
 
     def __init__(self, *args, **kwargs):
@@ -322,6 +326,8 @@ class TrainingRecordManualForm(forms.ModelForm):
         cleaned_data = super().clean()
         completed_date = cleaned_data.get('completed_date')
         valid_until    = cleaned_data.get('valid_until')
+        status        = cleaned_data.get('status')
+        revoked_reason = cleaned_data.get('revoked_reason', '').strip()
 
         if completed_date and valid_until:
             if valid_until <= completed_date:
@@ -329,6 +335,9 @@ class TrainingRecordManualForm(forms.ModelForm):
 
         if completed_date and completed_date > timezone.now().date():
             self.add_error('completed_date', "Completion date cannot be in the future.")
+
+        if status == 'REVOKED' and not revoked_reason:
+            self.add_error('revoked_reason', "Revoked reason is required when status is Revoked.")
 
         return cleaned_data
 
@@ -339,7 +348,15 @@ class TrainingRecordManualForm(forms.ModelForm):
         # If external cert number provided, use it as certificate_number override
         ext_cert = self.cleaned_data.get('external_certificate_number', '').strip()
         if ext_cert:
-            instance.certificate_number = ext_cert
+            base = ext_cert
+            count = TrainingRecord.objects.filter(
+                certificate_number__startswith=base
+            ).count()
+
+            if count == 0:
+                instance.certificate_number = base
+            else:
+                instance.certificate_number = f"{base}-{count + 1:02d}"
 
         if commit:
             instance.save()
