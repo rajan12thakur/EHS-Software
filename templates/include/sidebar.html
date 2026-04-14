@@ -761,6 +761,23 @@
           </ul>
         </li>
         {% endif %}
+        <li class="nav-item 
+        {% if request.resolver_match.url_name in 'permit' %}menu-open{% endif %}">
+          <a href="#" class="nav-link 
+          {% if request.resolver_match.url_name in 'permit' %}active{% endif %}">
+            <i class="nav-icon fas fa-file-signature nav-icon"></i>
+            <p>Permit Management <i class="right fas fa-angle-left"></i></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="{% url 'permit:permit_create' %}"
+                class="nav-link {% if request.resolver_match.url_name == 'permit_create' %}active{% endif %}">
+                <i class="nav-icon far fa-circle"></i>
+                <p>Create Permit</p>
+              </a>
+            </li>
+          </ul>
+        </li>
       </ul>
     </nav>
   </div>

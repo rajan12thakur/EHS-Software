@@ -2,7 +2,7 @@ from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import PermitType
+from .models import PermitType, Permit, PermitContractor, PermitAttachment
 from django.db.models import Q
 from .forms import PermitForm, PermitContractorFormSet, PermitAttachmentFormSet
 
@@ -82,3 +82,42 @@ class PermitTypeDeleteView(LoginRequiredMixin, DeleteView):
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, "Permit Type deleted successfully.")
         return super().delete(request, *args, **kwargs)
+
+class PermitCreateView(LoginRequiredMixin, CreateView):
+    model = Permit
+    form_class = PermitForm
+    template_name = 'permit/permit_create.html'
+    success_url = reverse_lazy('permit:permit_list')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        if self.request.POST:
+            context['contractor_formset'] = PermitContractorFormSet(self.request.POST)
+            context['attachment_formset'] = PermitAttachmentFormSet(self.request.POST, self.request.FILES)
+        else:
+            context['contractor_formset'] = PermitContractorFormSet()
+            context['attachment_formset'] = PermitAttachmentFormSet()
+
+        return context
+
+    def form_valid(self, form):
+        context = self.get_context_data()
+        contractor_formset = context['contractor_formset']
+        attachment_formset = context['attachment_formset']
+
+        if contractor_formset.is_valid() and attachment_formset.is_valid():
+            self.object = form.save(commit=False)
+            self.object.requester_user = self.request.user
+            self.object.save()
+
+            contractor_formset.instance = self.object
+            contractor_formset.save()
+
+            attachment_formset.instance = self.object
+            attachment_formset.save()
+
+            messages.success(self.request, "Permit created successfully.")
+            return super().form_valid(form)
+
+        return self.form_invalid(form)
