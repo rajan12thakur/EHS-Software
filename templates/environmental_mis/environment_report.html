@@ -1492,7 +1492,8 @@ Save Manufacturing and Non-Manufacturing Report
         let plantId = "{{selected_plant.id}}";
         let type = document.getElementById("wasteType").value;
         
-        let url = `/environmental_mis/download-environment-excel/?plant_id=${plantId}&type=${type}`;
+        let baseUrl = "{% url 'environmental_mis:download_environment_excel' %}";
+        let url = `${baseUrl}?plant_id=${plantId}&type=${type}`;
 
         if (isDataChanged) {
             let proceed = confirm(

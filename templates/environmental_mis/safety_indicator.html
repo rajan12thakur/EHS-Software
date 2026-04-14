@@ -1262,23 +1262,21 @@
 </script>
 
 <script>
-    document
-    .getElementById("downloadEnvExcel")
-    .addEventListener("click", function(){
+    document.getElementById("downloadEnvExcel").addEventListener("click", async function(){
 
         if(isDataChanged){
-            if(!confirm("Data is not saved and may not reflect in Excel. Proceed?")){
-                return;
+            let confirmSave = confirm("Data not saved. Save before donwload?");
+            if(confirmSave){
+              await saveSafetyReport();
             }
-        }
-
+          }
         let plantId = "{{selected_plant.id}}";
         let type = document.getElementById("wasteType").value;
 
-        let url = `/environmental_mis/download-safety-excel/?plant_id=${plantId}&type=${type}`;
+        let baseUrl = "{% url 'environmental_mis:download_safety_excel' %}";
+        let url = `${baseUrl}?plant_id=${plantId}&type=${type}`;
 
         window.location.href = url;
-
     });
 </script>
 
