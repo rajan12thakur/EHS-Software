@@ -333,6 +333,31 @@
         </li>
         {% endif %}
 
+        {% if request.user.is_superuser or request.user.is_admin_user %}
+        <li class="nav-item">
+          <a href="#" class="nav-link {% if 'permit' in request.path %}active{% endif %}">
+            <i class="nav-icon fas fa-clipboard-check"></i>
+            <p>Permit Type Configuration<i class="right fas fa-angle-left"></i></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="{% url 'permit:permit_type_create' %}"
+                 class="nav-link {% if request.resolver_match.url_name == 'permit_type_create' %}active{% endif %}">
+                <i class="nav-icon far fa-circle"></i>
+                <p>Create New Permit Type</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'permit:permit_type_list' %}"
+                 class="nav-link {% if request.resolver_match.url_name == 'permit_type_list' %}active{% endif %}">
+                <i class="nav-icon far fa-circle"></i>
+                <p>All Permit Types</p>
+              </a>
+            </li>
+          </ul>
+        </li>
+        {% endif %}
+
         <!-- 5. Inspection Configuration -->
         {% if request.user.is_superuser or request.user.is_admin_user or request.user|has_perm:'MANAGE_INSPECTION_CONFIGURATION' %}
         <li class="nav-item {% if 'inspections' in request.path and request.resolver_match.url_name in 'category_list question_list template_list' %}menu-open{% endif %}">

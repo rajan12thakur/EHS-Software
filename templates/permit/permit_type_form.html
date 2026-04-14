@@ -1,0 +1,336 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}{{ action }} Permit Type{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'permit:permit_type_list' %}">Permit Types</a></li>
+<li class="breadcrumb-item active">{{ action }}</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.permit-type-shell {
+    max-width: 900px;
+    margin: 0 auto 24px;
+}
+
+.form-section {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 22px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.form-section h6 {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.permit-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 20px;
+}
+
+.permit-form-grid .full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    color: #495057;
+    margin-bottom: 7px;
+}
+
+.form-check-label {
+    font-weight: 500;
+    color: #495057;
+    margin-left: 8px;
+}
+
+#permitTypeForm input[type="text"],
+#permitTypeForm input[type="email"],
+#permitTypeForm input[type="number"],
+#permitTypeForm textarea,
+#permitTypeForm select {
+    width: 100%;
+    display: block;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #495057;
+    background-color: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#permitTypeForm input[type="text"]:focus,
+#permitTypeForm input[type="email"]:focus,
+#permitTypeForm input[type="number"]:focus,
+#permitTypeForm textarea:focus,
+#permitTypeForm select:focus {
+    outline: none;
+    border-color: #1E90FF;
+    box-shadow: 0 0 0 0.2rem rgba(30, 144, 255, 0.12);
+}
+#permitTypeForm #id_description {
+    min-height: 90px;
+    resize: vertical;
+}
+
+#permitTypeForm textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+#permitTypeForm .form-text {
+    margin-top: 6px;
+    font-size: 12px;
+}
+
+#permitTypeForm .text-danger.mt-1 {
+    margin-top: 6px !important;
+}
+
+.status-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.status-card .form-check {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0;
+    min-width: 120px;
+}
+
+.status-card .form-check input[type="checkbox"] {
+    margin-top: 0;
+}
+
+.status-copy {
+    flex: 1;
+}
+
+.card-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 767.98px) {
+    .permit-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .status-card {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="permit-type-shell">
+    <div class="ehs-card">
+      <div class="card-header">
+        <h3 class="card-title mb-0">
+          <i class="fas fa-{% if action == 'Create' %}plus{% else %}edit{% endif %} mr-2"></i>
+          {{ action }} Permit Type
+        </h3>
+      </div>
+
+      <form method="POST" id="permitTypeForm">
+        {% csrf_token %}
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>Note:</strong> All fields marked with <span class="text-danger">*</span> are mandatory.
+          </div>
+          {% if form.errors or form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Please correct the following errors:</strong>
+            {% if form.non_field_errors %}
+              <ul class="mb-2">
+                {% for error in form.non_field_errors %}
+                  <li>{{ error }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+
+            {% if form.errors %}
+              <ul class="mb-0">
+                {% for field in form %}
+                  {% if field.errors %}
+                    {% for error in field.errors %}
+                      <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                    {% endfor %}
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            {% endif %}
+            <button type="button" class="close" data-dismiss="alert">
+              <span>&times;</span>
+            </button>
+          </div>
+          {% endif %}
+          <div class="form-section">
+            <h6><i class="fas fa-info-circle mr-2"></i>Basic Information</h6>
+
+            <div class="permit-form-grid">
+              <div class="form-group">
+                <label for="{{ form.name.id_for_label }}">
+                  Permit Type Name <span class="text-danger">*</span>
+                </label>
+                {{ form.name }}
+                <small class="form-text text-muted">
+                  Example: Hot Work, Confined Space Entry
+                </small>
+
+                {% if form.name.errors %}
+                  <div class="text-danger mt-1">
+                    {% for error in form.name.errors %}
+                      <small>{{ error }}</small><br>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              <div class="form-group">
+                <label for="{{ form.code.id_for_label }}">
+                  Short Code <span class="text-danger">*</span>
+                </label>
+                {{ form.code }}
+                <small class="form-text text-muted">
+                  Example: HOT, CSE
+                </small>
+                {% if form.code.errors %}
+                  <div class="text-danger mt-1">
+                    {% for error in form.code.errors %}
+                      <small>{{ error }}</small><br>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+              <div class="form-group full-width">
+                <label for="{{ form.description.id_for_label }}">
+                  Description
+                </label>
+                {{ form.description }}
+                <small class="form-text text-muted">
+                  Add a short explanation to help users understand when this permit type should be used.
+                </small>
+
+                {% if form.description.errors %}
+                  <div class="text-danger mt-1">
+                    {% for error in form.description.errors %}
+                      <small>{{ error }}</small><br>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          <div class="form-section">
+            <h6><i class="fas fa-toggle-on mr-2"></i>Status</h6>
+            <div class="form-group">
+              <div class="status-card">
+                <div class="form-check">
+                  {{ form.is_active }}
+                  <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                    <strong>Active</strong>
+                  </label>
+                </div>
+
+                <div class="status-copy">
+                  <small class="form-text text-muted mt-0">
+                    When checked, this permit type will be available in permit forms.
+                    Uncheck it if you want to hide it for new permits while preserving existing records.
+                  </small>
+
+                  {% if form.is_active.errors %}
+                    <div class="text-danger mt-1">
+                      {% for error in form.is_active.errors %}
+                        <small>{{ error }}</small><br>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="card-footer">
+          <button type="submit" class="btn btn-primary btn-lg">
+            <i class="fas fa-save mr-2"></i>{{ action }} Permit Type
+          </button>
+          <a href="{% url 'permit:permit_type_list' %}" class="btn btn-secondary btn-lg ml-2">
+            <i class="fas fa-times mr-2"></i>Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('permitTypeForm');
+
+    form.addEventListener('submit', function(e) {
+        const nameField = document.getElementById('{{ form.name.id_for_label }}');
+        const codeField = document.getElementById('{{ form.code.id_for_label }}');
+
+        if (!nameField.value.trim()) {
+            e.preventDefault();
+            alert('Please enter Permit Type Name.');
+            nameField.focus();
+            return false;
+        }
+
+        if (!codeField.value.trim()) {
+            e.preventDefault();
+            alert('Please enter Short Code.');
+            codeField.focus();
+            return false;
+        }
+
+        codeField.value = codeField.value.trim().toUpperCase();
+    });
+
+    const codeField = document.getElementById('{{ form.code.id_for_label }}');
+    if (codeField) {
+        codeField.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+        });
+    }
+});
+</script>
+{% endblock %}

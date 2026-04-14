@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.ENVdata.apps.EnvdataConfig',
     'apps.environmental_mis',
     'apps.training',
+    'apps.permit.apps.PermitConfig',
 
     'django.contrib.admin',
     'django.contrib.auth',
