@@ -1,0 +1,272 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Create Permit{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'permit:permit_list' %}">All Permits</a></li>
+<li class="breadcrumb-item active">Create Permit</li>
+{% endblock %}
+{% block extra_css %}
+<style>
+.permit-type-shell { max-width: 1200px; margin: auto; }
+.form-section { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+.form-section h6 { font-weight: 600; margin-bottom: 15px; border-bottom: 2px solid #dee2e6; padding-bottom: 8px; }
+.permit-form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+.full-width { grid-column: 1 / -1; }
+input, select, textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ced4da; }
+.checkbox-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.card-footer { display: flex; gap: 10px; }
+.errorlist { color: red; font-size: 12px; margin: 0; }
+@media(max-width:768px){ .permit-form-grid { grid-template-columns: 1fr; } }
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px 20px;
+    margin-top: 10px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+/* Fix checkbox size + alignment */
+.checkbox-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* Better click area */
+.checkbox-item span {
+    cursor: pointer;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="permit-type-shell">
+<div class="ehs-card">
+
+<div class="card-header">
+<h3><i class="fas fa-plus mr-2"></i>Create Permit</h3>
+</div>
+
+<form method="POST" enctype="multipart/form-data">
+{% csrf_token %}
+
+<div class="card-body">
+
+<!-- ERRORS -->
+{% if form.errors %}
+<div class="alert alert-danger">
+    {{ form.errors }}
+</div>
+{% endif %}
+
+<!-- BASIC -->
+<div class="form-section">
+<h6>Basic Information</h6>
+<div class="permit-form-grid">
+<div>{{ form.permit_type.label_tag }} {{ form.permit_type }}</div>
+<div>
+<label>Requester</label>
+<input type="text" value="{{ request.user.get_full_name }}" readonly>
+</div>
+<div>{{ form.priority.label_tag }} {{ form.priority }}</div>
+</div>
+</div>
+
+<!-- LOCATION -->
+<div class="form-section">
+<h6>Location</h6>
+<div class="permit-form-grid">
+<div>{{ form.plant.label_tag }} {{ form.plant }}</div>
+<div>{{ form.zone.label_tag }} {{ form.zone }}</div>
+<div>{{ form.location.label_tag }} {{ form.location }}</div>
+<div>{{ form.sublocation.label_tag }} {{ form.sublocation }}</div>
+<div>{{ form.department.label_tag }} {{ form.department }}</div>
+</div>
+</div>
+
+<!-- WORK -->
+<div class="form-section">
+<h6>Work Details</h6>
+<div class="permit-form-grid">
+<div class="full-width">{{ form.job_description.label_tag }} {{ form.job_description }}</div>
+<div>{{ form.start_date.label_tag }} {{ form.start_date }}</div>
+<div>{{ form.end_date.label_tag }} {{ form.end_date }}</div>
+</div>
+</div>
+
+<!-- CONTRACTOR -->
+<div class="form-section">
+<h6>Supervisor / Contractor</h6>
+<div class="permit-form-grid">
+<div>{{ form.contractor_company.label_tag }} {{ form.contractor_company }}</div>
+<div>{{ form.reporting_engineer.label_tag }} {{ form.reporting_engineer }}</div>
+<div>{{ form.supervisor_name.label_tag }} {{ form.supervisor_name }}</div>
+<div>{{ form.contact_number.label_tag }} {{ form.contact_number }}</div>
+</div>
+</div>
+
+<!-- HAZARDS -->
+<div class="form-section">
+<h6>Hazard Assessment</h6>
+
+<div>{{ form.hazard_risk_level.label_tag }} {{ form.hazard_risk_level }}</div>
+
+
+<label class="mt-2">Hazards:</label>
+
+<div class="checkbox-grid">
+    <label class="checkbox-item">
+        <input type="checkbox" name="hazards" value="fire">
+        <span>Fire</span>
+    </label>
+
+    <label class="checkbox-item">
+        <input type="checkbox" name="hazards" value="gas">
+        <span>Gas</span>
+    </label>
+
+    <label class="checkbox-item">
+        <input type="checkbox" name="hazards" value="fall">
+        <span>Fall</span>
+    </label>
+
+    <label class="checkbox-item">
+        <input type="checkbox" name="hazards" value="electrical">
+        <span>Electrical</span>
+    </label>
+
+    <label class="checkbox-item">
+        <input type="checkbox" name="hazards" value="chemical">
+        <span>Chemical</span>
+    </label>
+
+    <label class="checkbox-item">
+        <input type="checkbox" name="hazards" value="noise">
+        <span>Noise</span>
+    </label>
+</div>
+
+
+<div class="full-width mt-2">
+{{ form.safety_measures.label_tag }} {{ form.safety_measures }}
+</div>
+</div>
+
+<!-- CHECKLIST -->
+<div class="form-section">
+<h6>Checklist</h6>
+<div class="permit-form-grid">
+
+<div>{{ form.plant_running.label_tag }} {{ form.plant_running }}</div>
+<div>{{ form.equipment_isolated.label_tag }} {{ form.equipment_isolated }}</div>
+<div>{{ form.valves_closed.label_tag }} {{ form.valves_closed }}</div>
+<div>{{ form.equipment_drained.label_tag }} {{ form.equipment_drained }}</div>
+<div>{{ form.equipment_disconnected.label_tag }} {{ form.equipment_disconnected }}</div>
+
+<div>{{ form.pipeline_depressurized.label_tag }} {{ form.pipeline_depressurized }}</div>
+<div>{{ form.pipeline_drained.label_tag }} {{ form.pipeline_drained }}</div>
+<div>{{ form.pipeline_purged.label_tag }} {{ form.pipeline_purged }}</div>
+<div>{{ form.pipeline_ventilated.label_tag }} {{ form.pipeline_ventilated }}</div>
+
+<div>{{ form.electrical_earthing.label_tag }} {{ form.electrical_earthing }}</div>
+<div>{{ form.area_protected.label_tag }} {{ form.area_protected }}</div>
+
+<div>{{ form.gas_test.label_tag }} {{ form.gas_test }}</div>
+<div>{{ form.gas_test_value.label_tag }} {{ form.gas_test_value }}</div>
+
+<div>{{ form.spillage_removed.label_tag }} {{ form.spillage_removed }}</div>
+
+</div>
+</div>
+
+<!-- PPE -->
+<div class="form-section">
+<h6>PPE</h6>
+<div class="permit-form-grid">
+
+<div>{{ form.ppe_safety_shoe.label_tag }} {{ form.ppe_safety_shoe }}</div>
+<div>{{ form.ppe_helmet.label_tag }} {{ form.ppe_helmet }}</div>
+<div>{{ form.ppe_safety_belt.label_tag }} {{ form.ppe_safety_belt }}</div>
+<div>{{ form.ppe_gloves.label_tag }} {{ form.ppe_gloves }}</div>
+<div>{{ form.ppe_respiratory.label_tag }} {{ form.ppe_respiratory }}</div>
+<div>{{ form.ppe_ear.label_tag }} {{ form.ppe_ear }}</div>
+<div>{{ form.ppe_eye.label_tag }} {{ form.ppe_eye }}</div>
+<div>{{ form.ppe_other.label_tag }} {{ form.ppe_other }}</div>
+
+<div class="full-width">{{ form.ppe_other_specify.label_tag }} {{ form.ppe_other_specify }}</div>
+
+</div>
+</div>
+
+<!-- SAFETY EQUIPMENT -->
+<div class="form-section">
+<h6>Safety Equipment</h6>
+<div class="permit-form-grid">
+
+<div>{{ form.electrical_clearance.label_tag }} {{ form.electrical_clearance }}</div>
+<div>{{ form.ventilation_adequate.label_tag }} {{ form.ventilation_adequate }}</div>
+
+<div>{{ form.fire_extinguishers.label_tag }} {{ form.fire_extinguishers }}</div>
+<div>{{ form.fire_extinguishers_details.label_tag }} {{ form.fire_extinguishers_details }}</div>
+
+<div>{{ form.grinder_guard.label_tag }} {{ form.grinder_guard }}</div>
+<div>{{ form.welding_elcb.label_tag }} {{ form.welding_elcb }}</div>
+<div>{{ form.gas_cutting_fba.label_tag }} {{ form.gas_cutting_fba }}</div>
+<div>{{ form.gas_hosepipe.label_tag }} {{ form.gas_hosepipe }}</div>
+<div>{{ form.cylinder_key.label_tag }} {{ form.cylinder_key }}</div>
+<div>{{ form.esi_insurance.label_tag }} {{ form.esi_insurance }}</div>
+
+</div>
+</div>
+
+<!-- CONTRACTORS -->
+<div class="form-section">
+<h6>Workers</h6>
+{{ contractor_formset.management_form }}
+
+{% for f in contractor_formset %}
+<div class="permit-form-grid">
+<div>{{ f.name.label_tag }} {{ f.name }}</div>
+<div>{{ f.trade.label_tag }} {{ f.trade }}</div>
+<div>{{ f.id_number.label_tag }} {{ f.id_number }}</div>
+<div>{{ f.esi_number.label_tag }} {{ f.esi_number }}</div>
+<div>{{ f.contact_number.label_tag }} {{ f.contact_number }}</div>
+</div>
+{% endfor %}
+</div>
+
+<!-- ATTACHMENTS -->
+<div class="form-section">
+<h6>Attachments</h6>
+{{ attachment_formset.management_form }}
+
+{% for f in attachment_formset %}
+<div class="permit-form-grid">
+<div>{{ f.file.label_tag }} {{ f.file }}</div>
+<div>{{ f.description.label_tag }} {{ f.description }}</div>
+</div>
+{% endfor %}
+</div>
+
+</div>
+
+<div class="card-footer">
+<button class="btn btn-primary btn-lg">Submit Permit</button>
+<a href="#" class="btn btn-secondary btn-lg">Cancel</a>
+</div>
+
+</form>
+</div>
+</div>
+{% endblock %}

@@ -5,7 +5,7 @@ from .models import (
     PermitContractor,
     PermitAttachment
 )
-from apps.organizations.models import Zone, Location, SubLocation
+from apps.organizations.models import Plant, Zone, Location, SubLocation
 
 
 # ==============================================================================
@@ -14,9 +14,30 @@ from apps.organizations.models import Zone, Location, SubLocation
 
 class PermitForm(forms.ModelForm):
 
+    hazards = forms.MultipleChoiceField(
+        choices=[
+            ('fire', 'Fire'),
+            ('gas', 'Gas'),
+            ('fall', 'Fall'),
+            ('electrical', 'Electrical'),
+            ('chemical', 'Chemical'),
+            ('noise', 'Noise'),
+        ],
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+
     class Meta:
         model = Permit
-        exclude = ['permit_number', 'requester_user', 'created_at', 'updated_at']
+        exclude = [
+            'permit_number',
+            'requester_user',
+            'requester_name',
+            'created_at',
+            'updated_at',
+            'status',
+            'employees_count'
+        ]
 
         widgets = {
             'start_date': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
@@ -27,58 +48,37 @@ class PermitForm(forms.ModelForm):
             'close_out_notes': forms.Textarea(attrs={'rows': 2}),
         }
 
-    # -----------------------------
-    # Dynamic cascading dropdowns
-    # -----------------------------
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
-        # Initially empty
-        self.fields['zone'].queryset = Zone.objects.none()
-        self.fields['location'].queryset = Location.objects.none()
-        self.fields['sublocation'].queryset = SubLocation.objects.none()
+        if user:
+            self.fields['plant'].queryset = (
+                user.assigned_plants.all()
+                | (Plant.objects.filter(id=user.plant_id) if user.plant_id else Plant.objects.none())
+            ).distinct()
 
-        # Edit mode (instance exists)
-        if self.instance and self.instance.pk:
-            if self.instance.plant:
-                self.fields['zone'].queryset = Zone.objects.filter(
-                    plant=self.instance.plant
-                )
-
-            if self.instance.zone:
-                self.fields['location'].queryset = Location.objects.filter(
-                    zone=self.instance.zone
-                )
-
-            if self.instance.location:
-                self.fields['sublocation'].queryset = SubLocation.objects.filter(
-                    location=self.instance.location
-                )
-
-        # Create mode (POST data)
+        if self.instance.pk:
+            self.fields['zone'].queryset = Zone.objects.filter(plant=self.instance.plant)
+            self.fields['location'].queryset = Location.objects.filter(zone=self.instance.zone)
+            self.fields['sublocation'].queryset = SubLocation.objects.filter(location=self.instance.location)
         else:
-            if 'plant' in self.data:
-                try:
-                    plant_id = int(self.data.get('plant'))
-                    self.fields['zone'].queryset = Zone.objects.filter(plant_id=plant_id)
-                except:
-                    pass
+            plant_id = self.data.get('plant')
+            zone_id = self.data.get('zone')
+            location_id = self.data.get('location')
 
-            if 'zone' in self.data:
-                try:
-                    zone_id = int(self.data.get('zone'))
-                    self.fields['location'].queryset = Location.objects.filter(zone_id=zone_id)
-                except:
-                    pass
+            if plant_id:
+                self.fields['zone'].queryset = Zone.objects.filter(plant_id=plant_id)
 
-            if 'location' in self.data:
-                try:
-                    location_id = int(self.data.get('location'))
-                    self.fields['sublocation'].queryset = SubLocation.objects.filter(location_id=location_id)
-                except:
-                    pass
+            if zone_id:
+                self.fields['location'].queryset = Location.objects.filter(zone_id=zone_id)
 
+            if location_id:
+                self.fields['sublocation'].queryset = SubLocation.objects.filter(location_id=location_id)
 
+    def clean_hazards(self):
+        return self.cleaned_data.get('hazards', [])
+    
 # CONTRACTOR FORM
 class PermitContractorForm(forms.ModelForm):
     class Meta:

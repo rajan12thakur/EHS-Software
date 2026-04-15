@@ -1,0 +1,253 @@
+{% extends 'base/base.html' %}
+{% load permission_tags %}
+{% load static %}
+
+{% block title %}Permits{% endblock %}
+{% block page_title %}Permit Management{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item active">Permits</li>
+{% endblock %}
+
+{% block content %}
+<div class="ehs-card">
+  <div class="card-header">
+    <div class="row align-items-center">
+      <div class="col">
+        <h3 class="card-title mb-0">
+          <i class="fas fa-file-alt mr-2"></i>All Permits
+        </h3>
+      </div>
+
+      <div class="col-auto">
+        <a href="{% url 'permit:permit_create' %}" class="btn btn-primary">
+          <i class="fas fa-plus mr-1"></i> Create Permit
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body">
+
+    <!-- FILTERS -->
+    <form method="GET" class="mb-4">
+      <div class="row">
+
+        <!-- Search -->
+        <div class="col-md-3 mb-2">
+          <input type="text" name="search" class="form-control"
+                 placeholder="Search permit no, requester..."
+                 value="{{ request.GET.search }}">
+        </div>
+
+        <!-- Status -->
+        <div class="col-md-2 mb-2">
+          <select name="status" class="form-control">
+            <option value="">All Status</option>
+            {% for key, value in status_choices %}
+              <option value="{{ key }}" {% if request.GET.status == key %}selected{% endif %}>
+                {{ value }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Priority -->
+        <div class="col-md-2 mb-2">
+          <select name="priority" class="form-control">
+            <option value="">All Priority</option>
+            {% for key, value in priority_choices %}
+              <option value="{{ key }}" {% if request.GET.priority == key %}selected{% endif %}>
+                {{ value }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Risk -->
+        <div class="col-md-2 mb-2">
+          <select name="risk" class="form-control">
+            <option value="">Risk Level</option>
+            {% for key, value in risk_choices %}
+              <option value="{{ key }}" {% if request.GET.risk == key %}selected{% endif %}>
+                {{ value }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Filter Button -->
+        <div class="col-md-2 mb-2">
+          <button class="btn btn-primary btn-block">
+            <i class="fas fa-search"></i> Filter
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Date Filter -->
+      <div class="row mt-2">
+        <div class="col-md-3">
+          <label class="small">From</label>
+          <input type="date" name="date_from" class="form-control form-control-sm"
+                 value="{{ request.GET.date_from }}">
+        </div>
+        <div class="col-md-3">
+          <label class="small">To</label>
+          <input type="date" name="date_to" class="form-control form-control-sm"
+                 value="{{ request.GET.date_to }}">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <a href="{% url 'permit:permit_list' %}" class="btn btn-secondary btn-sm">
+            Reset
+          </a>
+        </div>
+      </div>
+    </form>
+
+    <!-- TABLE -->
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead class="thead-light">
+          <tr>
+            <th>Permit No</th>
+            <th>Type</th>
+            <th>Requester</th>
+            <th>Plant / Location</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for permit in permits %}
+          <tr>
+            <td>
+              <a href="#" class="text-primary font-weight-bold">
+                {{ permit.permit_number }}
+              </a>
+
+              {% if permit.is_overdue %}
+              <br><span class="badge badge-danger mt-1">Overdue</span>
+              {% endif %}
+            </td>
+
+            <td>{{ permit.permit_type.name }}</td>
+
+            <td>{{ permit.requester_name }}</td>
+
+            <td>
+              <strong>{{ permit.plant.code }}</strong><br>
+              <small class="text-muted">{{ permit.location.name }}</small>
+            </td>
+
+            <td>
+              {{ permit.start_date|date:"d/m/Y" }}<br>
+              <small>{{ permit.start_date|time:"H:i" }}</small>
+            </td>
+
+            <td>
+              {{ permit.end_date|date:"d/m/Y" }}<br>
+              <small>{{ permit.end_date|time:"H:i" }}</small>
+            </td>
+
+            <!-- Priority -->
+            <td>
+              <span class="badge
+                {% if permit.priority == 'high' %}badge-danger
+                {% elif permit.priority == 'medium' %}badge-warning
+                {% else %}badge-success{% endif %}">
+                {{ permit.get_priority_display }}
+              </span>
+            </td>
+
+            <!-- Status -->
+            <td>
+              <span class="badge
+                {% if permit.status == 'approved' %}badge-success
+                {% elif permit.status == 'pending' %}badge-warning
+                {% elif permit.status == 'rejected' %}badge-danger
+                {% else %}badge-secondary{% endif %}">
+                {{ permit.get_status_display }}
+              </span>
+            </td>
+
+            <!-- Actions -->
+            <td>
+              <div class="btn-group">
+                <a href="{% url 'permit:permit_detail' permit.pk %}" class="btn btn-sm btn-info">
+                  <i class="fas fa-eye"></i>
+                </a>
+                <a href="{% url 'permit:permit_update' permit.pk %}" class="btn btn-sm btn-primary">
+                  <i class="fas fa-edit"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          {% empty %}
+          <tr>
+            <td colspan="9" class="text-center">
+              <div class="alert alert-info mb-0">
+                No permits found.
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    {% if is_paginated %}
+    <nav class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+          </li>
+        {% endif %}
+
+        <li class="page-item active">
+          <span class="page-link">
+            {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+          </span>
+        </li>
+
+        {% if page_obj.has_next %}
+          <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+          </li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+
+  </div>
+</div>
+
+<style>
+.ehs-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.table-hover tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+.badge {
+  font-size: 0.85rem;
+}
+</style>
+
+{% endblock %}
