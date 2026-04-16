@@ -1,7 +1,16 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils import timezone
-from .models import (PermitType,Permit,PermitContractor,PermitApprovalLog,PermitExtension,PermitAttachment,)
+from .models import (
+    PermitType,
+    Permit,
+    PermitContractor,
+    PermitApprovalLog,
+    PermitExtension,
+    PermitAttachment,
+    PermitClosure,
+    PermitClosurePhoto,
+)
 
 
 STATUS_COLORS = {
@@ -105,6 +114,18 @@ class PermitExtensionInline(admin.StackedInline):
     readonly_fields = ('original_end_date', 'reviewed_at')
 
 
+class PermitClosurePhotoInline(admin.TabularInline):
+    model = PermitClosurePhoto
+    extra = 0
+    readonly_fields = ('photo', 'uploaded_by', 'uploaded_at')
+
+
+class PermitClosureInline(admin.StackedInline):
+    model = PermitClosure
+    extra = 0
+    readonly_fields = ('closed_by', 'closed_at')
+
+
 # PERMIT
 @admin.register(Permit)
 class PermitAdmin(admin.ModelAdmin):
@@ -152,6 +173,7 @@ class PermitAdmin(admin.ModelAdmin):
         PermitAttachmentInline,
         PermitApprovalLogInline,
         PermitExtensionInline,
+        PermitClosureInline,
     ]
     fieldsets = (
         ('Identification', {
@@ -432,3 +454,27 @@ class PermitAttachmentAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('permit', 'uploaded_by')
+
+
+@admin.register(PermitClosure)
+class PermitClosureAdmin(admin.ModelAdmin):
+    list_display = ('permit', 'work_status', 'actual_end_date', 'closed_by', 'closed_at')
+    search_fields = ('permit__permit_number', 'work_summary', 'closure_comments')
+    list_filter = ('work_status', 'closed_at')
+    readonly_fields = ('closed_at',)
+    autocomplete_fields = ('permit',)
+    inlines = [PermitClosurePhotoInline]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('permit', 'closed_by')
+
+
+@admin.register(PermitClosurePhoto)
+class PermitClosurePhotoAdmin(admin.ModelAdmin):
+    list_display = ('closure', 'uploaded_by', 'uploaded_at')
+    search_fields = ('closure__permit__permit_number',)
+    list_filter = ('uploaded_at',)
+    autocomplete_fields = ('closure',)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('closure__permit', 'uploaded_by')

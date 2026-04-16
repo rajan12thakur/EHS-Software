@@ -185,6 +185,9 @@
                 <a href="{% url 'permit:permit_update' permit.pk %}" class="btn btn-sm btn-primary">
                   <i class="fas fa-edit"></i>
                 </a>
+                <a href="{% url 'permit:permit_pdf' permit.pk %}" class="btn btn-sm btn-danger" target="_blank" title="Download PDF">
+                  <i class="fas fa-file-pdf"></i>
+                </a>
               </div>
             </td>
           </tr>

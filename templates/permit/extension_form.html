@@ -1,0 +1,29 @@
+{% extends 'base/base.html' %}
+{% block title %}Extend Permit{% endblock %}
+{% block page_title %}Extend Permit{% endblock %}
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <div class="card card-primary">
+          <div class="card-header">
+            <h3 class="card-title">Extend Permit Duration</h3>
+          </div>
+          <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.GET.next|default:request.META.HTTP_REFERER }}">
+            <div class="card-body">
+              {{ form.as_p }}
+            </div>
+            <div class="card-footer">
+              <button type="submit" class="btn btn-primary">Submit Extension Request</button>
+              <a href="{% url 'permit:permit_detail' permit.pk %}" class="btn btn-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

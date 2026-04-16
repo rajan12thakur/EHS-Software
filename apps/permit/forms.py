@@ -1,9 +1,12 @@
 from django import forms
 from django.forms import inlineformset_factory
+from django.utils import timezone
 from .models import (
     Permit,
     PermitContractor,
-    PermitAttachment
+    PermitAttachment,
+    PermitExtension,
+    PermitClosure,
 )
 from apps.organizations.models import Plant, Zone, Location, SubLocation
 
@@ -88,6 +91,86 @@ class PermitForm(forms.ModelForm):
         if not hazards:
             raise forms.ValidationError("Please select at least one hazard.")
         return hazards
+
+
+class PermitExtensionRequestForm(forms.ModelForm):
+    class Meta:
+        model = PermitExtension
+        fields = ['new_end_date', 'reason']
+        widgets = {
+            'new_end_date': forms.DateTimeInput(
+                attrs={'type': 'datetime-local', 'class': 'form-control'}
+            ),
+            'reason': forms.Textarea(
+                attrs={'rows': 4, 'class': 'form-control', 'placeholder': 'Enter reason for extension'}
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['new_end_date'].input_formats = ['%Y-%m-%dT%H:%M']
+
+
+class PermitClosureForm(forms.ModelForm):
+    class Meta:
+        model = PermitClosure
+        exclude = ['permit', 'closed_by', 'closed_at']
+        widgets = {
+            'actual_end_date': forms.DateTimeInput(
+                attrs={'type': 'datetime-local', 'class': 'form-control'}
+            ),
+            'work_status': forms.Select(attrs={'class': 'form-control'}),
+            'work_summary': forms.Textarea(attrs={'rows': 4, 'class': 'form-control'}),
+            'issues_encountered': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'closure_comments': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'contractor_signature': forms.HiddenInput(),
+            'safety_signature': forms.HiddenInput(),
+            'area_inspected': forms.CheckboxInput(attrs={'class': 'checklist-checkbox'}),
+            'fire_watch_completed': forms.CheckboxInput(attrs={'class': 'checklist-checkbox'}),
+            'equipment_isolated': forms.CheckboxInput(attrs={'class': 'checklist-checkbox'}),
+            'hazards_removed': forms.CheckboxInput(attrs={'class': 'checklist-checkbox'}),
+            'barriers_removed': forms.CheckboxInput(attrs={'class': 'checklist-checkbox'}),
+            'no_incidents': forms.CheckboxInput(attrs={'class': 'checklist-checkbox'}),
+            'area_clean': forms.CheckboxInput(attrs={'class': 'checklist-checkbox'}),
+            'systems_operational': forms.CheckboxInput(attrs={'class': 'checklist-checkbox'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.permit = kwargs.pop('permit', None)
+        super().__init__(*args, **kwargs)
+        self.fields['actual_end_date'].input_formats = ['%Y-%m-%dT%H:%M']
+        self.fields['work_status'].choices = [('', 'Select Status')] + list(self.fields['work_status'].choices)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        checklist_fields = [
+            'area_inspected',
+            'fire_watch_completed',
+            'equipment_isolated',
+            'hazards_removed',
+            'barriers_removed',
+            'no_incidents',
+            'area_clean',
+            'systems_operational',
+        ]
+
+        for field_name in checklist_fields:
+            if not cleaned_data.get(field_name):
+                self.add_error(field_name, "This checklist item must be confirmed before closing the permit.")
+
+        if not cleaned_data.get('contractor_signature'):
+            self.add_error('contractor_signature', "Contractor signature is required.")
+        if not cleaned_data.get('safety_signature'):
+            self.add_error('safety_signature', "Safety officer signature is required.")
+
+        actual_end_date = cleaned_data.get('actual_end_date')
+        if actual_end_date:
+            if actual_end_date > timezone.now():
+                self.add_error('actual_end_date', "Actual completion cannot be in the future.")
+            if self.permit and self.permit.start_date and actual_end_date < self.permit.start_date:
+                self.add_error('actual_end_date', "Actual completion cannot be before the permit start date.")
+
+        return cleaned_data
     
 # CONTRACTOR FORM
 class PermitContractorForm(forms.ModelForm):

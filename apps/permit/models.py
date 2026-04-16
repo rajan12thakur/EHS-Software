@@ -51,6 +51,11 @@ def permit_attachment_path(instance, filename):
     return f'permit_attachments/permit_{permit_id}/{filename}'
 
 
+def permit_closure_photo_path(instance, filename):
+    permit_id = instance.closure.permit_id if instance.closure_id else "temp"
+    return f'permit_closures/permit_{permit_id}/{filename}'
+
+
 # PERMIT TYPE
 class PermitType(models.Model):
     name = models.CharField(max_length=100)
@@ -268,6 +273,12 @@ class Permit(models.Model):
             raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
+        if self.requester_user and not self.requester_name:
+            self.requester_name = (
+                self.requester_user.get_full_name()
+                or self.requester_user.username
+            )
+
         super().save(*args, **kwargs)
         if not self.permit_number:
             year = self.created_at.year
@@ -434,6 +445,87 @@ class PermitExtension(models.Model):
 
     def __str__(self):
         return f"Extension for Permit #{self.permit_id} → {self.new_end_date:%Y-%m-%d}"
+
+
+class PermitClosure(models.Model):
+    WORK_STATUS_CHOICES = [
+        ('completed', 'Completed Successfully'),
+        ('completed_with_issues', 'Completed with Minor Issues'),
+        ('partially_completed', 'Partially Completed'),
+        ('not_completed', 'Not Completed'),
+    ]
+
+    permit = models.OneToOneField(
+        Permit,
+        on_delete=models.CASCADE,
+        related_name='closure'
+    )
+    actual_end_date = models.DateTimeField()
+    work_status = models.CharField(max_length=30, choices=WORK_STATUS_CHOICES)
+    work_summary = models.TextField()
+    issues_encountered = models.TextField(blank=True)
+    area_inspected = models.BooleanField(default=False)
+    fire_watch_completed = models.BooleanField(default=False)
+    equipment_isolated = models.BooleanField(default=False)
+    hazards_removed = models.BooleanField(default=False)
+    barriers_removed = models.BooleanField(default=False)
+    no_incidents = models.BooleanField(default=False)
+    area_clean = models.BooleanField(default=False)
+    systems_operational = models.BooleanField(default=False)
+    contractor_signature = models.TextField()
+    safety_signature = models.TextField()
+    closure_comments = models.TextField(blank=True)
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='closed_permits'
+    )
+    closed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-closed_at']
+        verbose_name = 'Permit Closure'
+        verbose_name_plural = 'Permit Closures'
+
+    def clean(self):
+        errors = {}
+        if self.actual_end_date and self.permit_id:
+            if self.permit.start_date and self.actual_end_date < self.permit.start_date:
+                errors['actual_end_date'] = "Actual completion cannot be before the permit start date."
+            from django.utils import timezone
+            if self.actual_end_date > timezone.now():
+                errors['actual_end_date'] = "Actual completion cannot be in the future."
+        if errors:
+            raise ValidationError(errors)
+
+    def __str__(self):
+        return f"Closure for {self.permit}"
+
+
+class PermitClosurePhoto(models.Model):
+    closure = models.ForeignKey(
+        PermitClosure,
+        on_delete=models.CASCADE,
+        related_name='photos'
+    )
+    photo = models.ImageField(upload_to=permit_closure_photo_path)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='permit_closure_photos'
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+        verbose_name = 'Permit Closure Photo'
+        verbose_name_plural = 'Permit Closure Photos'
+
+    def __str__(self):
+        return f"Closure photo for Permit #{self.closure.permit_id}"
 
 
 # PERMIT ATTACHMENT
