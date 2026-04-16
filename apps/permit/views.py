@@ -113,42 +113,27 @@ class PermitCreateView(LoginRequiredMixin, CreateView):
         return context
 
     def form_valid(self, form):
-
-        contractor_formset = PermitContractorFormSet(self.request.POST)
-        attachment_formset = PermitAttachmentFormSet(
-            self.request.POST,
-            self.request.FILES
-        )
+        context = self.get_context_data()
+        contractor_formset = context['contractor_formset']
+        attachment_formset = context['attachment_formset']
 
         if contractor_formset.is_valid() and attachment_formset.is_valid():
 
-            self.object = form.save(commit=False)
-
-            # ✅ REQUIRED FIX (YOU MISSED THIS)
-            self.object.requester_user = self.request.user
-            self.object.requester_name = (
-                self.request.user.get_full_name() or self.request.user.username
-            )
-
-            # Optional defaults
-            if not self.object.plant:
-                self.object.plant = self.request.user.plant
-
-            if not self.object.department:
-                self.object.department = self.request.user.department
-
-            self.object.save()
+            self.object = form.save()
 
             contractor_formset.instance = self.object
             contractor_formset.save()
 
-            attachment_formset.instance = self.object
-            attachment_formset.save()
+            # ✅ SAVE ONLY NON-EMPTY ATTACHMENTS
+            attachments = attachment_formset.save(commit=False)
 
-            messages.success(self.request, "Permit created successfully.")
+            for att in attachments:
+                if att.file or att.description:
+                    att.permit = self.object
+                    att.save()
+
             return super().form_valid(form)
 
-        messages.error(self.request, "Please correct the errors in contractors or attachments.")
         return self.form_invalid(form)
 
 class PermitListView(LoginRequiredMixin, ListView):
@@ -224,17 +209,27 @@ class PermitDetailView(LoginRequiredMixin, DetailView):
 
         return context
 
+from django.urls import reverse_lazy
+from django.views.generic import UpdateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+from .models import Permit
+from .forms import PermitForm, PermitContractorFormSet, PermitAttachmentFormSet
+
+
 class PermitUpdateView(LoginRequiredMixin, UpdateView):
     model = Permit
     form_class = PermitForm
-    template_name = 'permit/permit_create.html'  
+    template_name = 'permit/permit_edit.html'
     success_url = reverse_lazy('permit:permit_list')
 
+    # ✅ Pass user to form
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs['user'] = self.request.user
         return kwargs
 
+    # ✅ Context (Formsets + hazards)
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
@@ -248,33 +243,77 @@ class PermitUpdateView(LoginRequiredMixin, UpdateView):
                 self.request.FILES,
                 instance=self.object
             )
-        else:
-            context['contractor_formset'] = PermitContractorFormSet(instance=self.object)
-            context['attachment_formset'] = PermitAttachmentFormSet(instance=self.object)
 
-        context['is_edit'] = True
+            # ✅ hazards from POST
+            context['selected_hazards'] = self.request.POST.getlist('hazards')
+
+        else:
+            context['contractor_formset'] = PermitContractorFormSet(
+                instance=self.object
+            )
+            context['attachment_formset'] = PermitAttachmentFormSet(
+                instance=self.object
+            )
+
+            # ✅ hazards from DB
+            context['selected_hazards'] = self.object.hazards or []
+
         return context
 
+    # ✅ MAIN SAVE LOGIC
     def form_valid(self, form):
-        contractor_formset = PermitContractorFormSet(
-            self.request.POST,
-            instance=self.object
-        )
-        attachment_formset = PermitAttachmentFormSet(
-            self.request.POST,
-            self.request.FILES,
-            instance=self.object
-        )
+        context = self.get_context_data()
+        contractor_formset = context['contractor_formset']
+        attachment_formset = context['attachment_formset']
 
-        if contractor_formset.is_valid() and attachment_formset.is_valid():
+        # ✅ Validate all together
+        if not contractor_formset.is_valid() or not attachment_formset.is_valid():
+            return self.form_invalid(form)
 
-            self.object = form.save()
+        # ✅ SAVE hazards explicitly (IMPORTANT)
+        form.instance.hazards = self.request.POST.getlist('hazards')
 
-            contractor_formset.save()
-            attachment_formset.save()
+        # ✅ Save main object
+        self.object = form.save()
 
-            messages.success(self.request, "Permit updated successfully.")
-            return super().form_valid(form)
+        # ============================
+        # ✅ CONTRACTORS
+        # ============================
+        contractor_formset.instance = self.object
 
-        messages.error(self.request, "Please fix errors.")
-        return self.form_invalid(form)
+        contractors = contractor_formset.save(commit=False)
+
+        for c in contractors:
+            # ✅ Ignore empty rows
+            if any([
+                c.name,
+                c.trade,
+                c.id_number,
+                c.esi_number,
+                c.contact_number
+            ]):
+                c.permit = self.object
+                c.save()
+
+        # ✅ Delete removed rows
+        for obj in contractor_formset.deleted_objects:
+            obj.delete()
+
+        # ============================
+        # ✅ ATTACHMENTS
+        # ============================
+        attachment_formset.instance = self.object
+
+        attachments = attachment_formset.save(commit=False)
+
+        for att in attachments:
+            # ✅ Save only meaningful rows
+            if att.file or att.description:
+                att.permit = self.object
+                att.save()
+
+        # ✅ Delete removed attachments
+        for obj in attachment_formset.deleted_objects:
+            obj.delete()
+
+        return super().form_valid(form)

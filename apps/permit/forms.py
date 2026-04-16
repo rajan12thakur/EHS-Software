@@ -14,15 +14,17 @@ from apps.organizations.models import Plant, Zone, Location, SubLocation
 
 class PermitForm(forms.ModelForm):
 
+    HAZARD_CHOICES = [
+        ('fire', 'Fire'),
+        ('gas', 'Gas'),
+        ('fall', 'Fall'),
+        ('electrical', 'Electrical'),
+        ('chemical', 'Chemical'),
+        ('noise', 'Noise'),
+    ]
+
     hazards = forms.MultipleChoiceField(
-        choices=[
-            ('fire', 'Fire'),
-            ('gas', 'Gas'),
-            ('fall', 'Fall'),
-            ('electrical', 'Electrical'),
-            ('chemical', 'Chemical'),
-            ('noise', 'Noise'),
-        ],
+        choices=HAZARD_CHOICES,
         widget=forms.CheckboxSelectMultiple,
         required=False
     )
@@ -52,12 +54,17 @@ class PermitForm(forms.ModelForm):
         user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
 
+        # ✅ Pre-fill hazards (IMPORTANT for edit)
+        if self.instance and self.instance.pk and self.instance.hazards:
+            self.initial['hazards'] = self.instance.hazards
+
         if user:
             self.fields['plant'].queryset = (
                 user.assigned_plants.all()
                 | (Plant.objects.filter(id=user.plant_id) if user.plant_id else Plant.objects.none())
             ).distinct()
 
+        # Dynamic dropdowns
         if self.instance.pk:
             self.fields['zone'].queryset = Zone.objects.filter(plant=self.instance.plant)
             self.fields['location'].queryset = Location.objects.filter(zone=self.instance.zone)
@@ -77,7 +84,10 @@ class PermitForm(forms.ModelForm):
                 self.fields['sublocation'].queryset = SubLocation.objects.filter(location_id=location_id)
 
     def clean_hazards(self):
-        return self.cleaned_data.get('hazards', [])
+        hazards = self.cleaned_data.get('hazards') 
+        if not hazards:
+            raise forms.ValidationError("Please select at least one hazard.")
+        return hazards
     
 # CONTRACTOR FORM
 class PermitContractorForm(forms.ModelForm):
@@ -90,6 +100,11 @@ class PermitContractorForm(forms.ModelForm):
             'trade': forms.TextInput(attrs={'placeholder': 'Welder / Fitter'}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        for field in self.fields.values():
+            field.required = False
 
 # CONTRACTOR FORMSET
 PermitContractorFormSet = inlineformset_factory(
@@ -97,7 +112,8 @@ PermitContractorFormSet = inlineformset_factory(
     PermitContractor,
     form=PermitContractorForm,
     extra=1,
-    can_delete=True
+    can_delete=True,
+    validate_min=False
 )
 
 # ATTACHMENT FORM
@@ -106,11 +122,25 @@ class PermitAttachmentForm(forms.ModelForm):
         model = PermitAttachment
         fields = ['file', 'description']
 
-        widgets = {
-            'description': forms.TextInput(attrs={'placeholder': 'File description'}),
-        }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
+        self.fields['file'].required = False
+        self.fields['description'].required = False
 
+    def clean(self):
+        cleaned_data = super().clean()
+
+        file = cleaned_data.get('file')
+        description = cleaned_data.get('description')
+
+        if not file and not description:
+            self.cleaned_data = {}
+            self._errors = {}
+            return cleaned_data
+
+        return cleaned_data
+        
 # ATTACHMENT FORMSET
 PermitAttachmentFormSet = inlineformset_factory(
     Permit,

@@ -1,46 +1,58 @@
 {% extends 'base/base.html' %}
 {% load static %}
-{% block title %}Create Permit{% endblock %}
+{% block title %}Edit Permit{% endblock %}
 {% block page_title %}{% endblock %}
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'permit:permit_list' %}">All Permits</a></li>
-<li class="breadcrumb-item active">Create Permit</li>
+<li class="breadcrumb-item active">Edit Permit</li>
 {% endblock %}
 {% block extra_css %}
 <style>
    .permit-type-shell { max-width: 1200px; margin: auto; }
    .form-section { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
    .form-section h6 { font-weight: 600; margin-bottom: 15px; border-bottom: 2px solid #dee2e6; padding-bottom: 8px; }
-   .permit-form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+   .permit-form-grid {
+   display: grid;
+   grid-template-columns: repeat(3, 1fr);
+   gap: 15px;
+   }
    .full-width { grid-column: 1 / -1; }
-   input, select, textarea { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ced4da; }
-   .checkbox-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-   .card-footer { display: flex; gap: 10px; }
-   .errorlist { color: red; font-size: 12px; margin: 0; }
-   @media(max-width:768px){ .permit-form-grid { grid-template-columns: 1fr; } }
+   input, select, textarea {
+   width: 100%;
+   padding: 10px;
+   border-radius: 6px;
+   border: 1px solid #ced4da;
+   }
    .checkbox-grid {
    display: grid;
    grid-template-columns: repeat(3, 1fr);
    gap: 12px 20px;
-   margin-top: 10px;
    }
    .checkbox-item {
    display: flex;
    align-items: center;
    gap: 8px;
-   cursor: pointer;
    font-weight: 500;
+   cursor: pointer;
    }
-   /* Fix checkbox size + alignment */
-   .checkbox-item input[type="checkbox"] {
+   .checkbox-item input {
    width: 16px;
    height: 16px;
-   margin: 0;
+   }
+   .delete-toggle {
+   display: flex;
+   align-items: center;
+   gap: 6px;
+   background: #fff5f5;
+   border: 1px solid #f5c2c7;
+   color: #dc3545;
+   padding: 6px 10px;
+   border-radius: 6px;
    cursor: pointer;
    }
-   /* Better click area */
-   .checkbox-item span {
-   cursor: pointer;
+   .card-footer { display: flex; gap: 10px; }
+   @media(max-width:768px){
+   .permit-form-grid { grid-template-columns: 1fr; }
    }
 </style>
 {% endblock %}
@@ -48,7 +60,7 @@
 <div class="permit-type-shell">
    <div class="ehs-card">
       <div class="card-header">
-         <h3><i class="fas fa-plus mr-2"></i>Create Permit</h3>
+         <h3><i class="fas fa-edit mr-2"></i>Edit Permit</h3>
       </div>
       <form method="POST" enctype="multipart/form-data">
          {% csrf_token %}
@@ -57,23 +69,15 @@
             {% if form.errors %}
             <div class="alert alert-danger">
                <strong>Please fix the following errors:</strong>
-               <ul class="mb-0">
-                  <!-- Field Errors -->
+               <ul>
                   {% for field in form %}
                   {% for error in field.errors %}
                   <li><strong>{{ field.label }}:</strong> {{ error }}</li>
                   {% endfor %}
                   {% endfor %}
-                  <!-- Non-field Errors -->
                   {% for error in form.non_field_errors %}
                   <li>{{ error }}</li>
                   {% endfor %}
-                  <!-- Manual hazards (IMPORTANT) -->
-                  {% if form.hazards.errors %}
-                  {% for error in form.hazards.errors %}
-                  <li><strong>Hazards:</strong> {{ error }}</li>
-                  {% endfor %}
-                  {% endif %}
                </ul>
             </div>
             {% endif %}
@@ -84,7 +88,7 @@
                   <div>{{ form.permit_type.label_tag }} {{ form.permit_type }}</div>
                   <div>
                      <label>Requester</label>
-                     <input type="text" value="{{ request.user.get_full_name }}" readonly>
+                     <input type="text" value="{{ form.instance.requester_name }}" readonly>
                   </div>
                   <div>{{ form.priority.label_tag }} {{ form.priority }}</div>
                </div>
@@ -125,35 +129,13 @@
                <div>{{ form.hazard_risk_level.label_tag }} {{ form.hazard_risk_level }}</div>
                <label class="mt-2">Hazards:</label>
                <div class="checkbox-grid">
+                  {% for value, label in form.fields.hazards.choices %}
                   <label class="checkbox-item">
-                  <input type="checkbox" name="hazards" value="fire">
-                  <span>Fire</span>
+                  <input type="checkbox" name="hazards" value="{{ value }}"
+                  {% if value in selected_hazards %}checked{% endif %}>
+                  <span>{{ label }}</span>
                   </label>
-                  <label class="checkbox-item">
-                  <input type="checkbox" name="hazards" value="gas">
-                  <span>Gas</span>
-                  </label>
-                  <label class="checkbox-item">
-                  <input type="checkbox" name="hazards" value="fall">
-                  <span>Fall</span>
-                  </label>
-                  <label class="checkbox-item">
-                  <input type="checkbox" name="hazards" value="electrical">
-                  <span>Electrical</span>
-                  </label>
-                  <label class="checkbox-item">
-                  <input type="checkbox" name="hazards" value="chemical">
-                  <span>Chemical</span>
-                  </label>
-                  <label class="checkbox-item">
-                  <input type="checkbox" name="hazards" value="noise">
-                  <span>Noise</span>
-                  </label>
-                  {% if form.hazards.errors %}
-                  <div class="text-danger mt-1">
-                     {{ form.hazards.errors }}
-                  </div>
-                  {% endif %}
+                  {% endfor %}
                </div>
                <div class="full-width mt-2">
                   {{ form.safety_measures.label_tag }} {{ form.safety_measures }}
@@ -210,37 +192,109 @@
                   <div>{{ form.esi_insurance.label_tag }} {{ form.esi_insurance }}</div>
                </div>
             </div>
-            <!-- CONTRACTORS -->
+            <!-- WORKERS -->
             <div class="form-section">
                <h6>Workers</h6>
                {{ contractor_formset.management_form }}
-               {% for f in contractor_formset %}
-               <div class="permit-form-grid">
-                  <div>{{ f.name.label_tag }} {{ f.name }}</div>
-                  <div>{{ f.trade.label_tag }} {{ f.trade }}</div>
-                  <div>{{ f.id_number.label_tag }} {{ f.id_number }}</div>
-                  <div>{{ f.esi_number.label_tag }} {{ f.esi_number }}</div>
-                  <div>{{ f.contact_number.label_tag }} {{ f.contact_number }}</div>
+               <div id="contractor-forms">
+                  {% for f in contractor_formset %}
+                  {{ f.id }}
+                  <div class="permit-form-grid">
+                     <div>{{ f.name.label_tag }} {{ f.name }}</div>
+                     <div>{{ f.trade.label_tag }} {{ f.trade }}</div>
+                     <div>{{ f.id_number.label_tag }} {{ f.id_number }}</div>
+                     <div>{{ f.esi_number.label_tag }} {{ f.esi_number }}</div>
+                     <div>{{ f.contact_number.label_tag }} {{ f.contact_number }}</div>
+                     <div>
+                        {% if f.instance.pk %}
+                        <label class="delete-toggle">
+                        {{ f.DELETE }} Remove
+                        </label>
+                        {% endif %}
+                     </div>
+                  </div>
+                  {% endfor %}
                </div>
-               {% endfor %}
+               <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-contractor">+ Add Worker</button>
+               <div id="empty-contractor-form" style="display:none;">
+                  <div class="permit-form-grid">
+                     {{ contractor_formset.empty_form.id }}
+                     <div>{{ contractor_formset.empty_form.name.label_tag }} {{ contractor_formset.empty_form.name }}</div>
+                     <div>{{ contractor_formset.empty_form.trade.label_tag }} {{ contractor_formset.empty_form.trade }}</div>
+                     <div>{{ contractor_formset.empty_form.id_number.label_tag }} {{ contractor_formset.empty_form.id_number }}</div>
+                     <div>{{ contractor_formset.empty_form.esi_number.label_tag }} {{ contractor_formset.empty_form.esi_number }}</div>
+                     <div>{{ contractor_formset.empty_form.contact_number.label_tag }} {{ contractor_formset.empty_form.contact_number }}</div>
+                     <div><label class="delete-toggle">{{ contractor_formset.empty_form.DELETE }} Remove</label></div>
+                  </div>
+               </div>
             </div>
             <!-- ATTACHMENTS -->
             <div class="form-section">
                <h6>Attachments</h6>
                {{ attachment_formset.management_form }}
-               {% for f in attachment_formset %}
-               <div class="permit-form-grid">
-                  <div>{{ f.file.label_tag }} {{ f.file }}</div>
-                  <div>{{ f.description.label_tag }} {{ f.description }}</div>
+               <div id="attachment-forms">
+                  {% for f in attachment_formset %}
+                  {{ f.id }}
+                  <div class="permit-form-grid">
+                     <div>{{ f.file.label_tag }} {{ f.file }}</div>
+                     <div>{{ f.description.label_tag }} {{ f.description }}</div>
+                     <div>
+                        {% if f.instance.pk %}
+                        <label class="delete-toggle">
+                        {{ f.DELETE }} Remove
+                        </label>
+                        {% endif %}
+                     </div>
+                  </div>
+                  {% endfor %}
                </div>
-               {% endfor %}
+               <button type="button" class="btn btn-outline-success btn-sm mt-2" id="add-attachment">+ Add Attachment</button>
+               <div id="empty-attachment-form" style="display:none;">
+                  <div class="permit-form-grid">
+                     {{ attachment_formset.empty_form.id }}
+                     <div>{{ attachment_formset.empty_form.file.label_tag }} {{ attachment_formset.empty_form.file }}</div>
+                     <div>{{ attachment_formset.empty_form.description.label_tag }} {{ attachment_formset.empty_form.description }}</div>
+                     <div><label class="delete-toggle">{{ attachment_formset.empty_form.DELETE }} Remove</label></div>
+                  </div>
+               </div>
             </div>
          </div>
          <div class="card-footer">
-            <button class="btn btn-primary btn-lg">Submit Permit</button>
-            <a href="#" class="btn btn-secondary btn-lg">Cancel</a>
+            <button class="btn btn-primary btn-lg">Update Permit</button>
+            <a href="{% url 'permit:permit_list' %}" class="btn btn-secondary btn-lg">Cancel</a>
          </div>
       </form>
    </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+   function updateFormIndices(html, index) {
+       return html.replace(/__prefix__/g, index);
+   }
+   
+   // ADD WORKER
+   document.getElementById('add-contractor').onclick = function () {
+       let total = document.getElementById('id_contractors-TOTAL_FORMS');
+       let count = parseInt(total.value);
+   
+       let html = document.getElementById('empty-contractor-form').innerHTML;
+       html = updateFormIndices(html, count);
+   
+       document.getElementById('contractor-forms').insertAdjacentHTML('beforeend', html);
+       total.value = count + 1;
+   };
+   
+   // ADD ATTACHMENT
+   document.getElementById('add-attachment').onclick = function () {
+       let total = document.getElementById('id_attachments-TOTAL_FORMS');
+       let count = parseInt(total.value);
+   
+       let html = document.getElementById('empty-attachment-form').innerHTML;
+       html = updateFormIndices(html, count);
+   
+       document.getElementById('attachment-forms').insertAdjacentHTML('beforeend', html);
+       total.value = count + 1;
+   };
+</script>
 {% endblock %}

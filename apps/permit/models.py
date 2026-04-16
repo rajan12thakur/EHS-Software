@@ -19,16 +19,32 @@ def yes_no_na_field(**kwargs):
 
 def validate_attachment(value):
     """Validate file type and size for permit attachments"""
+
+    if not value:
+        return
+    try:
+        if not value.name:
+            return
+
+        if hasattr(value, 'path') and not os.path.exists(value.path):
+            return
+    except Exception:
+        return
     allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx']
     ext = os.path.splitext(value.name)[1].lower()
+
     if ext not in allowed_extensions:
         raise ValidationError(
             f"Unsupported file type '{ext}'. Allowed: {', '.join(allowed_extensions)}"
         )
-    max_size_mb = 10
-    if value.size > max_size_mb * 1024 * 1024:
-        raise ValidationError(f"File size cannot exceed {max_size_mb}MB.")
 
+    # Size validation
+    max_size_mb = 10
+    try:
+        if value.size > max_size_mb * 1024 * 1024:
+            raise ValidationError(f"File size cannot exceed {max_size_mb}MB.")
+    except Exception:
+        pass
 
 def permit_attachment_path(instance, filename):
     permit_id = instance.permit.id if instance.permit_id else "temp"
