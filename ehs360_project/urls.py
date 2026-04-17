@@ -34,6 +34,7 @@ urlpatterns = [
     path('environmental-mis/', include('apps.environmental_mis.urls')),
     path('training/', include('apps.training.urls')),
     path('permit/', include('apps.permit.urls')),
+    path('chemicals/', include('apps.chemicals.urls')),
 
 
     #path('observations/', include('apps.observations.urls')),

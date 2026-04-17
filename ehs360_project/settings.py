@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.environmental_mis',
     'apps.training',
     'apps.permit.apps.PermitConfig',
+    'apps.chemicals.apps.ChemicalsConfig',
 
     'django.contrib.admin',
     'django.contrib.auth',
