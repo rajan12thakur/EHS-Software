@@ -13,4 +13,5 @@ urlpatterns = [
     path('approvals/', ChemicalApprovalDashboardView.as_view(), name='chemical_approvals'),
     path('requests/<int:pk>/approve/', ChemicalRequestApproveView.as_view(), name='chemical_request_approve'),
     path('requests/<int:pk>/reject/', ChemicalRequestRejectView.as_view(), name='chemical_request_reject'),
+    path("dashboard/", ChemicalDashboardView.as_view(), name="chemical_dashboard"),
 ]

@@ -1,0 +1,265 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Chemical Dashboard{% endblock %}
+{% block page_title %}Chemical Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+
+.dashboard-card {
+    border: none;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    transition: 0.3s;
+    margin-bottom: 20px;
+    background: #fff;
+}
+.dashboard-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+}
+
+/* STAT CARDS */
+.stat-card {
+    padding: 20px;
+    border-left: 5px solid;
+    position: relative;
+}
+
+.stat-card.primary { border-color: #667eea; background: linear-gradient(135deg,#f8f9ff,#eef1ff); }
+.stat-card.warning { border-color: #ffc107; background: linear-gradient(135deg,#fff9e6,#fff3cd); }
+.stat-card.danger { border-color: #dc3545; background: linear-gradient(135deg,#ffeaea,#ffe5e5); }
+.stat-card.success { border-color: #28a745; background: linear-gradient(135deg,#eafaf1,#e6f7ec); }
+
+.stat-icon {
+    font-size: 2.5rem;
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.2;
+}
+
+.stat-number {
+    font-size: 2.2rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    text-transform: uppercase;
+}
+
+/* HEADER */
+.analytics-card-header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 12px 18px;
+    border-radius: 12px 12px 0 0;
+}
+
+.analytics-card-body {
+    padding: 20px;
+}
+
+/* CHART FIX */
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+    .stat-number { font-size: 1.8rem; }
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <!-- TOTAL -->
+    <div class="col-lg-3 col-md-6">
+        <div class="dashboard-card stat-card primary">
+            <i class="fas fa-flask stat-icon"></i>
+            <p class="stat-number">{{ total_chemicals }}</p>
+            <p class="stat-label">Total Chemicals</p>
+        </div>
+    </div>
+
+    <!-- LOW STOCK -->
+    <div class="col-lg-3 col-md-6">
+        <div class="dashboard-card stat-card warning">
+            <i class="fas fa-exclamation-triangle stat-icon"></i>
+            <p class="stat-number">{{ low_stock }}</p>
+            <p class="stat-label">Low Stock</p>
+        </div>
+    </div>
+
+    <!-- OUT OF STOCK -->
+    <div class="col-lg-3 col-md-6">
+        <div class="dashboard-card stat-card danger">
+            <i class="fas fa-times-circle stat-icon"></i>
+            <p class="stat-number">{{ out_of_stock }}</p>
+            <p class="stat-label">Out of Stock</p>
+        </div>
+    </div>
+
+    <!-- EXPIRING -->
+    <div class="col-lg-3 col-md-6">
+        <div class="dashboard-card stat-card success">
+            <i class="fas fa-calendar-alt stat-icon"></i>
+            <p class="stat-number">{{ expiring_soon }}</p>
+            <p class="stat-label">Expiring Soon</p>
+        </div>
+    </div>
+
+</div>
+
+
+<!-- ROW 1 -->
+<div class="row">
+
+    <!-- TREND -->
+    <div class="col-lg-8">
+        <div class="dashboard-card">
+            <div class="analytics-card-header">
+                <h5><i class="fas fa-chart-line mr-2"></i>Monthly Chemical Additions</h5>
+            </div>
+            <div class="analytics-card-body">
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS -->
+    <div class="col-lg-4">
+        <div class="dashboard-card">
+            <div class="analytics-card-header">
+                <h5><i class="fas fa-chart-pie mr-2"></i>Status Distribution</h5>
+            </div>
+            <div class="analytics-card-body">
+                <div class="chart-container">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<!-- ROW 2 -->
+<div class="row">
+
+    <!-- EXPIRY -->
+    <div class="col-lg-6">
+        <div class="dashboard-card">
+            <div class="analytics-card-header">
+                <h5><i class="fas fa-clock mr-2"></i>Expiry Analysis</h5>
+            </div>
+            <div class="analytics-card-body">
+                <div class="chart-container">
+                    <canvas id="expiryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DEPARTMENT -->
+    <div class="col-lg-6">
+        <div class="dashboard-card">
+            <div class="analytics-card-header">
+                <h5><i class="fas fa-building mr-2"></i>Department Distribution</h5>
+            </div>
+            <div class="analytics-card-body">
+                <div class="chart-container">
+                    <canvas id="deptChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    new Chart(document.getElementById("trendChart"), {
+        type: 'line',
+        data: {
+            labels: {{ trend_labels_json|safe }},
+            datasets: [{
+                label: "Chemicals Added",
+                data: {{ trend_data_json|safe }},
+                borderColor: "#667eea",
+                backgroundColor: "rgba(102,126,234,0.15)",
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // STATUS
+    new Chart(document.getElementById("statusChart"), {
+        type: 'doughnut',
+        data: {
+            labels: {{ status_labels_json|safe }},
+            datasets: [{
+                data: {{ status_data_json|safe }},
+                backgroundColor: ["#28a745","#ffc107","#dc3545","#6c757d"]
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    // EXPIRY
+    new Chart(document.getElementById("expiryChart"), {
+        type: 'bar',
+        data: {
+            labels: {{ expiry_labels_json|safe }},
+            datasets: [{
+                data: {{ expiry_data_json|safe }},
+                backgroundColor: ["#dc3545","#ffc107","#17a2b8","#28a745"]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // DEPARTMENT
+    new Chart(document.getElementById("deptChart"), {
+        type: 'bar',
+        data: {
+            labels: {{ dept_labels_json|safe }},
+            datasets: [{
+                data: {{ dept_data_json|safe }},
+                backgroundColor: "#667eea"
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+});
+</script>
+{% endblock %}

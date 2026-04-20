@@ -5,7 +5,6 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, ListView, TemplateView, DetailView, UpdateView
-
 from .forms import ChemicalForm, ChemicalRequestApprovalForm, ChemicalRequestForm
 from .models import Chemical, ChemicalRequest
 from .utils import *
@@ -261,3 +260,75 @@ class ChemicalPDFView(LoginRequiredMixin, View):
         )
 
         return generate_chemical_pdf(chemical)
+
+# views.py
+
+from django.views.generic import TemplateView
+from django.db.models import Count
+from django.utils import timezone
+from datetime import timedelta
+import json
+
+from .models import Chemical
+
+
+class ChemicalDashboardView(TemplateView):
+    template_name = 'chemicals/chemical_dashboard.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        today = timezone.now().date()
+        last_30_days = today - timedelta(days=30)
+        last_6_months = today - timedelta(days=180)
+
+        qs = Chemical.objects.all()
+
+        # ================= KPI =================
+        context['total_chemicals'] = qs.count()
+        context['low_stock'] = qs.filter(status='low_stock').count()
+        context['out_of_stock'] = qs.filter(status='out_of_stock').count()
+        context['expired'] = qs.filter(expiration_date__lt=today).count()
+
+        context['expiring_soon'] = qs.filter(
+            expiration_date__range=[today, today + timedelta(days=30)]
+        ).count()
+
+        # ================= STATUS CHART =================
+        status_data = qs.values('status').annotate(count=Count('id'))
+        context['status_labels_json'] = json.dumps([i['status'] for i in status_data])
+        context['status_data_json'] = json.dumps([i['count'] for i in status_data])
+
+        # ================= MONTHLY TREND =================
+        monthly = (
+            qs.filter(created_at__gte=last_6_months)
+            .extra(select={'month': "strftime('%%m', created_at)"})
+            .values('month')
+            .annotate(count=Count('id'))
+            .order_by('month')
+        )
+
+        context['trend_labels_json'] = json.dumps([f"Month {i['month']}" for i in monthly])
+        context['trend_data_json'] = json.dumps([i['count'] for i in monthly])
+
+        # ================= DEPARTMENT =================
+        dept_data = qs.values('department__name').annotate(count=Count('id'))
+        context['dept_labels_json'] = json.dumps([
+            i['department__name'] or "N/A" for i in dept_data
+        ])
+        context['dept_data_json'] = json.dumps([i['count'] for i in dept_data])
+
+        # ================= EXPIRY =================
+        expired = qs.filter(expiration_date__lt=today).count()
+        less_30 = qs.filter(expiration_date__range=[today, today + timedelta(days=30)]).count()
+        less_90 = qs.filter(expiration_date__range=[today, today + timedelta(days=90)]).count()
+        greater_90 = qs.filter(expiration_date__gt=today + timedelta(days=90)).count()
+
+        context['expiry_labels_json'] = json.dumps([
+            "Expired", "<30 Days", "30-90 Days", ">90 Days"
+        ])
+        context['expiry_data_json'] = json.dumps([
+            expired, less_30, less_90, greater_90
+        ])
+
+        return context
