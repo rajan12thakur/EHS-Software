@@ -1,0 +1,142 @@
+{% extends 'base/base.html' %}
+{% block title %}Chemical List{% endblock %}
+{% block page_title %}Chemical Management{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item active">Chemicals</li>
+{% endblock %}
+{% block content %}
+<div class="row mb-3">
+  <div class="col-md-4">
+    <div class="info-box bg-info">
+      <span class="info-box-icon"><i class="fas fa-flask"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Total Chemicals</span>
+        <span class="info-box-number">{{ total_chemicals }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="info-box bg-warning">
+      <span class="info-box-icon"><i class="fas fa-clock"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Pending Requests</span>
+        <span class="info-box-number">{{ pending_requests }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="info-box bg-success">
+      <span class="info-box-icon"><i class="fas fa-check"></i></span>
+      <div class="info-box-content">
+        <span class="info-box-text">Approved Requests</span>
+        <span class="info-box-number">{{ approved_requests }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ehs-card">
+  <div class="card-header">
+    <div class="d-flex flex-wrap justify-content-between align-items-center">
+      <h3 class="card-title mb-0"><i class="fas fa-vials mr-2"></i>All Chemicals</h3>
+      <div class="d-flex flex-wrap" style="gap: 8px;">
+        <a href="{% url 'chemicals:chemical_create' %}" class="btn btn-primary"><i class="fas fa-plus mr-1"></i>Add Chemical</a>
+        <a href="{% url 'chemicals:chemical_request_create' %}" class="btn btn-warning"><i class="fas fa-file-signature mr-1"></i>Request Chemical</a>
+        <a href="{% url 'chemicals:chemical_approvals' %}" class="btn btn-success"><i class="fas fa-clipboard-check mr-1"></i>Approval Page</a>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <form method="get" class="mb-4">
+      <div class="row">
+        <div class="col-md-4 mb-2">
+          <input type="text" name="search" class="form-control" placeholder="Search name, CAS, supplier..." value="{{ filters.search }}">
+        </div>
+        <div class="col-md-3 mb-2">
+          <select name="status" class="form-control">
+            <option value="">All Status</option>
+            {% for key, value in status_choices %}
+            <option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ value }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 mb-2">
+          <button class="btn btn-primary btn-block"><i class="fas fa-search mr-1"></i>Filter</button>
+        </div>
+        <div class="col-md-2 mb-2">
+          <a href="{% url 'chemicals:chemical_list' %}" class="btn btn-secondary btn-block">Reset</a>
+        </div>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Chemical</th>
+            <th>CAS No.</th>
+            <th>Quantity</th>
+            <th>Plant / Location</th>
+            <th>Owner</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for chemical in chemicals %}
+          <tr>
+            <td>
+              <strong>{{ chemical.chemical_name }}</strong>
+              {% if chemical.trade_name %}
+              <br><small class="text-muted">{{ chemical.trade_name }}</small>
+              {% endif %}
+            </td>
+            <td>{{ chemical.cas_number }}</td>
+            <td>{{ chemical.quantity }} {{ chemical.quantity_unit }}</td>
+            <td>
+              {{ chemical.plant|default:"-" }}<br>
+              <small class="text-muted">{{ chemical.location|default:"-" }}</small>
+            </td>
+            <td>{{ chemical.owner }}</td>
+            <td>
+              <span class="badge {% if chemical.status == 'in_stock' %}badge-success{% elif chemical.status == 'low_stock' %}badge-warning{% elif chemical.status == 'out_of_stock' %}badge-danger{% else %}badge-secondary{% endif %}">
+                {{ chemical.get_status_display }}
+              </span>
+            </td>
+            <td>{{ chemical.created_at|date:"d M Y" }}</td>
+            <td>
+              <a href="{% url 'chemicals:chemical_detail' chemical.pk %}"
+                 class="btn btn-sm btn-info">
+                <i class="fas fa-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="text-center">
+              <div class="alert alert-info mb-0">No chemicals found.</div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+    <nav class="mt-4">
+      <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&search={{ filters.search }}&status={{ filters.status }}">Previous</a></li>
+        {% endif %}
+        <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&search={{ filters.search }}&status={{ filters.status }}">Next</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
