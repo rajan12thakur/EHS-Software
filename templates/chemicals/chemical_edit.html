@@ -1,0 +1,310 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+  {% if is_edit %}Edit Chemical{% else %}Add Chemical{% endif %}
+{% endblock %}
+
+{% block page_title %}Chemical Management{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">
+  <a href="{% url 'chemicals:chemical_list' %}">Chemicals</a>
+</li>
+<li class="breadcrumb-item active">
+  {% if is_edit %}Edit Chemical{% else %}Add Chemical{% endif %}
+</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .chemical-shell { max-width: 1180px; margin: 0 auto; }
+  .form-section { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  .form-section h6 { font-weight: 600; margin-bottom: 15px; border-bottom: 2px solid #dee2e6; padding-bottom: 8px; }
+  .form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .full-width { grid-column: 1 / -1; }
+  .form-grid input, .form-grid select, .form-grid textarea { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; }
+  .errorlist { color: #dc3545; font-size: 12px; margin: 4px 0 0; padding-left: 18px; }
+  @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+  .ehs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.ehs-card-box {
+  background: #ffffff;
+  border: 1px solid #e3e6ea;
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.ehs-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #343a40;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 6px;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #f1f1f1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+  background: #fafafa;
+}
+
+.checkbox-item:hover {
+  background: #f1f7ff;
+  border-color: #cfe2ff;
+}
+
+.checkbox-item input {
+  transform: scale(1.2);
+}
+
+.checkbox-item span {
+  font-size: 14px;
+}
+
+/* SDS box */
+.sds-box {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px dashed #ced4da;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.sds-hint {
+  font-size: 12px;
+  color: #6c757d;
+  margin-bottom: 8px;
+}
+
+.sds-upload input {
+  width: 100%;
+  padding: 8px;
+}
+
+/* responsive */
+@media (max-width: 768px) {
+  .ehs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="chemical-shell">
+  <div class="ehs-card">
+
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h3 class="mb-0">
+        <i class="fas fa-flask mr-2"></i>
+        {% if is_edit %}Edit Chemical{% else %}Add New Chemical{% endif %}
+      </h3>
+      <a href="{% url 'chemicals:chemical_list' %}" class="btn btn-secondary">
+        Back to List
+      </a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="card-body">
+
+        {% if form.errors %}
+        <div class="alert alert-danger">
+          <strong>Please fix the errors below.</strong>
+        </div>
+        {% endif %}
+
+        <!-- Chemical Identification -->
+        <div class="form-section">
+          <h6>Chemical Identification</h6>
+          <div class="form-grid">
+            <div>{{ form.chemical_name.label_tag }}{{ form.chemical_name }}{{ form.chemical_name.errors }}</div>
+            <div>{{ form.trade_name.label_tag }}{{ form.trade_name }}{{ form.trade_name.errors }}</div>
+            <div>{{ form.cas_number.label_tag }}{{ form.cas_number }}{{ form.cas_number.errors }}</div>
+            <div>{{ form.un_number.label_tag }}{{ form.un_number }}{{ form.un_number.errors }}</div>
+            <div>{{ form.owner.label_tag }}{{ form.owner }}{{ form.owner.errors }}</div>
+            <div>{{ form.status.label_tag }}{{ form.status }}{{ form.status.errors }}</div>
+          </div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="form-section">
+          <h6>Inventory and Supplier</h6>
+          <div class="form-grid">
+            <div>{{ form.supplier.label_tag }}{{ form.supplier }}{{ form.supplier.errors }}</div>
+            <div>{{ form.lot_number.label_tag }}{{ form.lot_number }}{{ form.lot_number.errors }}</div>
+            <div>{{ form.storage_location.label_tag }}{{ form.storage_location }}{{ form.storage_location.errors }}</div>
+            <div>{{ form.receipt_date.label_tag }}{{ form.receipt_date }}{{ form.receipt_date.errors }}</div>
+            <div>{{ form.expiration_date.label_tag }}{{ form.expiration_date }}{{ form.expiration_date.errors }}</div>
+            <div>{{ form.quantity.label_tag }}{{ form.quantity }}{{ form.quantity.errors }}</div>
+            <div>{{ form.quantity_unit.label_tag }}{{ form.quantity_unit }}{{ form.quantity_unit.errors }}</div>
+          </div>
+        </div>
+
+        <!-- Location -->
+        <div class="form-section">
+          <h6>Location</h6>
+          <div class="form-grid">
+            <div>{{ form.plant.label_tag }}{{ form.plant }}</div>
+            <div>{{ form.zone.label_tag }}{{ form.zone }}</div>
+            <div>{{ form.location.label_tag }}{{ form.location }}</div>
+            <div>{{ form.sublocation.label_tag }}{{ form.sublocation }}</div>
+            <div>{{ form.department.label_tag }}{{ form.department }}</div>
+          </div>
+        </div>
+
+        <!-- EHS -->
+        <div class="form-section">
+          <h6>EHS Compliance</h6>
+
+          <div class="ehs-grid">
+
+            <!-- GHS -->
+            <div class="ehs-card-box">
+              <h6 class="ehs-title">GHS Hazard Pictograms</h6>
+              <div class="checkbox-grid">
+                {% with selected=form.ehs_ghs.value|default:form.fields.ehs_ghs.initial %}
+                {% for val, label in form.ehs_ghs.field.choices %}
+                <label class="checkbox-item">
+                  <input type="checkbox" name="ehs_ghs" value="{{ val }}"
+                    {% if selected and val in selected %}checked{% endif %}>
+                  <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+                {% endwith %}
+              </div>
+            </div>
+
+            <!-- PPE -->
+            <div class="ehs-card-box">
+              <h6 class="ehs-title">Required PPE</h6>
+              <div class="checkbox-grid">
+                {% with selected=form.ehs_ppe.value|default:form.fields.ehs_ppe.initial %}
+                {% for val, label in form.ehs_ppe.field.choices %}
+                <label class="checkbox-item">
+                  <input type="checkbox" name="ehs_ppe" value="{{ val }}"
+                    {% if selected and val in selected %}checked{% endif %}>
+                  <span>{{ label }}</span>
+                </label>
+                {% endfor %}
+                {% endwith %}
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SDS -->
+          <div class="sds-box">
+            <h6 class="ehs-title">Safety Data Sheet (SDS)</h6>
+            {{ form.sds_file }}
+            {{ form.sds_file.errors }}
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="card-footer d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+          {% if is_edit %}Update Chemical{% else %}Save Chemical{% endif %}
+        </button>
+        <a href="{% url 'chemicals:chemical_list' %}" class="btn btn-secondary">
+          Cancel
+        </a>
+      </div>
+
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const plant = document.getElementById('id_plant');
+  const zone = document.getElementById('id_zone');
+  const location = document.getElementById('id_location');
+  const sublocation = document.getElementById('id_sublocation');
+
+  function fillChoices(element, rows, placeholder, selectedValue=null) {
+    element.innerHTML = `<option value="">${placeholder}</option>`;
+    rows.forEach(row => {
+      const option = document.createElement('option');
+      option.value = row.id;
+      option.textContent = row.name;
+      if (selectedValue && selectedValue == row.id) {
+        option.selected = true;
+      }
+      element.appendChild(option);
+    });
+  }
+
+  async function loadZones(plantId, selected=null) {
+    if (!plantId) return;
+    const res = await fetch(`/organizations/ajax/get-zones-by-plants/?plant_ids=${plantId}`);
+    fillChoices(zone, await res.json(), 'Select zone', selected);
+  }
+
+  async function loadLocations(zoneId, selected=null) {
+    if (!zoneId) return;
+    const res = await fetch(`/organizations/ajax/get-locations-by-zones/?zone_ids=${zoneId}`);
+    fillChoices(location, await res.json(), 'Select location', selected);
+  }
+
+  async function loadSublocations(locationId, selected=null) {
+    if (!locationId) return;
+    const res = await fetch(`/organizations/ajax/get-sublocations-by-locations/?location_ids=${locationId}`);
+    fillChoices(sublocation, await res.json(), 'Select sublocation', selected);
+  }
+
+  document.addEventListener('DOMContentLoaded', async function () {
+    const selectedPlant = plant?.value;
+    const selectedZone = "{{ form.instance.zone_id|default:'' }}";
+    const selectedLocation = "{{ form.instance.location_id|default:'' }}";
+    const selectedSublocation = "{{ form.instance.sublocation_id|default:'' }}";
+
+    if (selectedPlant) {
+      await loadZones(selectedPlant, selectedZone);
+    }
+    if (selectedZone) {
+      await loadLocations(selectedZone, selectedLocation);
+    }
+    if (selectedLocation) {
+      await loadSublocations(selectedLocation, selectedSublocation);
+    }
+  });
+
+  plant?.addEventListener('change', async function () {
+    await loadZones(this.value);
+    location.innerHTML = '';
+    sublocation.innerHTML = '';
+  });
+
+  zone?.addEventListener('change', async function () {
+    await loadLocations(this.value);
+    sublocation.innerHTML = '';
+  });
+
+  location?.addEventListener('change', async function () {
+    await loadSublocations(this.value);
+  });
+</script>
+{% endblock %}

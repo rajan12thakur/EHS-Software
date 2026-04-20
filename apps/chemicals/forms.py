@@ -81,6 +81,26 @@ class ChemicalForm(forms.ModelForm):
             self.fields['ehs_ghs'].initial = self.instance.ehs_compliance.get('ghs', [])
             self.fields['ehs_ppe'].initial = self.instance.ehs_compliance.get('ppe', [])
 
+        # To Handle EDIT case 
+        if self.instance and self.instance.pk:
+            if self.instance.plant:
+                self.fields['zone'].queryset = Zone.objects.filter(
+                    plant=self.instance.plant,
+                    is_active=True
+                ).order_by('name')
+
+            if self.instance.zone:
+                self.fields['location'].queryset = Location.objects.filter(
+                    zone=self.instance.zone,
+                    is_active=True
+                ).order_by('name')
+
+            if self.instance.location:
+                self.fields['sublocation'].queryset = SubLocation.objects.filter(
+                    location=self.instance.location,
+                    is_active=True
+                ).order_by('name')
+
     def clean(self):
         cleaned_data = super().clean()
 

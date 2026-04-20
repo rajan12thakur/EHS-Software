@@ -4,7 +4,7 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import View
-from django.views.generic import CreateView, ListView, TemplateView, DetailView
+from django.views.generic import CreateView, ListView, TemplateView, DetailView, UpdateView
 
 from .forms import ChemicalForm, ChemicalRequestApprovalForm, ChemicalRequestForm
 from .models import Chemical, ChemicalRequest
@@ -51,6 +51,31 @@ class ChemicalDetailView(LoginRequiredMixin, DetailView):
 
         context["ghs_list"] = ehs.get("ghs", [])
         context["ppe_list"] = ehs.get("ppe", [])
+
+        return context
+
+class ChemicalUpdateView(LoginRequiredMixin, UpdateView):
+    model = Chemical
+    form_class = ChemicalForm
+    template_name = 'chemicals/chemical_edit.html'
+    success_url = reverse_lazy('chemicals:chemical_list')
+
+    def get_form_kwagrs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['files'] = self.request.FILES or None
+
+    def form_valid(self, form):
+        messages.success(self.request, "Chemical updated successfully.")
+        return super().form_valid(form)
+    
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['is_edit'] = True
+        context['chemical'] = self.object
 
         return context
 
