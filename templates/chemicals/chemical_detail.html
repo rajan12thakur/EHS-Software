@@ -1,6 +1,6 @@
 {% extends 'base/base.html' %}
 {% block title %}Chemical Detail{% endblock %}
-{% block page_title %}Chemical Details{% endblock %}
+{% block page_title %}{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'chemicals:chemical_list' %}">Chemicals</a></li>
@@ -74,6 +74,12 @@
          <div class="col-sm-6 text-right">
             <a href="{% url 'chemicals:chemical_list' %}" class="btn btn-secondary">
                <i class="fas fa-arrow-left"></i> Back
+            </a>
+            <a href="{% url 'chemicals:chemical_edit' chemical.pk %}" class="btn btn-primary">
+               <i class="fas fa-edit"></i> Edit Chemical
+            </a>
+            <a href="{% url 'chemicals:chemical_pdf' chemical.pk %}" class="btn btn-danger">
+               <i class="fas fa-file-pdf"></i> Download PDF
             </a>
          </div>
       </div>

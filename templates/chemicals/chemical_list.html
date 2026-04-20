@@ -114,6 +114,9 @@
               <a href="{% url 'chemicals:chemical_edit' chemical.pk %}" class="btn btn-sm btn-primary">
                   <i class="fas fa-edit"></i>
               </a>
+              <a href="{% url 'chemicals:chemical_pdf' chemical.pk %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-file-pdf"></i>
+              </a>
             </td>
           </tr>
           {% empty %}

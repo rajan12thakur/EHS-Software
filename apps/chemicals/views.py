@@ -8,6 +8,7 @@ from django.views.generic import CreateView, ListView, TemplateView, DetailView,
 
 from .forms import ChemicalForm, ChemicalRequestApprovalForm, ChemicalRequestForm
 from .models import Chemical, ChemicalRequest
+from .utils import *
 
 
 class ChemicalCreateView(LoginRequiredMixin, CreateView):
@@ -244,3 +245,19 @@ class ChemicalRequestRejectView(LoginRequiredMixin, View):
             messages.error(request, error_message)
 
         return redirect('chemicals:chemical_approvals')
+
+class ChemicalPDFView(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        chemical = get_object_or_404(
+            Chemical.objects.select_related(
+                'plant',
+                'zone',
+                'location',
+                'sublocation',
+                'department',
+                'created_by',
+            ),
+            pk=pk
+        )
+
+        return generate_chemical_pdf(chemical)
