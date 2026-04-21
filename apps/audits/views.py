@@ -1,3 +1,6 @@
+import json
+from datetime import datetime, timedelta
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
@@ -11,6 +14,7 @@ from django.views.generic import CreateView, DeleteView, DetailView, ListView, T
 
 from .forms import *
 from .models import *
+from apps.organizations.models import Plant
 
 
 def _is_auditor_or_admin(user):
@@ -608,6 +612,228 @@ class AuditFindingDashboardView(LoginRequiredMixin, ListView):
         ]
         context["risk_choices"] = AuditFinding.RISK_CHOICES
         context["priority_choices"] = AuditSchedule.PRIORITY_CHOICES
+        return context
+
+
+class AuditDashboardView(LoginRequiredMixin, TemplateView):
+    template_name = "audits/dashboard.html"
+
+    def _parse_dates(self):
+        today = timezone.now().date()
+        date_range = self.request.GET.get("date_range", "90")
+        start_date_str = self.request.GET.get("start_date", "").strip()
+        end_date_str = self.request.GET.get("end_date", "").strip()
+
+        if date_range == "custom" and start_date_str and end_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+                end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+            except ValueError:
+                start_date = today - timedelta(days=90)
+                end_date = today
+        else:
+            days = int(date_range) if date_range.isdigit() else 90
+            start_date = today - timedelta(days=days)
+            end_date = today
+
+        if start_date > end_date:
+            start_date, end_date = end_date, start_date
+
+        return date_range, start_date, end_date
+
+    @staticmethod
+    def _pct_change(current, previous):
+        if previous == 0:
+            return 100 if current else 0
+        return round(((current - previous) / previous) * 100, 1)
+
+    @staticmethod
+    def _trend_class(delta):
+        return "trend-up" if delta >= 0 else "trend-down"
+
+    def _filtered_schedule_queryset(self, start_date, end_date, plant_id, category_id):
+        queryset = (
+            AuditSchedule.objects.select_related("template", "template__category", "auditor", "location", "location__zone", "location__zone__plant")
+            .prefetch_related("plants", "zones", "locations", "sublocations")
+            .filter(scheduled_date__range=[start_date, end_date])
+            .distinct()
+        )
+        if plant_id:
+            queryset = queryset.filter(Q(plants__id=plant_id) | Q(location__zone__plant__id=plant_id)).distinct()
+        if category_id:
+            queryset = queryset.filter(template__category_id=category_id)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        date_range, start_date, end_date = self._parse_dates()
+        plant_id = self.request.GET.get("plant", "").strip()
+        category_id = self.request.GET.get("category", "").strip()
+
+        schedules = self._filtered_schedule_queryset(start_date, end_date, plant_id, category_id)
+        responses = AuditResponse.objects.filter(schedule__in=schedules).exclude(status=AuditResponse.STATUS_NA)
+        findings = AuditFinding.objects.filter(parent_audit__in=schedules, is_archived=False)
+        capas = CAPA.objects.filter(finding__parent_audit__in=schedules)
+
+        period_days = max((end_date - start_date).days, 1)
+        previous_end = start_date - timedelta(days=1)
+        previous_start = previous_end - timedelta(days=period_days)
+        previous_schedules = self._filtered_schedule_queryset(previous_start, previous_end, plant_id, category_id)
+        previous_findings = AuditFinding.objects.filter(parent_audit__in=previous_schedules, is_archived=False)
+
+        total_audits = schedules.count()
+        completed_audits = schedules.filter(status__in=[AuditSchedule.STATUS_COMPLETED, AuditSchedule.STATUS_CLOSED]).count()
+        total_findings = findings.count()
+        critical_findings = findings.filter(risk_score=AuditFinding.RISK_CRITICAL).count()
+
+        pass_count = responses.filter(status=AuditResponse.STATUS_PASS).count()
+        fail_count = responses.filter(status=AuditResponse.STATUS_FAIL).count()
+        total_scored = pass_count + fail_count
+        compliance_score = round((pass_count / total_scored) * 100, 1) if total_scored else 0
+
+        metrics = [
+            {
+                "label": "Total Audits",
+                "value": total_audits,
+                "delta": self._pct_change(total_audits, previous_schedules.count()),
+                "class": self._trend_class(self._pct_change(total_audits, previous_schedules.count())),
+            },
+            {
+                "label": "Completed Audits",
+                "value": completed_audits,
+                "delta": self._pct_change(
+                    completed_audits,
+                    previous_schedules.filter(status__in=[AuditSchedule.STATUS_COMPLETED, AuditSchedule.STATUS_CLOSED]).count(),
+                ),
+                "class": self._trend_class(
+                    self._pct_change(
+                        completed_audits,
+                        previous_schedules.filter(status__in=[AuditSchedule.STATUS_COMPLETED, AuditSchedule.STATUS_CLOSED]).count(),
+                    )
+                ),
+            },
+            {
+                "label": "Total Findings",
+                "value": total_findings,
+                "delta": self._pct_change(total_findings, previous_findings.count()),
+                "class": self._trend_class(self._pct_change(total_findings, previous_findings.count())),
+            },
+            {
+                "label": "Critical Findings",
+                "value": critical_findings,
+                "delta": self._pct_change(
+                    critical_findings,
+                    previous_findings.filter(risk_score=AuditFinding.RISK_CRITICAL).count(),
+                ),
+                "class": self._trend_class(
+                    self._pct_change(
+                        critical_findings,
+                        previous_findings.filter(risk_score=AuditFinding.RISK_CRITICAL).count(),
+                    )
+                ),
+            },
+        ]
+
+        month_labels = []
+        scheduled_series = []
+        completed_series = []
+        month_anchor = end_date.replace(day=1)
+        for offset in range(5, -1, -1):
+            month_start = (month_anchor.replace(day=1) - timedelta(days=offset * 30)).replace(day=1)
+            if month_start.month == 12:
+                next_month = month_start.replace(year=month_start.year + 1, month=1, day=1)
+            else:
+                next_month = month_start.replace(month=month_start.month + 1, day=1)
+            month_labels.append(month_start.strftime("%b %Y"))
+            scheduled_series.append(schedules.filter(scheduled_date__gte=month_start, scheduled_date__lt=next_month).count())
+            completed_series.append(
+                schedules.filter(
+                    completed_at__date__gte=month_start,
+                    completed_at__date__lt=next_month,
+                ).count()
+            )
+
+        severity_labels = [label for _, label in AuditFinding.RISK_CHOICES]
+        severity_data = [findings.filter(risk_score=value).count() for value, _ in AuditFinding.RISK_CHOICES]
+
+        category_labels = []
+        category_data = []
+        for category in AuditCategory.objects.filter(templates__schedules__in=schedules).distinct():
+            category_labels.append(category.category_name)
+            category_data.append(findings.filter(parent_audit__template__category=category).count())
+
+        action_labels = [label for _, label in CAPA.VERIFICATION_CHOICES]
+        action_data = [capas.filter(verification_status=value).count() for value, _ in CAPA.VERIFICATION_CHOICES]
+
+        plant_rows = []
+        plants = Plant.objects.filter(is_active=True)
+        if plant_id:
+            plants = plants.filter(pk=plant_id)
+        for plant in plants:
+            plant_schedules = schedules.filter(Q(plants=plant) | Q(location__zone__plant=plant)).distinct()
+            if not plant_schedules.exists():
+                continue
+            plant_findings = findings.filter(parent_audit__in=plant_schedules)
+            plant_responses = AuditResponse.objects.filter(schedule__in=plant_schedules).exclude(status=AuditResponse.STATUS_NA)
+            plant_pass = plant_responses.filter(status=AuditResponse.STATUS_PASS).count()
+            plant_fail = plant_responses.filter(status=AuditResponse.STATUS_FAIL).count()
+            plant_total = plant_pass + plant_fail
+            plant_compliance = round((plant_pass / plant_total) * 100, 1) if plant_total else 0
+            resolved_capas = capas.filter(
+                finding__parent_audit__in=plant_schedules,
+                verification_status__in=[CAPA.STATUS_FIXED, CAPA.STATUS_VERIFIED],
+            )
+            resolution_days = [
+                max((capa.updated_at.date() - capa.created_at.date()).days, 0)
+                for capa in resolved_capas
+            ]
+            avg_resolution = round(sum(resolution_days) / len(resolution_days), 1) if resolution_days else 0
+            if plant_compliance >= 90:
+                performance = ("Excellent", "status-open")
+            elif plant_compliance >= 75:
+                performance = ("Good", "priority-medium")
+            else:
+                performance = ("Needs Improvement", "priority-critical")
+            plant_rows.append(
+                {
+                    "name": plant.name,
+                    "total_audits": plant_schedules.count(),
+                    "completed": plant_schedules.filter(status__in=[AuditSchedule.STATUS_COMPLETED, AuditSchedule.STATUS_CLOSED]).count(),
+                    "compliance_rate": plant_compliance,
+                    "critical_findings": plant_findings.filter(risk_score=AuditFinding.RISK_CRITICAL).count(),
+                    "avg_resolution": avg_resolution,
+                    "performance_label": performance[0],
+                    "performance_class": performance[1],
+                }
+            )
+
+        plant_rows.sort(key=lambda row: row["compliance_rate"], reverse=True)
+
+        context.update(
+            {
+                "metrics": metrics,
+                "compliance_score": compliance_score,
+                "pass_count": pass_count,
+                "fail_count": fail_count,
+                "plant_rows": plant_rows,
+                "plants": Plant.objects.filter(is_active=True).order_by("name"),
+                "categories": AuditCategory.objects.filter(is_active=True).order_by("category_name"),
+                "selected_date_range": date_range,
+                "selected_plant": plant_id,
+                "selected_category": category_id,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat(),
+                "trend_labels": json.dumps(month_labels),
+                "scheduled_series": json.dumps(scheduled_series),
+                "completed_series": json.dumps(completed_series),
+                "severity_labels": json.dumps(severity_labels),
+                "severity_data": json.dumps(severity_data),
+                "category_labels": json.dumps(category_labels),
+                "category_data": json.dumps(category_data),
+                "action_labels": json.dumps(action_labels),
+                "action_data": json.dumps(action_data),
+            }
+        )
         return context
 
 

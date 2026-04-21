@@ -1,0 +1,428 @@
+{% extends 'audits/audit_base.html' %}
+
+{% block title %}Audit Dashboard{% endblock %}
+{% block page_title %}Audit Dashboard{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .dashboard-section {
+        margin-bottom: 1.75rem;
+    }
+
+    .report-card {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 10px 28px rgba(55, 71, 79, 0.08);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+        height: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .report-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 14px 34px rgba(55, 71, 79, 0.12);
+    }
+
+    .report-header {
+        background: linear-gradient(135deg, #1565c0 0%, #2e7d32 100%);
+        color: white;
+        padding: 1rem 1.25rem;
+    }
+
+    .report-header h4 {
+        font-size: 1.05rem;
+        margin-bottom: 2px;
+    }
+
+    .report-header small {
+        opacity: 0.85;
+    }
+
+    .report-icon {
+        font-size: 1.8rem;
+        opacity: 0.85;
+    }
+
+    .report-filters {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 1.25rem;
+        box-shadow: 0 8px 24px rgba(55, 71, 79, 0.06);
+    }
+
+    .report-filters label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #607d8b;
+        margin-bottom: 4px;
+    }
+
+    .metric-card {
+        background: #f8fbfe;
+        border-radius: 14px;
+        padding: 1.1rem;
+        text-align: center;
+        border: 1px solid rgba(21, 101, 192, 0.08);
+        height: 100%;
+        transition: all 0.2s ease;
+    }
+
+    .metric-card:hover {
+        background: #ffffff;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+    }
+
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #1f3b57;
+    }
+
+    .metric-label {
+        color: #607d8b;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .trend-indicator {
+        font-size: 0.75rem;
+        margin-top: 0.4rem;
+        font-weight: 600;
+    }
+
+    .trend-up { color: #28a745; }
+    .trend-down { color: #dc3545; }
+
+    .chart-container {
+        position: relative;
+        height: 280px;
+        width: 100%;
+    }
+
+    .compliance-ring {
+        width: 140px;
+        height: 140px;
+        margin: 0 auto 1rem;
+    }
+
+    .audit-table th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #78909c;
+        border-bottom: 1px solid #eceff1;
+    }
+
+    .audit-table td {
+        vertical-align: middle;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .chart-container {
+            height: 240px;
+        }
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="audit-hero dashboard-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2 class="h4 mb-1">Audit Reports & Analytics</h2>
+            <small>Overview of audit performance and compliance</small>
+        </div>
+        <a href="{% url 'audits:schedule_list' %}" class="btn btn-light btn-sm">
+            All Audits
+        </a>
+    </div>
+</div>
+
+<div class="report-filters dashboard-section">
+    <form method="get" id="reportFilters" class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label>Date Range</label>
+            <select name="date_range" id="date_range" class="form-control">
+                <option value="30">Last 30 Days</option>
+                <option value="90">Last 3 Months</option>
+                <option value="180">Last 6 Months</option>
+                <option value="365">Last Year</option>
+                <option value="custom">Custom</option>
+            </select>
+        </div>
+
+        <div class="col-md-2" id="customDateRange" style="display:none;">
+            <label>From</label>
+            <input type="date" name="start_date" class="form-control">
+        </div>
+
+        <div class="col-md-2" id="customDateRange2" style="display:none;">
+            <label>To</label>
+            <input type="date" name="end_date" class="form-control">
+        </div>
+
+        <div class="col-md-2">
+            <label>Plant</label>
+            <select name="plant" class="form-control">
+                <option value="">All</option>
+                {% for plant in plants %}
+                <option value="{{ plant.id }}">{{ plant.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label>Category</label>
+            <select name="category" class="form-control">
+                <option value="">All</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.category_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-1">
+            <button class="btn btn-primary w-100">Apply</button>
+        </div>
+    </form>
+</div>
+
+<div class="row dashboard-section">
+    {% for metric in metrics %}
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="metric-card">
+            <div class="metric-value">{{ metric.value }}</div>
+            <div class="metric-label">{{ metric.label }}</div>
+            <div class="trend-indicator {{ metric.class }}">
+                <i class="fas {% if metric.delta >= 0 %}fa-arrow-up{% else %}fa-arrow-down{% endif %}"></i>
+                {{ metric.delta }}%
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row dashboard-section">
+    <div class="col-lg-8 mb-3">
+        <div class="report-card">
+            <div class="report-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h4>Audit Completion Trend</h4>
+                    <small>Scheduled vs completed</small>
+                </div>
+                <i class="fas fa-chart-line report-icon"></i>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="auditTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-3">
+        <div class="report-card text-center">
+            <div class="report-header d-flex justify-content-between align-items-center">
+                <h4>Compliance</h4>
+                <i class="fas fa-gauge-high report-icon"></i>
+            </div>
+            <div class="card-body">
+                <div class="compliance-ring">
+                    <canvas id="complianceGauge"></canvas>
+                </div>
+                <h3 class="text-success">{{ compliance_score }}%</h3>
+                <small class="text-muted">Overall Rating</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row dashboard-section">
+    <div class="col-md-6 mb-3">
+        <div class="report-card">
+            <div class="report-header">
+                <h4>Findings by Severity</h4>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="findingsSeverityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-3">
+        <div class="report-card">
+            <div class="report-header">
+                <h4>Findings by Category</h4>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="findingsCategoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="report-card dashboard-section">
+    <div class="report-header">
+        <h4>Audit Performance by Plant</h4>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table audit-table table-hover">
+                <thead>
+                    <tr>
+                        <th>Plant</th>
+                        <th>Total</th>
+                        <th>Completed</th>
+                        <th>Compliance</th>
+                        <th>Critical</th>
+                        <th>Resolution</th>
+                        <th>Performance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in plant_rows %}
+                    <tr>
+                        <td><strong>{{ row.name }}</strong></td>
+                        <td>{{ row.total_audits }}</td>
+                        <td>{{ row.completed }}</td>
+                        <td>{{ row.compliance_rate }}%</td>
+                        <td>{{ row.critical_findings }}</td>
+                        <td>{{ row.avg_resolution }}d</td>
+                        <td><span class="audit-pill {{ row.performance_class }}">{{ row.performance_label }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="report-card">
+    <div class="report-header">
+        <h4>Corrective Actions</h4>
+    </div>
+    <div class="card-body">
+        <div class="chart-container">
+            <canvas id="actionStatusChart"></canvas>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateRangeSelect = document.getElementById('date_range');
+    if (dateRangeSelect) {
+        dateRangeSelect.addEventListener('change', function() {
+            const customRanges = document.querySelectorAll('#customDateRange, #customDateRange2');
+            customRanges.forEach(el => {
+                el.style.display = this.value === 'custom' ? 'block' : 'none';
+            });
+        });
+    }
+
+    const trendLabels = {{ trend_labels|safe }};
+    const scheduledSeries = {{ scheduled_series|safe }};
+    const completedSeries = {{ completed_series|safe }};
+    const severityLabels = {{ severity_labels|safe }};
+    const severityData = {{ severity_data|safe }};
+    const categoryLabels = {{ category_labels|safe }};
+    const categoryData = {{ category_data|safe }};
+    const actionLabels = {{ action_labels|safe }};
+    const actionData = {{ action_data|safe }};
+    const complianceValue = {{ compliance_score|default:0 }};
+
+    new Chart(document.getElementById('auditTrendChart'), {
+        type: 'line',
+        data: {
+            labels: trendLabels,
+            datasets: [
+                {
+                    label: 'Scheduled Audits',
+                    data: scheduledSeries,
+                    borderColor: '#1565c0',
+                    backgroundColor: 'rgba(21,101,192,0.1)',
+                    fill: true,
+                    tension: 0.35
+                },
+                {
+                    label: 'Completed Audits',
+                    data: completedSeries,
+                    borderColor: '#2e7d32',
+                    backgroundColor: 'rgba(46,125,50,0.08)',
+                    fill: true,
+                    tension: 0.35
+                }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    new Chart(document.getElementById('complianceGauge'), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [complianceValue, Math.max(100 - complianceValue, 0)],
+                backgroundColor: ['#28a745', '#e9ecef'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '72%',
+            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+        }
+    });
+
+    new Chart(document.getElementById('findingsSeverityChart'), {
+        type: 'bar',
+        data: {
+            labels: severityLabels,
+            datasets: [{
+                label: 'Findings',
+                data: severityData,
+                backgroundColor: ['#dc3545', '#fd7e14', '#ffc107']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    new Chart(document.getElementById('findingsCategoryChart'), {
+        type: 'pie',
+        data: {
+            labels: categoryLabels,
+            datasets: [{
+                data: categoryData,
+                backgroundColor: ['#1565c0', '#2e7d32', '#f9a825', '#6a1b9a', '#ef6c00', '#00838f']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+
+    new Chart(document.getElementById('actionStatusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: actionLabels,
+            datasets: [{
+                data: actionData,
+                backgroundColor: ['#6c757d', '#17a2b8', '#28a745']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+});
+</script>
+{% endblock %}

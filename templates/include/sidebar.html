@@ -247,6 +247,12 @@
             </li>
             {% endif %}
             <li class="nav-item">
+              <a href="{% url 'audits:dashboard' %}" class="nav-link {% if request.resolver_match.url_name ==  'audits' in request.path %}active{% endif %}">
+                <i class="nav-icon far fa-circle"></i>
+                <p>Audit Dashboard</p>
+              </a>
+            </li>
+            <li class="nav-item">
               <a href="{% url 'permit:permit_analytics' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'permit_analytics' %}active{% endif %}">
                 <i class="nav-icon far fa-circle"></i>
@@ -406,6 +412,26 @@
           </ul>
         </li>
         {% endif %}
+        <li class="nav-item {% if 'audits' in request.path and request.resolver_match.url_name in 'template_list' %}menu-open{% endif %}">
+          <a href="#" class="nav-link {% if 'audits' in request.path and request.resolver_match.url_name in 'template_list' %}active{% endif %}">
+            <i class="nav-icon fas fa-cogs"></i>
+            <p>Audit Configuration<i class="right fas fa-angle-left"></i></p>
+          </a>
+          <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="{% url 'audits:category_list' %}" class="nav-link {% if request.resolver_match.url_name == 'category_list' and 'audits' in request.path %}active{% endif %}">
+                <i class="nav-icon far fa-dot-circle"></i>
+                <p>Audit Categories</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'audits:template_list' %}" class="nav-link {% if request.resolver_match.url_name == 'template_list' %}active{% endif %}">
+                <i class="nav-icon far fa-dot-circle"></i>
+                <p>Audit Templates</p>
+              </a>
+            </li>
+          </ul>
+        </li>
 
         <!-- 6. Notification Configuration - Admin only -->
         {% if request.user.is_superuser or request.user.is_admin_user %}
@@ -847,6 +873,32 @@
                 class="nav-link {% if request.resolver_match.url_name == 'chemical_approvals' %}active{% endif %}">
                 <i class="nav-icon far fa-circle"></i>
                 <p>Chemical Approval</p>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <li class="nav-item {% if 'audits' in request.path %}menu-open{% endif %}">
+          <a href="#" class="nav-link {% if 'audits' in request.path %}active{% endif %}">
+            <i class="nav-icon fas fa-clipboard-list"></i>
+            <p>Audit Management <i class="right fas fa-angle-left"></i></p>
+          </a>
+            <ul class="nav nav-treeview">
+              <li class="nav-item">
+                <a href="{% url 'audits:schedule_list' %}" class="nav-link {% if request.resolver_match.url_name == 'schedule_list' and 'audits' in request.path %}active{% endif %}">
+                  <i class="nav-icon far fa-circle"></i>
+                  <p>All Audits</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'audits:schedule_create' %}" class="nav-link {% if request.resolver_match.url_name == 'schedule_create' and 'audits' in request.path %}active{% endif %}">
+                <i class="nav-icon far fa-circle"></i>
+                <p>Schedule Audit</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{% url 'audits:finding_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'finding_dashboard' and 'audits' in request.path %}active{% endif %}">
+                  <i class="nav-icon far fa-circle"></i>
+                  <p>Open Findings</p>
               </a>
             </li>
           </ul>

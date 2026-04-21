@@ -4,6 +4,7 @@ from . import views
 app_name = 'audits'
 
 urlpatterns = [
+    path("dashboard/", views.AuditDashboardView.as_view(), name="dashboard"),
     path("categories/", views.AuditCategoryListView.as_view(), name="category_list"),
     path("categories/create/", views.AuditCategoryCreateView.as_view(), name="category_create"),
     path("categories/<int:pk>/edit/", views.AuditCategoryUpdateView.as_view(), name="category_edit"),
