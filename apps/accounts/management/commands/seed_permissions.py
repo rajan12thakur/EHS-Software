@@ -149,6 +149,44 @@ class Command(BaseCommand):
 
             ('CLOSE_TRAINING_SESSION', 'Close Training Session', 'Can mark session as completed',
             'TRAINING', 'CLOSE', 9),
+
+            # === PERMIT DATA MODULE ===
+            ('ACCESS_PERMIT_MODULE', 'Access Permit Module', 'Can access permit module', 
+             'PERMIT', 'MODULE_ACCESS', 0),
+            ('CREATE_PERMIT', 'Create Permit', 'Can create permit', 
+             'PERMIT', 'CREATE', 1),
+            ('VIEW_PERMIT', 'View Permit', 'Can view permit', 
+             'PERMIT', 'VIEW', 2),
+            ('APPROVE_PERMIT', 'Approve Permit', 'Can approve permit', 
+             'PERMIT', 'APPROVE', 3),
+            ('MANAGE_PERMIT_CONFIGURATION', 'Manage Permit Configuration', 'Can manage permit configuration',
+            'PERMIT', 'MANAGE', 4),
+
+            # === CHEMICAL DATA MODULE ===
+            ('ACCESS_CHEMICAL_MODULE', 'Access Chemical Module', 'Can access chemical module', 
+             'CHEMICAL', 'MODULE_ACCESS', 0),
+            ('ADD_CHEMICAL', 'Add Chemical', 'Can add chemical', 
+             'CHEMICAL', 'CREATE', 1),
+            ('REQUEST_CHEMICAL', 'Request Chemical', 'Can request chemical', 
+             'CHEMICAL', 'CREATE', 2),
+            ('VIEW_CHEMICAL', 'View Chemical', 'Can view chemical', 
+             'CHEMICAL', 'VIEW', 3),
+            ('APPROVE_CHEMICAL', 'Approve Chemical', 'Can approve chemical', 
+             'CHEMICAL', 'APPROVE', 4),
+
+            # === AUDIT DATA MODULE ===
+            ('ACCESS_AUDIT_MODULE', 'Access Audit Module', 'Can access audit module', 
+             'AUDIT', 'MODULE_ACCESS', 0),
+            ('CREATE_AUDIT', 'Create Audit', 'Can create audit', 
+             'AUDIT', 'CREATE', 1),
+            ('CONDUCT_AUDIT', 'Conduct Audit', 'Can conduct audit', 
+             'AUDIT', 'CREATE', 2),
+            ('VIEW_AUDIT', 'View Audit', 'Can view audit', 
+             'AUDIT', 'VIEW', 3),
+             ('VIEW_OPEN_FINDINGS', 'View Open Findings', 'Can view open findings',
+            'AUDIT', 'VIEW', 4),
+            ('MANAGE_AUDIT_CONFIGURATION', 'Manage Audit Configuration', 'Can manage audit configuration',
+            'AUDIT', 'MANAGE', 5),
         ]
 
         created = 0

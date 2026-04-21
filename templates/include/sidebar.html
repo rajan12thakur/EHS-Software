@@ -353,7 +353,7 @@
         </li>
         {% endif %}
 
-        {% if request.user.is_superuser or request.user.is_admin_user %}
+        {% if request.user.is_superuser or request.user.is_admin_user or request.user|has_perm:'MANAGE_PERMIT_CONFIGURATION' %}
         <li class="nav-item {% if request.resolver_match.url_name in 'permit_type_create permit_type_list' %}menu-open{% endif %}">
           <a href="#" class="nav-link {% if request.resolver_match.url_name in 'permit_type_create permit_type_list' %}active{% endif %}">
             <i class="nav-icon fas fa-clipboard-check"></i>
@@ -412,6 +412,8 @@
           </ul>
         </li>
         {% endif %}
+
+        {% if request.user.is_superuser or request.user.is_admin_user or request.user|has_perm:'MANAGE_AUDIT_CONFIGURATION' %}
         <li class="nav-item {% if 'audits' in request.path and request.resolver_match.url_name in 'template_list' %}menu-open{% endif %}">
           <a href="#" class="nav-link {% if 'audits' in request.path and request.resolver_match.url_name in 'template_list' %}active{% endif %}">
             <i class="nav-icon fas fa-cogs"></i>
@@ -432,6 +434,7 @@
             </li>
           </ul>
         </li>
+        {% endif %}
 
         <!-- 6. Notification Configuration - Admin only -->
         {% if request.user.is_superuser or request.user.is_admin_user %}
@@ -806,6 +809,7 @@
           </ul>
         </li>
         {% endif %}
+        {% if request.user|has_perm:'ACCESS_PERMIT_MODULE' %}
         <li class="nav-item {% if request.resolver_match.url_name in 'permit_create permit_list permit_detail permit_update' %}menu-open{% endif %}">
           <a href="#" class="nav-link {% if request.resolver_match.url_name in 'permit_create permit_list permit_detail permit_update' %}active{% endif %}">
             <i class="nav-icon fas fa-file-signature"></i>
@@ -815,6 +819,7 @@
             </p>
           </a>
           <ul class="nav nav-treeview">
+            {% if request.user|has_perm:'CREATE_PERMIT' %}
             <li class="nav-item">
               <a href="{% url 'permit:permit_create' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'permit_create' %}active{% endif %}">
@@ -822,6 +827,8 @@
                 <p>Create Permit</p>
               </a>
             </li>
+            {% endif %}
+            {% if request.user|has_perm:'VIEW_PERMIT' %}
             <li class="nav-item">
               <a href="{% url 'permit:permit_list' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'permit_list' %}active{% endif %}">
@@ -829,6 +836,8 @@
                 <p>All Permits</p>
               </a>
             </li>
+            {% endif %}
+            {% if request.user|has_perm:'APPROVE_PERMIT' %}
             <li class="nav-item">
               <a href="{% url 'permit:permit_approvals' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'permit_approvals' %}active{% endif %}">
@@ -836,8 +845,11 @@
                 <p>Permit Approval</p>
               </a>
             </li>
+            {% endif %}
           </ul>
         </li>
+        {% endif %}
+        {% if request.user|has_perm:'ACCESS_CHEMICAL_MODULE' %}
         <li class="nav-item {% if request.resolver_match.url_name in 'chemical_create chemical_list chemical_request_create chemical_approvals' %}menu-open{% endif %}">
           <a href="#" class="nav-link {% if request.resolver_match.url_name in 'chemical_create chemical_list chemical_request_create chemical_approvals' %}active{% endif %}">
             <i class="nav-icon fas fa-flask"></i>
@@ -847,6 +859,7 @@
             </p>
           </a>
           <ul class="nav nav-treeview">
+            {% if request.user|has_perm:'ADD_CHEMICAL' %}
             <li class="nav-item">
               <a href="{% url 'chemicals:chemical_create' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'chemical_create' %}active{% endif %}">
@@ -854,6 +867,8 @@
                 <p>Add New Chemical</p>
               </a>
             </li>
+            {% endif %}
+            {% if request.user|has_perm:'VIEW_CHEMICAL' %}
             <li class="nav-item">
               <a href="{% url 'chemicals:chemical_list' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'chemical_list' %}active{% endif %}">
@@ -861,6 +876,8 @@
                 <p>All Chemicals</p>
               </a>
             </li>
+            {% endif %}
+            {% if request.user|has_perm:'REQUEST_CHEMICAL' %}
             <li class="nav-item">
               <a href="{% url 'chemicals:chemical_request_create' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'chemical_request_create' %}active{% endif %}">
@@ -868,6 +885,8 @@
                 <p>Request Chemical</p>
               </a>
             </li>
+            {% endif %}
+            {% if request.user|has_perm:'APPROVE_CHEMICAL' %}
             <li class="nav-item">
               <a href="{% url 'chemicals:chemical_approvals' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'chemical_approvals' %}active{% endif %}">
@@ -875,34 +894,44 @@
                 <p>Chemical Approval</p>
               </a>
             </li>
+            {% endif %}
           </ul>
         </li>
+        {% endif %}
+        {% if request.user|has_perm:'ACCESS_AUDIT_MODULE' %}
         <li class="nav-item {% if 'audits' in request.path %}menu-open{% endif %}">
           <a href="#" class="nav-link {% if 'audits' in request.path %}active{% endif %}">
             <i class="nav-icon fas fa-clipboard-list"></i>
             <p>Audit Management <i class="right fas fa-angle-left"></i></p>
           </a>
             <ul class="nav nav-treeview">
+              {% if request.user|has_perm:'VIEW_AUDIT' %}
               <li class="nav-item">
                 <a href="{% url 'audits:schedule_list' %}" class="nav-link {% if request.resolver_match.url_name == 'schedule_list' and 'audits' in request.path %}active{% endif %}">
                   <i class="nav-icon far fa-circle"></i>
                   <p>All Audits</p>
               </a>
             </li>
+            {% endif %}
+            {% if request.user|has_perm:'CREATE_AUDIT' %}
             <li class="nav-item">
               <a href="{% url 'audits:schedule_create' %}" class="nav-link {% if request.resolver_match.url_name == 'schedule_create' and 'audits' in request.path %}active{% endif %}">
                 <i class="nav-icon far fa-circle"></i>
                 <p>Schedule Audit</p>
               </a>
             </li>
+            {% endif %}
+            {% if request.user|has_perm:'VIEW_OPEN_FINDINGS' %}
             <li class="nav-item">
               <a href="{% url 'audits:finding_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'finding_dashboard' and 'audits' in request.path %}active{% endif %}">
                   <i class="nav-icon far fa-circle"></i>
                   <p>Open Findings</p>
               </a>
             </li>
+            {% endif %}
           </ul>
         </li>
+        {% endif %}
       </ul>
     </nav>
   </div>
