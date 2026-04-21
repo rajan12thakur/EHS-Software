@@ -1,0 +1,182 @@
+{% extends 'audits/audit_base.html' %}
+{% load static %}
+
+{% block title %}Add Audit Question{% endblock %}
+{% block page_title %}Add Audit Question{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'audits:template_list' %}">Audit Templates</a></li>
+<li class="breadcrumb-item">
+    <a href="{% url 'audits:template_detail' template.pk %}">
+        {{ template.title }}
+    </a>
+</li>
+<li class="breadcrumb-item active">Add Question</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.audit-question-shell {
+    max-width: 900px;
+    margin: 0 auto 24px;
+}
+
+.form-section {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 22px 20px;
+    margin-bottom: 20px;
+}
+
+.form-section h6 {
+    font-weight: 600;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 10px;
+}
+
+.audit-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+#auditQuestionForm input[type="text"],
+#auditQuestionForm input[type="number"],
+#auditQuestionForm textarea {
+    width: 100%;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+#auditQuestionForm textarea {
+    min-height: 90px;
+    resize: vertical;
+}
+
+#auditQuestionForm input[type="checkbox"] {
+    width: auto;
+}
+
+.option-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    background: #fff;
+}
+
+@media (max-width: 767px) {
+    .audit-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="audit-question-shell">
+            <div class="card audit-panel">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-plus mr-2"></i>
+                        Add Question to "{{ template.title }}"
+                    </h3>
+                </div>
+                <form method="post" id="auditQuestionForm">
+                    {% csrf_token %}
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            Build your audit checklist by adding structured questions.
+                        </div>
+                        {% if form.errors %}
+                        <div class="alert alert-danger">
+                            Please fix the errors below.
+                        </div>
+                        {% endif %}
+                        <div class="form-section">
+                            <h6>
+                                <i class="fas fa-list mr-2"></i>
+                                Question Details
+                            </h6>
+                            <div class="audit-form-grid">
+                                <div class="form-group full-width">
+                                    <label>
+                                        Question <span class="text-danger">*</span>
+                                    </label>
+                                    {{ form.question_text }}
+                                    {% if form.question_text.errors %}
+                                        <small class="text-danger">
+                                            {{ form.question_text.errors.0 }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group">
+                                    <label>Compliance Clause</label>
+                                    {{ form.compliance_clause }}
+                                    {% if form.compliance_clause.errors %}
+                                        <small class="text-danger">
+                                            {{ form.compliance_clause.errors.0 }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                                <div class="form-group">
+                                    <label>Sequence</label>
+                                    {{ form.sequence }}
+                                    {% if form.sequence.errors %}
+                                        <small class="text-danger">
+                                            {{ form.sequence.errors.0 }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-section">
+                            <h6>
+                                <i class="fas fa-cogs mr-2"></i>
+                                Options
+                            </h6>
+                            <div class="option-card">
+                                {{ form.is_mandatory_photo }}
+                                <label for="{{ form.is_mandatory_photo.id_for_label }}">
+                                    Require Photo Evidence
+                                </label>
+                            </div>
+                            {% if form.is_mandatory_photo.errors %}
+                                <small class="text-danger d-block mt-2">
+                                    {{ form.is_mandatory_photo.errors.0 }}
+                                </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between">
+                        <a href="{% url 'audits:template_detail' template.pk %}" 
+                           class="btn btn-secondary">
+                            Back to Template
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            Save Question
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

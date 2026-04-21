@@ -1,0 +1,37 @@
+{% extends 'audits/audit_base.html' %}
+
+{% block title %}Remove Question{% endblock %}
+{% block page_title %}Remove Question{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'audits:template_list' %}">Audit Templates</a></li>
+<li class="breadcrumb-item"><a href="{% url 'audits:template_detail' template.pk %}">{{ template.title }}</a></li>
+<li class="breadcrumb-item active">Remove Question</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="card audit-panel">
+            <div class="card-header">
+                <h3 class="card-title">Confirm Removal</h3>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <div class="card-body">
+                    <p class="mb-2">Remove this question from the audit template?</p>
+                    <div class="audit-photo-frame">
+                        <strong>Q{{ question.sequence }}</strong><br>
+                        {{ question.question_text }}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-danger">Remove Question</button>
+                    <a href="{% url 'audits:template_detail' template.pk %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

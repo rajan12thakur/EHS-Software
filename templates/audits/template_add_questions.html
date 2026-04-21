@@ -1,0 +1,170 @@
+{% extends 'audits/audit_base.html' %}
+{% load static %}
+
+{% block title %}Add Multiple Questions{% endblock %}
+{% block page_title %}Add Multiple Question{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'audits:template_list' %}">Audit Templates</a></li>
+<li class="breadcrumb-item">
+    <a href="{% url 'audits:template_detail' template.pk %}">
+        {{ template.title }}
+    </a>
+</li>
+<li class="breadcrumb-item active">Add Multiple Questions</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.audit-hero {
+    background: linear-gradient(135deg, #4e73df, #224abe);
+    color: #fff;
+    padding: 20px 24px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+.question-header {
+    padding: 12px 16px;
+    background: linear-gradient(90deg, #f1f3f5, #ffffff);
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+}
+.audit-bulk-shell {
+    max-width: 1000px;
+    margin: 0 auto 24px;
+}
+
+.form-section {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 18px;
+}
+
+.audit-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.full-width {
+    grid-column: 1 / -1;
+}
+
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+#auditBulkForm input[type="text"],
+#auditBulkForm input[type="number"],
+#auditBulkForm textarea {
+    width: 100%;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+#auditBulkForm textarea {
+    min-height: 80px;
+}
+
+#auditBulkForm input[type="checkbox"] {
+    width: auto;
+}
+
+.question-card {
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    background: #fff;
+}
+
+.option-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    background: #fff;
+}
+
+@media (max-width: 767px) {
+    .audit-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="audit-bulk-shell">
+    <div class="audit-hero mb-3">
+        <h2 class="h4 mb-1">
+            Bulk Add Questions to "{{ template.title }}"
+        </h2>
+        <p class="mb-0">
+            Add multiple checklist items efficiently in one go.
+        </p>
+    </div>
+    <div class="card audit-panel">
+        <div class="card-header">
+            <h3 class="card-title mb-0">Question Rows</h3>
+        </div>
+        <form method="post" id="auditBulkForm">
+            {% csrf_token %}
+            {{ formset.management_form }}
+            <div class="card-body">
+                {% for form in formset %}
+                <div class="question-card">
+                    <div class="question-header">
+                        Question Row {{ forloop.counter }}
+                    </div>
+                    <div class="p-3">
+                        <div class="audit-form-grid">
+                            <div class="form-group full-width">
+                                <label>Question</label>
+                                {{ form.question_text }}
+                            </div>
+                            <div class="form-group">
+                                <label>Compliance Clause</label>
+                                {{ form.compliance_clause }}
+                            </div>
+                            <div class="form-group">
+                                <label>Sequence</label>
+                                {{ form.sequence }}
+                            </div>
+                            <div class="form-group full-width">
+                                <div class="option-box">
+                                    {{ form.is_mandatory_photo }}
+                                    <label for="{{ form.is_mandatory_photo.id_for_label }}">
+                                        Require Photo Evidence
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        {% if form.errors %}
+                        <div class="text-danger mt-2">
+                            Please correct errors in this row.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <div class="card-footer d-flex justify-content-between">
+                <a href="{% url 'audits:template_detail' template.pk %}" 
+                   class="btn btn-secondary">
+                    Back to Template
+                </a>
+                <button type="submit" class="btn btn-primary px-4">
+                    Save All Questions
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
