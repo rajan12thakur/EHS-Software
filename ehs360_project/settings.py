@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'apps.training',
     'apps.permit.apps.PermitConfig',
     'apps.chemicals.apps.ChemicalsConfig',
+    'apps.audits.apps.AuditsConfig',
 
     'django.contrib.admin',
     'django.contrib.auth',
