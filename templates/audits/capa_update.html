@@ -1,0 +1,160 @@
+{% extends 'audits/audit_base.html' %}
+
+{% block title %}Update CAPA{% endblock %}
+{% block page_title %}Update CAPA{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item">
+    <a href="{% url 'audits:finding_detail' capa.finding.pk %}">
+        {{ capa.finding.finding_id }}
+    </a>
+</li>
+<li class="breadcrumb-item active">Update CAPA</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.capa-shell {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.capa-hero {
+    background: linear-gradient(135deg, #4e73df, #224abe);
+    color: #fff;
+    padding: 18px 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.capa-hero h2 {
+    margin: 0;
+    font-size: 1.4rem;
+}
+
+.capa-hero p {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.form-section {
+    background: #f8f9fa;
+    border: 1px solid #e3e6f0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.form-section h6 {
+    font-weight: 600;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 8px;
+}
+
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="file"],
+select,
+textarea {
+    width: 100%;
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    padding: 8px 10px;
+}
+
+textarea {
+    min-height: 90px;
+}
+
+.checkbox-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    margin-top: 10px;
+}
+
+.checkbox-box input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.info-row {
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+}
+
+.card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="capa-shell">
+    <div class="capa-hero">
+        <h2>Update CAPA</h2>
+        <p>Upload evidence and update the corrective action status.</p>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-header">
+            <h5 class="mb-0">Action Owner Update</h5>
+        </div>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="card-body">
+                <div class="form-section">
+                    <h6>Finding Details</h6>
+                    <div class="info-row">
+                        <strong>Finding:</strong> {{ capa.finding.finding_id }}
+                    </div>
+                    <div class="info-row">
+                        <strong>Assigned To:</strong> {{ capa.assigned_to.get_full_name }}
+                    </div>
+                </div>
+                <div class="form-section">
+                    <h6>Update Details</h6>
+                    <div class="form-group">
+                        <label>Verification Status</label>
+                        {{ form.verification_status }}
+                    </div>
+                    <div class="form-group">
+                        <label>Fixed Comment</label>
+                        {{ form.fixed_comment }}
+                    </div>
+                    <div class="form-group">
+                        <label>Upload Evidence</label>
+                        {{ form.evidence_of_fix }}
+                    </div>
+                    <div class="checkbox-box">
+                        {{ form.mark_as_fixed }}
+                        <label for="{{ form.mark_as_fixed.id_for_label }}">
+                            Mark as Fixed
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <a href="{% url 'audits:finding_detail' capa.finding.pk %}" class="btn btn-secondary">
+                    Back
+                </a>
+                <button type="submit" class="btn btn-primary px-4">
+                    Save Update
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends 'audits/audit_base.html' %}
+
+{% block title %}Audit Schedules{% endblock %}
+{% block page_title %}Audit Schedules{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item active">Audit Schedules</li>
+{% endblock %}
+
+{% block content %}
+<div class="audit-hero d-flex justify-content-between align-items-center flex-wrap">
+    <div>
+        <h2 class="h4 mb-2">Audit Management</h2>
+        <p>Monitor scheduled audits, assigned priorities, and open non-conformances from one place.</p>
+    </div>
+    <div>
+        <a href="{% url 'audits:schedule_create' %}" class="btn btn-warning btn-sm text-white">Schedule Audit</a>
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="audit-metric">
+            <div class="audit-metric-label">Total Audits</div>
+            <div class="audit-metric-value">{{ total_audits }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="audit-metric">
+            <div class="audit-metric-label">In Progress</div>
+            <div class="audit-metric-value">{{ in_progress_count }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="audit-metric">
+            <div class="audit-metric-label">Open Findings</div>
+            <div class="audit-metric-value">{{ total_open_findings }}</div>
+        </div>
+    </div>
+</div>
+<div class="card audit-panel">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0">Scheduled Audits</h3>
+    </div>
+    <div class="card-body border-bottom">
+        <form method="get">
+            <div class="row">
+                <div class="col-md-3">
+                    <input type="text" name="search" class="form-control" placeholder="Search code, template, auditor" value="{{ search }}">
+                </div>
+                <div class="col-md-2">
+                    <select name="status" class="form-control">
+                        <option value="">All Status</option>
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="priority" class="form-control">
+                        <option value="">All Priority</option>
+                        {% for value, label in priority_choices %}
+                        <option value="{{ value }}" {% if selected_priority == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="category" class="form-control">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.category_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="auditor" class="form-control">
+                        <option value="">All Auditors</option>
+                        {% for auditor in auditors %}
+                        <option value="{{ auditor.id }}" {% if selected_auditor == auditor.id|stringformat:"s" %}selected{% endif %}>{{ auditor.get_full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <a href="{% url 'audits:schedule_list' %}" class="btn btn-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+    <div class="card-body table-responsive">
+        <table class="table audit-table table-hover">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Template</th>
+                    <th>Auditor</th>
+                    <th>Location</th>
+                    <th>Date</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Open Findings</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for schedule in schedules %}
+                <tr>
+                    <td>{{ schedule.schedule_code }}</td>
+                    <td>{{ schedule.template.title }}</td>
+                    <td>{{ schedule.auditor.get_full_name }}</td>
+                    <td>{{ schedule.location_scope }}</td>
+                    <td>{{ schedule.scheduled_date }}</td>
+                    <td><span class="audit-pill priority-{{ schedule.priority|lower }}">{{ schedule.get_priority_display }}</span></td>
+                    <td><span class="audit-pill status-{{ schedule.status|lower }}">{{ schedule.get_status_display }}</span></td>
+                    <td>{{ schedule.open_findings }}</td>
+                    <td class="table-actions">
+                        <a href="{% url 'audits:schedule_detail' schedule.pk %}" class="btn btn-sm btn-outline-primary">View</a>
+                        {% if schedule.status == 'DRAFT' or schedule.status == 'SCHEDULED' %}
+                        <a href="{% url 'audits:audit_execute' schedule.pk %}" class="btn btn-sm btn-success">Execute</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted">No audits scheduled yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if is_paginated %}
+    <div class="card-footer">
+        <nav>
+            <ul class="pagination pagination-sm mb-0 justify-content-end">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if selected_status %}&status={{ selected_status|urlencode }}{% endif %}{% if selected_priority %}&priority={{ selected_priority|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}{% if selected_auditor %}&auditor={{ selected_auditor|urlencode }}{% endif %}">Previous</a>
+                </li>
+                {% endif %}
+                <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search|urlencode }}{% endif %}{% if selected_status %}&status={{ selected_status|urlencode }}{% endif %}{% if selected_priority %}&priority={{ selected_priority|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}{% if selected_auditor %}&auditor={{ selected_auditor|urlencode }}{% endif %}">Next</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

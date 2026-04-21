@@ -1,0 +1,152 @@
+{% extends 'audits/audit_base.html' %}
+{% load static %}
+
+{% block title %}Manager Review{% endblock %}
+{% block page_title %}Review {{ finding.finding_id }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'audits:finding_detail' finding.pk %}">{{ finding.finding_id }}</a></li>
+<li class="breadcrumb-item active">Review</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.review-shell {
+    max-width: 850px;
+    margin: 0 auto 24px;
+}
+
+.form-section {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 18px;
+}
+
+.form-section h6 {
+    font-weight: 600;
+    margin-bottom: 14px;
+    border-bottom: 2px solid #dee2e6;
+    padding-bottom: 8px;
+}
+
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+.form-control, select, textarea {
+    width: 100%;
+    border-radius: 6px;
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+}
+
+textarea {
+    min-height: 90px;
+}
+
+.finding-box {
+    background: #fff;
+    border: 1px solid #e3e6ea;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 0.95rem;
+}
+.review-hero {
+    background: #e7f1ff;
+    border-left: 4px solid #0d6efd;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 18px;
+}
+
+.review-hero h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0d6efd;
+}
+
+.review-hero p {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    color: #495057;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="review-shell">
+            <div class="review-hero">
+                <h2>Finding Review</h2>
+                <p>Approve to trigger CAPA or reject with comments.</p>
+            </div>
+            <div class="card audit-panel">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        Review Finding
+                    </h3>
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="card-body">
+                        <div class="form-section">
+                            <h6>
+                                <i class="fas fa-info-circle mr-2"></i>
+                                Observation Details
+                            </h6>
+
+                            <div class="finding-box">
+                                {{ finding.observation_detail }}
+                            </div>
+                        </div>
+                        <div class="form-section">
+                            <h6>
+                                <i class="fas fa-user-check mr-2"></i>
+                                Review Decision
+                            </h6>
+                            <div class="form-group">
+                                <label>
+                                    Decision <span class="text-danger">*</span>
+                                </label>
+                                {{ form.decision }}
+                                {% if form.decision.errors %}
+                                    <small class="text-danger">{{ form.decision.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label>Risk Score</label>
+                                {{ form.risk_score }}
+                                {% if form.risk_score.errors %}
+                                    <small class="text-danger">{{ form.risk_score.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="form-group">
+                                <label>Reviewer Comment</label>
+                                {{ form.manager_review_comment }}
+                                {% if form.manager_review_comment.errors %}
+                                    <small class="text-danger">{{ form.manager_review_comment.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between">
+                        <a href="{% url 'audits:finding_detail' finding.pk %}" class="btn btn-secondary">
+                            Back
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            Submit Review
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

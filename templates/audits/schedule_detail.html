@@ -1,0 +1,88 @@
+{% extends 'audits/audit_base.html' %}
+
+{% block title %}Audit Detail{% endblock %}
+{% block page_title %}{{ schedule.schedule_code }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'audits:schedule_list' %}">Audit Schedules</a></li>
+<li class="breadcrumb-item active">{{ schedule.schedule_code }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="audit-hero">
+    <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+            <h2 class="h4 mb-2">{{ schedule.template.title }}</h2>
+            <p>{{ schedule.schedule_code }} scheduled for {{ schedule.location_scope }}</p>
+        </div>
+        <div class="d-flex flex-wrap" style="gap:.5rem;">
+            <span class="audit-pill priority-{{ schedule.priority|lower }}">{{ schedule.get_priority_display }}</span>
+            <span class="audit-pill status-{{ schedule.status|lower }}">{{ schedule.get_status_display }}</span>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card audit-panel">
+            <div class="card-header"><h3 class="card-title">Audit Summary</h3></div>
+            <div class="card-body">
+                <p><strong>Template:</strong> {{ schedule.template.title }}</p>
+                <p><strong>Standard:</strong> {{ schedule.template.standard_reference|default:"-" }}</p>
+                <p><strong>Auditor:</strong> {{ schedule.auditor.get_full_name }}</p>
+                <p><strong>Plants:</strong>
+                  {% for plant in schedule.plants.all %}{{ plant.name }}{% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}
+                </p>
+                <p><strong>Zones:</strong>
+                  {% for zone in schedule.zones.all %}{{ zone.name }}{% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}
+                </p>
+                <p><strong>Locations:</strong>
+                  {% for location in schedule.locations.all %}{{ location.name }}{% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}
+                </p>
+                <p><strong>Sub-Locations:</strong>
+                  {% for sublocation in schedule.sublocations.all %}{{ sublocation.name }}{% if not forloop.last %}, {% endif %}{% empty %}-{% endfor %}
+                </p>
+                <p><strong>Category:</strong> {{ schedule.template.category.category_name }}</p>
+                <p><strong>Priority:</strong> {{ schedule.get_priority_display }}</p>
+                <p><strong>Status:</strong> {{ schedule.get_status_display }}</p>
+                {% if schedule.status == 'DRAFT' or schedule.status == 'SCHEDULED' %}
+                <a href="{% url 'audits:audit_execute' schedule.pk %}" class="btn btn-primary btn-block">Start Audit Execution</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card audit-panel">
+            <div class="card-header"><h3 class="card-title">Findings</h3></div>
+            <div class="card-body">
+                <table class="table audit-table table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Clause</th>
+                            <th>Risk</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for finding in schedule.findings.all %}
+                        <tr>
+                            <td>{{ finding.finding_id }}</td>
+                            <td>{{ finding.origin_question.compliance_clause|default:"-" }}</td>
+                            <td><span class="audit-pill risk-{{ finding.risk_score|lower }}">{{ finding.get_risk_score_display }}</span></td>
+                            <td><span class="audit-pill status-{{ finding.status|lower }}">{{ finding.get_status_display }}</span></td>
+                            <td><a href="{% url 'audits:finding_detail' finding.pk %}" class="btn btn-sm btn-outline-primary">Open</a></td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">No findings have been raised yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

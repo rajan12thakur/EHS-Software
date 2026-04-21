@@ -1,0 +1,208 @@
+{% extends 'base/base.html' %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .audit-hero {
+        background: linear-gradient(135deg, rgba(21, 101, 192, 0.96), rgba(124, 179, 66, 0.96));
+        color: #fff;
+        border-radius: 18px;
+        padding: 1.35rem 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 18px 42px rgba(21, 101, 192, 0.18);
+    }
+
+    .audit-hero h2,
+    .audit-hero p {
+        color: #fff;
+        margin-bottom: 0;
+    }
+
+    .audit-panel {
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(21, 101, 192, 0.08);
+        border-radius: 18px;
+        box-shadow: 0 14px 32px rgba(55, 71, 79, 0.08);
+        overflow: hidden;
+    }
+
+    .audit-panel .card-header {
+        background: linear-gradient(135deg, rgba(227, 242, 253, 0.95), rgba(241, 248, 233, 0.95));
+        border-bottom: 1px solid rgba(21, 101, 192, 0.08);
+        padding: 1rem 1.2rem;
+    }
+
+    .audit-panel .card-body,
+    .audit-panel .card-footer {
+        padding: 1.2rem;
+    }
+
+    .audit-table thead th {
+        border-top: 0;
+        font-size: 0.84rem;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .audit-table tbody tr:hover {
+        background: rgba(227, 242, 253, 0.4);
+    }
+
+    .audit-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 0.38rem 0.78rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .priority-critical,
+    .risk-critical {
+        background: rgba(220, 53, 69, 0.14);
+        color: #b71c1c;
+    }
+
+    .priority-high,
+    .risk-major {
+        background: rgba(247, 124, 43, 0.16);
+        color: #b85a18;
+    }
+
+    .priority-medium {
+        background: rgba(255, 193, 7, 0.18);
+        color: #8a6d00;
+    }
+
+    .priority-low,
+    .risk-minor {
+        background: rgba(40, 167, 69, 0.14);
+        color: #1f6f3d;
+    }
+
+    .status-draft {
+        background: rgba(108, 117, 125, 0.14);
+        color: #495057;
+    }
+
+    .status-scheduled,
+    .status-open {
+        background: rgba(30, 144, 255, 0.14);
+        color: #1565c0;
+    }
+
+    .status-in_progress,
+    .status-fixed {
+        background: rgba(247, 124, 43, 0.16);
+        color: #b85a18;
+    }
+
+    .status-completed,
+    .status-resolved,
+    .status-verified,
+    .status-closed {
+        background: rgba(40, 167, 69, 0.14);
+        color: #1f6f3d;
+    }
+
+    .review-pending {
+        background: rgba(255, 193, 7, 0.18);
+        color: #8a6d00;
+    }
+
+    .review-approved {
+        background: rgba(40, 167, 69, 0.14);
+        color: #1f6f3d;
+    }
+
+    .review-rejected {
+        background: rgba(220, 53, 69, 0.14);
+        color: #b71c1c;
+    }
+
+    .audit-metric {
+        padding: 1rem;
+        border-radius: 16px;
+        border: 1px solid rgba(21, 101, 192, 0.08);
+        background: linear-gradient(135deg, rgba(248, 250, 254, 1), rgba(240, 248, 240, 1));
+        box-shadow: 0 12px 26px rgba(55, 71, 79, 0.05);
+        height: 100%;
+    }
+
+    .audit-metric-label {
+        color: #607d8b;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .audit-metric-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-top: 0.35rem;
+    }
+
+    .audit-form-card label {
+        font-weight: 600;
+        color: #2f4858;
+    }
+
+    .audit-form-card input,
+    .audit-form-card select,
+    .audit-form-card textarea {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(55, 71, 79, 0.16);
+        box-shadow: none;
+        padding: 0.6rem 0.75rem;
+    }
+
+    .audit-form-card input:focus,
+    .audit-form-card select:focus,
+    .audit-form-card textarea:focus {
+        outline: 0;
+        border-color: rgba(21, 101, 192, 0.45);
+        box-shadow: 0 0 0 0.15rem rgba(21, 101, 192, 0.12);
+    }
+
+    .audit-question {
+        border: 1px solid rgba(21, 101, 192, 0.08);
+        border-radius: 18px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(55, 71, 79, 0.07);
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .audit-question-header {
+        padding: 1rem 1.2rem;
+        background: linear-gradient(135deg, rgba(248, 250, 254, 1), rgba(240, 248, 240, 1));
+        border-bottom: 1px solid rgba(21, 101, 192, 0.08);
+    }
+
+    .audit-question-body {
+        padding: 1.2rem;
+    }
+
+    .audit-photo-frame {
+        border: 1px solid rgba(21, 101, 192, 0.08);
+        border-radius: 16px;
+        background: rgba(248, 250, 254, 0.85);
+        padding: 0.75rem;
+    }
+
+    @media (max-width: 767.98px) {
+        .audit-hero,
+        .audit-panel .card-header,
+        .audit-panel .card-body,
+        .audit-panel .card-footer,
+        .audit-question-header,
+        .audit-question-body {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
