@@ -1,6 +1,6 @@
 from django import forms
 from django.forms import formset_factory, modelformset_factory
-
+from django.db.models import Q
 from apps.accounts.models import User
 from apps.organizations.models import Location, Plant, Zone, SubLocation
 
@@ -61,6 +61,9 @@ class AuditScheduleForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["auditor"].queryset = User.objects.filter(
+            Q(role__permissions__code="CONDUCT_AUDIT"),is_active=True
+        ).exclude(Q(is_superuser=True) | Q(role__name='ADMIN')).distinct()
         self.fields["location"].required = False
         self.fields["location"].widget = forms.HiddenInput()
         if self.instance.pk:
@@ -156,8 +159,7 @@ class CAPACreateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["assigned_to"].queryset = User.objects.filter(is_active=True).order_by("first_name", "username")
-
+        self.fields["assigned_to"].queryset = User.objects.filter(is_active=True).exclude(Q(is_superuser=True) | Q(role__name='ADMIN')).order_by("first_name", "username")
 
 class CAPAUpdateForm(forms.ModelForm):
     mark_as_fixed = forms.BooleanField(required=False)

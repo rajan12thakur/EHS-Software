@@ -19,12 +19,12 @@ from apps.organizations.models import Plant
 
 def _is_auditor_or_admin(user):
     role_name = (getattr(user, "role_name", "") or "").upper()
-    return user.is_superuser or role_name in {"AUDITOR", "ADMIN"} or getattr(user, "is_admin_user", False)
+    return user.is_superuser or role_name in {"AUDITOR", "ADMIN"} or user.has_permission("ACCESS_AUDIT_MODULE")
 
 
 def _is_manager_or_admin(user):
     role_name = (getattr(user, "role_name", "") or "").upper()
-    return user.is_superuser or role_name in {"ADMIN", "EHS MANAGER", "EHS_MANAGER"} or getattr(user, "is_admin_user", False)
+    return user.is_superuser or role_name in {"ADMIN", "EHS MANAGER", "EHS_MANAGER"} or user.has_permission("APPROVE_FINDING")
 
 
 def _build_execution_initial(schedule):
@@ -62,7 +62,7 @@ def _build_execution_initial(schedule):
 class AuditorOrAdminRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not _is_auditor_or_admin(request.user):
-            messages.error(request, "Only users with Auditor or Admin roles can start an audit.")
+            messages.error(request, "You don't have permission can start an audit.")
             return redirect("audits:schedule_list")
         return super().dispatch(request, *args, **kwargs)
 
@@ -70,7 +70,7 @@ class AuditorOrAdminRequiredMixin(LoginRequiredMixin):
 class ManagerOrAdminRequiredMixin(LoginRequiredMixin):
     def dispatch(self, request, *args, **kwargs):
         if not _is_manager_or_admin(request.user):
-            messages.error(request, "Only an EHS Manager or Admin can perform this action.")
+            messages.error(request, "You don't have permission to approve the finding")
             return redirect("audits:finding_dashboard")
         return super().dispatch(request, *args, **kwargs)
 
@@ -325,8 +325,8 @@ class AuditScheduleListView(LoginRequiredMixin, ListView):
     context_object_name = "schedules"
     paginate_by = 10
 
-    def get_queryset(self):
-        queryset = (
+    def get_base_queryset(self):
+        return (
             AuditSchedule.objects.select_related(
                 "template", "template__category", "auditor", "location", "location__zone", "location__zone__plant"
             )
@@ -346,8 +346,41 @@ class AuditScheduleListView(LoginRequiredMixin, ListView):
             )
             .order_by("-scheduled_date", "-created_at")
         )
+
+    def get_available_status_choices(self):
+        return AuditSchedule.STATUS_CHOICES
+
+    def get_default_status(self):
+        return ""
+
+    def get_selected_status(self):
+        available_statuses = {value for value, _ in self.get_available_status_choices()}
+        requested_status = self.request.GET.get("status", "").strip()
+        if requested_status in available_statuses:
+            return requested_status
+        return self.get_default_status()
+
+    def show_auditor_filter(self):
+        return True
+
+    def get_page_config(self):
+        return {
+            "page_title": "Audit Schedules",
+            "breadcrumb_title": "Audit Schedules",
+            "hero_title": "Audit Management",
+            "hero_description": "Monitor scheduled audits, assigned priorities, and open non-conformances from one place.",
+            "hero_button_label": "Schedule Audit",
+            "hero_button_url": reverse("audits:schedule_create"),
+            "card_title": "Scheduled Audits",
+            "reset_url": reverse("audits:schedule_list"),
+            "empty_message": "No audits scheduled yet.",
+            "search_placeholder": "Search code, template, auditor",
+        }
+
+    def get_queryset(self):
+        queryset = self.get_base_queryset()
         search = self.request.GET.get("search", "").strip()
-        status = self.request.GET.get("status", "").strip()
+        status = self.get_selected_status()
         priority = self.request.GET.get("priority", "").strip()
         category_id = self.request.GET.get("category", "").strip()
         auditor_id = self.request.GET.get("auditor", "").strip()
@@ -366,7 +399,7 @@ class AuditScheduleListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(priority=priority)
         if category_id:
             queryset = queryset.filter(template__category_id=category_id)
-        if auditor_id:
+        if auditor_id and self.show_auditor_filter():
             queryset = queryset.filter(auditor_id=auditor_id)
         return queryset
 
@@ -377,15 +410,49 @@ class AuditScheduleListView(LoginRequiredMixin, ListView):
         context["in_progress_count"] = schedules.filter(status=AuditSchedule.STATUS_IN_PROGRESS).count()
         context["total_open_findings"] = sum(schedule.open_findings for schedule in schedules)
         context["search"] = self.request.GET.get("search", "").strip()
-        context["selected_status"] = self.request.GET.get("status", "").strip()
+        context["selected_status"] = self.get_selected_status()
         context["selected_priority"] = self.request.GET.get("priority", "").strip()
         context["selected_category"] = self.request.GET.get("category", "").strip()
         context["selected_auditor"] = self.request.GET.get("auditor", "").strip()
         context["categories"] = AuditCategory.objects.filter(is_active=True).order_by("category_name")
         context["auditors"] = User.objects.filter(is_active=True).order_by("first_name", "last_name", "username")
-        context["status_choices"] = AuditSchedule.STATUS_CHOICES
+        context["status_choices"] = self.get_available_status_choices()
         context["priority_choices"] = AuditSchedule.PRIORITY_CHOICES
+        context["show_auditor_filter"] = self.show_auditor_filter()
+        context.update(self.get_page_config())
         return context
+
+
+class MyAuditListView(AuditScheduleListView):
+    def get_base_queryset(self):
+        return super().get_base_queryset().filter(auditor=self.request.user)
+
+    def get_available_status_choices(self):
+        return [
+            (AuditSchedule.STATUS_SCHEDULED, "Scheduled"),
+            (AuditSchedule.STATUS_COMPLETED, "Completed"),
+            (AuditSchedule.STATUS_CLOSED, "Closed"),
+        ]
+
+    def get_default_status(self):
+        return AuditSchedule.STATUS_SCHEDULED
+
+    def show_auditor_filter(self):
+        return False
+
+    def get_page_config(self):
+        return {
+            "page_title": "My Audits",
+            "breadcrumb_title": "My Audits",
+            "hero_title": "My Audits",
+            "hero_description": "Track the audits assigned to you, starting with your scheduled work and completed history.",
+            "hero_button_label": "",
+            "hero_button_url": "",
+            "card_title": "Assigned Audits",
+            "reset_url": reverse("audits:my_audits"),
+            "empty_message": "No audits are assigned to you for the selected status.",
+            "search_placeholder": "Search code, template, location",
+        }
 
 
 class AuditScheduleCreateView(LoginRequiredMixin, CreateView):
@@ -919,12 +986,6 @@ class CAPAUpdateView(LoginRequiredMixin, UpdateView):
     template_name = "audits/capa_update.html"
     context_object_name = "capa"
 
-    def dispatch(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        if request.user != self.object.assigned_to and not _is_manager_or_admin(request.user):
-            messages.error(request, "Only the action owner or an Admin/Manager can update this CAPA.")
-            return redirect("audits:finding_detail", pk=self.object.finding.pk)
-        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         return CAPA.objects.select_related("finding", "assigned_to", "finding__parent_audit")
