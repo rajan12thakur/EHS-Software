@@ -905,6 +905,14 @@
             <p>Audit Management <i class="right fas fa-angle-left"></i></p>
           </a>
             <ul class="nav nav-treeview">
+              {% if request.user|has_perm:'CONDUCT_AUDIT' %}
+              <li class="nav-item">
+                <a href="{% url 'audits:my_audits' %}" class="nav-link {% if request.resolver_match.url_name == 'my_audits' and 'audits' in request.path %}active{% endif %}">
+                  <i class="nav-icon far fa-circle"></i>
+                  <p>My Audits</p>
+                </a>
+              </li>
+              {% endif %}
               {% if request.user|has_perm:'VIEW_AUDIT' %}
               <li class="nav-item">
                 <a href="{% url 'audits:schedule_list' %}" class="nav-link {% if request.resolver_match.url_name == 'schedule_list' and 'audits' in request.path %}active{% endif %}">

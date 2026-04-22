@@ -185,8 +185,12 @@ class Command(BaseCommand):
              'AUDIT', 'VIEW', 3),
              ('VIEW_OPEN_FINDINGS', 'View Open Findings', 'Can view open findings',
             'AUDIT', 'VIEW', 4),
+            ('APPROVE_FINDING', 'Approve Finding', 'Can approve finding', 
+             'AUDIT', 'APPROVE', 5),
+            ('CREATE_CAPA', 'Create CAPA', 'Can create CAPA', 
+             'AUDIT', 'CREATE', 6),
             ('MANAGE_AUDIT_CONFIGURATION', 'Manage Audit Configuration', 'Can manage audit configuration',
-            'AUDIT', 'MANAGE', 5),
+            'AUDIT', 'MANAGE', 7),
         ]
 
         created = 0

@@ -1,4 +1,5 @@
 {% extends 'audits/audit_base.html' %}
+{% load permission_tags %}
 
 {% block title %}Finding Detail{% endblock %}
 {% block page_title %}{{ finding.finding_id }}{% endblock %}
@@ -28,7 +29,7 @@
         <div class="card audit-panel">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title mb-0">Finding Summary</h3>
-                <a href="{% url 'audits:finding_review' finding.pk %}" class="btn btn-warning btn-sm">Approve Finding</a>
+                {% if request.user|has_perm:'APPROVE_FINDING' %}<a href="{% url 'audits:finding_review' finding.pk %}" class="btn btn-warning btn-sm">Approve Finding</a>{% endif %}
             </div>
             <div class="card-body">
                 <p><strong>Audit:</strong> {{ finding.parent_audit.schedule_code }}</p>
@@ -51,7 +52,7 @@
         <div class="card audit-panel">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h3 class="card-title mb-0">CAPA Tasks</h3>
-                <a href="{% url 'audits:capa_create' finding.pk %}" class="btn btn-primary btn-sm">Create CAPA</a>
+                {% if request.user|has_perm:'CREATE_CAPA' %}<a href="{% url 'audits:capa_create' finding.pk %}" class="btn btn-primary btn-sm">Create CAPA</a>{% endif %}
             </div>
             <div class="card-body">
                 <table class="table audit-table table-sm">
