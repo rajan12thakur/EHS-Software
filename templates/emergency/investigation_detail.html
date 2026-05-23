@@ -1,0 +1,35 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Emergency Investigation Details{% endblock %}
+{% block page_title %}Emergency Investigation Details{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'emergency:report_detail' report.pk %}">{{ report.report_number }}</a></li>
+<li class="breadcrumb-item active">Investigation Details</li>
+{% endblock %}
+
+{% block content %}
+<div class="ehs-card">
+  <div class="card-header">
+    <div class="d-flex justify-content-between align-items-center">
+      <h3 class="card-title mb-0"><i class="fas fa-search mr-2"></i>Emergency Investigation Details</h3>
+      <a href="{{ cancel_url }}" class="btn btn-secondary"><i class="fas fa-arrow-left mr-1"></i>Back</a>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-4 mb-3"><label class="text-muted">Report Number</label><p class="mb-0">{{ report.report_number }}</p></div>
+      <div class="col-md-4 mb-3"><label class="text-muted">Investigation Date</label><p class="mb-0">{{ investigation.investigation_date|date:"d M Y" }}</p></div>
+      <div class="col-md-4 mb-3"><label class="text-muted">Completed Date</label><p class="mb-0">{{ investigation.completed_date|date:"d M Y" }}</p></div>
+      <div class="col-md-12 mb-3"><label class="text-muted">Investigation Team</label><div>{{ investigation.investigation_team|linebreaks }}</div></div>
+      <div class="col-md-12 mb-3"><label class="text-muted">Sequence of Events</label><div>{{ investigation.sequence_of_events|linebreaks }}</div></div>
+      <div class="col-md-12 mb-3"><label class="text-muted">Root Cause Analysis</label><div>{{ investigation.root_cause_analysis|linebreaks }}</div></div>
+      <div class="col-md-6 mb-3"><label class="text-muted">Evidence Collected</label><div>{{ investigation.evidence_collected|default:"-"|linebreaks }}</div></div>
+      <div class="col-md-6 mb-3"><label class="text-muted">Witness Statements</label><div>{{ investigation.witness_statements|default:"-"|linebreaks }}</div></div>
+      <div class="col-md-6 mb-3"><label class="text-muted">Immediate Corrective Actions</label><div>{{ investigation.immediate_corrective_actions|linebreaks }}</div></div>
+      <div class="col-md-6 mb-3"><label class="text-muted">Preventive Measures</label><div>{{ investigation.preventive_measures|linebreaks }}</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

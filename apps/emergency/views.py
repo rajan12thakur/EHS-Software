@@ -1,0 +1,1328 @@
+import re
+from collections import defaultdict
+from urllib.parse import urljoin
+
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Count, Prefetch, Q
+from django.db import transaction
+from django.contrib.contenttypes.models import ContentType
+from django.conf import settings
+from django.http import JsonResponse
+from django.shortcuts import redirect
+from django.urls import reverse, reverse_lazy
+from django.core.paginator import Paginator
+from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
+from django.views import View
+from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView
+from apps.accounts.models import User
+from apps.organizations.models import Location, Plant, SubLocation, Zone
+from apps.common.image_utils import compress_image
+from apps.notifications.models import Notification
+from apps.notifications.services import NotificationService
+from .forms import *
+from .models import *
+from apps.organizations.models import Plant, Zone, Location, SubLocation
+
+
+def _build_absolute_url(path):
+    base_url = getattr(settings, "SITE_URL", "").rstrip("/")
+    if not base_url:
+        return path
+    return urljoin(f"{base_url}/", path.lstrip("/"))
+
+
+def _notify_emergency_action_assigned(report, recipients):
+    report_url = _build_absolute_url(reverse("emergency:report_detail", args=[report.id]))
+    title = f"Emergency Action Assigned | {report.report_number}"
+    subject = f"Emergency action assigned - {report.report_number}"
+    message = (
+        f"Hello,\n\n"
+        f"You have been assigned to respond to emergency report {report.report_number}.\n\n"
+        f"Emergency Title : {report.emergency_title}\n"
+        f"Type            : {report.get_emergency_type_display()}\n"
+        f"Severity        : {report.get_severity_level_display()}\n"
+        f"Plant           : {report.plant.name}\n"
+        f"Location        : {report.location.name}\n"
+        f"Reported By     : {report.reported_by.get_full_name()}\n\n"
+        f"Description:\n{report.description[:400]}\n\n"
+        f"Open report: {report_url}\n"
+    )
+    content_type = ContentType.objects.get_for_model(report)
+    for recipient in recipients:
+        Notification.objects.create(
+            recipient=recipient,
+            content_type=content_type,
+            object_id=report.id,
+            notification_type="INCIDENT_ACTION_ASSIGNED",
+            title=title,
+            message=message,
+        )
+        NotificationService.send_email(
+            recipient=recipient,
+            subject=subject,
+            message=message,
+        )
+
+
+def _notify_emergency_action_completed(action_item):
+    report = action_item.report
+    report_url = _build_absolute_url(reverse("emergency:report_detail", args=[report.id]))
+    recipients = [report.reported_by]
+    title = f"Emergency Action Performed | {report.report_number}"
+    subject = f"Emergency action performed - {report.report_number}"
+    message = (
+        f"Hello,\n\n"
+        f"An emergency response action has been completed for report {report.report_number}.\n\n"
+        f"Emergency Title : {report.emergency_title}\n"
+        f"Completed By    : "
+        f"{', '.join(user.get_full_name() or user.username for user in action_item.completed_by_users.all())}\n"
+        f"Completed On    : {timezone.localtime(action_item.completion_datetime).strftime('%d %b %Y %H:%M') if action_item.completion_datetime else 'N/A'}\n\n"
+        f"Open report: {report_url}\n"
+    )
+    content_type = ContentType.objects.get_for_model(report)
+    for recipient in recipients:
+        Notification.objects.create(
+            recipient=recipient,
+            content_type=content_type,
+            object_id=report.id,
+            notification_type="INCIDENT_ACTION_ASSIGNED",
+            title=title,
+            message=message,
+        )
+        NotificationService.send_email(
+            recipient=recipient,
+            subject=subject,
+            message=message,
+        )
+
+
+def _notify_emergency_investigation_completed(investigation):
+    report = investigation.report
+    report_url = _build_absolute_url(reverse("emergency:report_detail", args=[report.id]))
+    recipients = list(report.response_team_members.all())
+    if report.reported_by not in recipients:
+        recipients.append(report.reported_by)
+
+    title = f"Emergency Investigation Completed | {report.report_number}"
+    subject = f"Emergency investigation completed - {report.report_number}"
+    message = (
+        f"Hello,\n\n"
+        f"The investigation for emergency report {report.report_number} has been completed.\n\n"
+        f"Emergency Title   : {report.emergency_title}\n"
+        f"Investigator      : {investigation.investigator.get_full_name() if investigation.investigator else 'N/A'}\n"
+        f"Investigation Date: {investigation.investigation_date}\n"
+        f"Completed On      : {investigation.completed_date}\n\n"
+        f"Open report: {report_url}\n"
+    )
+    content_type = ContentType.objects.get_for_model(report)
+    for recipient in recipients:
+        Notification.objects.create(
+            recipient=recipient,
+            content_type=content_type,
+            object_id=report.id,
+            notification_type="INCIDENT_INVESTIGATION_COMPLETED",
+            title=title,
+            message=message,
+        )
+        NotificationService.send_email(
+            recipient=recipient,
+            subject=subject,
+            message=message,
+        )
+
+
+class EmergencyAccessMixin(LoginRequiredMixin):
+    allowed_roles = {"ADMIN", "SAFETY OFFICER", "PLANT HEAD", "HOD"}
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return self.handle_no_permission()
+        return super().dispatch(request, *args, **kwargs)
+    
+    def user_can_manage(self):
+        role_name = getattr(getattr(self.request.user, "role", None), "name", None)
+        return self.request.user.is_superuser or self.request.user.is_admin_user or role_name in self.allowed_roles
+
+    def has_emergency_permission(self, code):
+        user = self.request.user
+        return user.is_superuser or user.has_permission(code)
+
+    def get_session_queryset(self):
+        queryset = EmergencySession.objects.select_related(
+            "topic",
+            "plant",
+            "zone",
+            "location",
+            "sublocation",
+            "created_by",
+        ).prefetch_related(
+            Prefetch("trainers", queryset=EmergencySessionTrainer.objects.select_related("trainer_department"))
+        )
+        user = self.request.user
+        if user.is_superuser or user.is_admin_user:
+            return queryset
+        assigned_plants = user.assigned_plants.filter(is_active=True)
+        if assigned_plants.exists():
+            return queryset.filter(plant__in=assigned_plants).distinct()
+        if user.plant:
+            return queryset.filter(plant=user.plant)
+        return queryset.filter(created_by=user)
+
+    def get_location_context(self):
+        user = self.request.user
+        context = {
+            "user_assigned_plants": user.assigned_plants.filter(is_active=True),
+            "user_assigned_zones": user.assigned_zones.none(),
+            "user_assigned_locations": user.assigned_locations.none(),
+            "user_assigned_sublocations": user.assigned_sublocations.none(),
+        }
+        if context["user_assigned_plants"].count() == 1:
+            plant = context["user_assigned_plants"].first()
+            context["user_assigned_zones"] = user.assigned_zones.filter(is_active=True, plant=plant)
+            if context["user_assigned_zones"].count() == 1:
+                zone = context["user_assigned_zones"].first()
+                context["user_assigned_locations"] = user.assigned_locations.filter(is_active=True, zone=zone)
+                if context["user_assigned_locations"].count() == 1:
+                    location = context["user_assigned_locations"].first()
+                    context["user_assigned_sublocations"] = user.assigned_sublocations.filter(
+                        is_active=True,
+                        location=location,
+                    )
+        return context
+
+    def can_review_sessions(self):
+        return self.request.user.is_superuser or self.user_can_manage()
+
+    def get_department_questions_for_employee(self, employee):
+        if not getattr(employee, "department_id", None):
+            return ERTDepartmentQuestion.objects.none()
+        return ERTDepartmentQuestion.objects.filter(
+            is_active=True,
+            department_id=employee.department_id,
+        ).order_by("question_code")
+
+    def sync_participant_question_assignments(self, participant):
+        questions = list(self.get_department_questions_for_employee(participant.employee))
+        if not questions:
+            return 0
+
+        existing_question_ids = set(
+            participant.question_assignments.values_list("question_id", flat=True)
+        )
+        assignments_to_create = [
+            EmergencySessionQuestionAssignment(participant=participant, question=question)
+            for question in questions
+            if question.id not in existing_question_ids
+        ]
+        if assignments_to_create:
+            EmergencySessionQuestionAssignment.objects.bulk_create(assignments_to_create, ignore_conflicts=True)
+        return len(questions)
+
+    def get_report_queryset(self):
+        queryset = EmergencyReport.objects.select_related(
+            "plant",
+            "zone",
+            "location",
+            "sublocation",
+            "department",
+            "reported_by",
+        ).select_related(
+            "action_item",
+            "investigation_report",
+        ).prefetch_related("response_team_members", "photos", "action_item__assigned_to", "action_item__completed_by_users")
+
+        user = self.request.user
+        if user.is_superuser or user.is_admin_user:
+            return queryset
+        if getattr(user, "role", None) and user.role.name == "EMPLOYEE":
+            return queryset.filter(reported_by=user)
+
+        user_plants = user.assigned_plants.filter(is_active=True)
+        if user_plants.exists():
+            return queryset.filter(plant__in=user_plants).distinct()
+        if user.plant:
+            return queryset.filter(plant=user.plant)
+        return queryset.filter(reported_by=user)
+
+
+class EmergencyHomeView(EmergencyAccessMixin, TemplateView):
+    template_name = "emergency/home.html"
+
+
+class EmergencyTopicListView(EmergencyAccessMixin, ListView):
+    model = EmergencyTopic
+    template_name = "emergency/topic_list.html"
+    context_object_name = "topics"
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = EmergencyTopic.objects.annotate(session_count=Count("sessions")).order_by("name")
+        search = self.request.GET.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search) | Q(code__icontains=search) | Q(description__icontains=search)
+            )
+        category = self.request.GET.get("category", "").strip()
+        if category:
+            queryset = queryset.filter(category=category)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["search_query"] = self.request.GET.get("search", "")
+        context["selected_category"] = self.request.GET.get("category", "")
+        context["category_choices"] = EmergencyTopic.CATEGORY_CHOICES
+        return context
+
+
+class EmergencyTopicCreateView(EmergencyAccessMixin, CreateView):
+    model = EmergencyTopic
+    form_class = EmergencyTopicForm
+    template_name = "emergency/topic_form.html"
+    success_url = reverse_lazy("emergency:topic_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.user_can_manage():
+            messages.error(request, "You don't have permission to manage emergency topics.")
+            return redirect("emergency:topic_list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        form.instance.created_by = self.request.user
+        response = super().form_valid(form)
+        messages.success(self.request, f'Emergency topic "{self.object.name}" created successfully.')
+        return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["action"] = "Create"
+        return context
+
+
+class EmergencyTopicUpdateView(EmergencyAccessMixin, UpdateView):
+    model = EmergencyTopic
+    form_class = EmergencyTopicForm
+    template_name = "emergency/topic_form.html"
+    success_url = reverse_lazy("emergency:topic_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.user_can_manage():
+            messages.error(request, "You don't have permission to edit emergency topics.")
+            return redirect("emergency:topic_list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        messages.success(self.request, f'Emergency topic "{self.object.name}" updated successfully.')
+        return response
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["action"] = "Update"
+        return context
+
+
+class EmergencySessionCreateView(EmergencyAccessMixin, CreateView):
+    model = EmergencySession
+    form_class = EmergencySessionForm
+    template_name = "emergency/session_create.html"
+    success_url = reverse_lazy("emergency:session_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.user_can_manage():
+            messages.error(request, "You don't have permission to schedule emergency sessions.")
+            return redirect("emergency:session_list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def get_trainer_formset(self):
+        if self.request.method == "POST":
+            return EmergencySessionTrainerFormSet(self.request.POST, prefix="trainers")
+        return EmergencySessionTrainerFormSet(prefix="trainers")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(self.get_location_context())
+        context["trainer_formset"] = kwargs.get("trainer_formset", self.get_trainer_formset())
+        context["active_topics"] = EmergencyTopic.objects.filter(is_active=True).order_by("name")
+        context["drill_type_choices"] = [
+            {
+                "value": value,
+                "label": label,
+                "category": EmergencySession.DRILL_CATEGORY_MAP.get(value, ""),
+            }
+            for value, label in EmergencySession.DRILL_TYPE_CHOICES
+        ]
+        context["cancel_url"] = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER") or "/"
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = None
+        form = self.get_form()
+        trainer_formset = self.get_trainer_formset()
+        if form.is_valid() and trainer_formset.is_valid():
+            return self.forms_valid(form, trainer_formset)
+        return self.forms_invalid(form, trainer_formset)
+
+    def forms_valid(self, form, trainer_formset):
+        session = form.save(commit=False)
+        session.created_by = self.request.user
+        user = self.request.user
+
+        if user.assigned_plants.count() == 1 and not form.cleaned_data.get("plant"):
+            session.plant = user.assigned_plants.first()
+        if user.assigned_zones.count() == 1 and not form.cleaned_data.get("zone"):
+            session.zone = user.assigned_zones.first()
+        if user.assigned_locations.count() == 1 and not form.cleaned_data.get("location"):
+            session.location = user.assigned_locations.first()
+        if user.assigned_sublocations.count() == 1 and not form.cleaned_data.get("sublocation"):
+            session.sublocation = user.assigned_sublocations.first()
+
+        session.save()
+        trainer_formset.instance = session
+        trainer_formset.save()
+        self.object = session
+        messages.success(self.request, f'Emergency session "{session.session_number}" scheduled successfully.')
+        return redirect("emergency:session_detail", pk=session.pk)
+
+    def forms_invalid(self, form, trainer_formset):
+        messages.error(self.request, "Please correct the errors below.")
+        return self.render_to_response(self.get_context_data(form=form, trainer_formset=trainer_formset))
+
+
+class EmergencySessionListView(EmergencyAccessMixin, ListView):
+    model = EmergencySession
+    template_name = "emergency/session_list.html"
+    context_object_name = "sessions"
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = self.get_session_queryset()
+        search = self.request.GET.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(session_number__icontains=search)
+                | Q(topic__name__icontains=search)
+                | Q(trainers__trainer_name__icontains=search)
+            ).distinct()
+
+        topic = self.request.GET.get("topic", "").strip()
+        if topic:
+            queryset = queryset.filter(topic_id=topic)
+
+        status = self.request.GET.get("status", "").strip()
+        if status:
+            queryset = queryset.filter(status=status)
+
+        plant = self.request.GET.get("plant", "").strip()
+        if plant:
+            queryset = queryset.filter(plant_id=plant)
+
+        drill_type = self.request.GET.get("drill_type", "").strip()
+        if drill_type:
+            queryset = queryset.filter(drill_type=drill_type)
+
+        date_from = self.request.GET.get("date_from", "").strip()
+        if date_from:
+            queryset = queryset.filter(scheduled_date__gte=date_from)
+
+        date_to = self.request.GET.get("date_to", "").strip()
+        if date_to:
+            queryset = queryset.filter(scheduled_date__lte=date_to)
+
+        return queryset.order_by("-scheduled_date", "-scheduled_time")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["topics"] = EmergencyTopic.objects.filter(is_active=True).order_by("name")
+        context["plants"] = Plant.objects.filter(is_active=True).order_by("name")
+        context["status_choices"] = EmergencySession.STATUS_CHOICES
+        context["drill_type_choices"] = EmergencySession.DRILL_TYPE_CHOICES
+        context["search_query"] = self.request.GET.get("search", "")
+        context["selected_topic"] = self.request.GET.get("topic", "")
+        context["selected_status"] = self.request.GET.get("status", "")
+        context["selected_plant"] = self.request.GET.get("plant", "")
+        context["selected_drill_type"] = self.request.GET.get("drill_type", "")
+        return context
+
+
+class EmergencyReportListView(EmergencyAccessMixin, ListView):
+    model = EmergencyReport
+    template_name = "emergency/report_list.html"
+    context_object_name = "reports"
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = self.get_report_queryset().order_by("-incident_date", "-incident_time", "-id")
+        search = self.request.GET.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(report_number__icontains=search)
+                | Q(emergency_title__icontains=search)
+                | Q(description__icontains=search)
+            )
+
+        emergency_type = self.request.GET.get("emergency_type", "").strip()
+        if emergency_type:
+            queryset = queryset.filter(emergency_type=emergency_type)
+
+        severity = self.request.GET.get("severity", "").strip()
+        if severity:
+            queryset = queryset.filter(severity_level=severity)
+
+        plant = self.request.GET.get("plant", "").strip()
+        if plant:
+            queryset = queryset.filter(plant_id=plant)
+
+        date_from = self.request.GET.get("date_from", "").strip()
+        if date_from:
+            queryset = queryset.filter(incident_date__gte=date_from)
+
+        date_to = self.request.GET.get("date_to", "").strip()
+        if date_to:
+            queryset = queryset.filter(incident_date__lte=date_to)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["plants"] = Plant.objects.filter(is_active=True).order_by("name")
+        context["emergency_type_choices"] = EmergencyReport.EMERGENCY_TYPE_CHOICES
+        context["severity_choices"] = EmergencyReport.SEVERITY_CHOICES
+        context["search_query"] = self.request.GET.get("search", "")
+        context["selected_emergency_type"] = self.request.GET.get("emergency_type", "")
+        context["selected_severity"] = self.request.GET.get("severity", "")
+        context["selected_plant"] = self.request.GET.get("plant", "")
+        return context
+
+
+class EmergencyReportCreateView(EmergencyAccessMixin, CreateView):
+    model = EmergencyReport
+    form_class = EmergencyReportForm
+    template_name = "emergency/report_create.html"
+    success_url = reverse_lazy("emergency:report_list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(self.get_location_context())
+        context["cancel_url"] = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER") or "/"
+        return context
+
+    def form_valid(self, form):
+        report = form.save(commit=False)
+        report.reported_by = self.request.user
+
+        user = self.request.user
+        if user.assigned_plants.count() == 1 and not form.cleaned_data.get("plant"):
+            report.plant = user.assigned_plants.first()
+        if user.assigned_zones.count() == 1 and not form.cleaned_data.get("zone"):
+            report.zone = user.assigned_zones.first()
+        if user.assigned_locations.count() == 1 and not form.cleaned_data.get("location"):
+            report.location = user.assigned_locations.first()
+        if user.assigned_sublocations.count() == 1 and not form.cleaned_data.get("sublocation"):
+            report.sublocation = user.assigned_sublocations.first()
+
+        response_team_members = list(form.cleaned_data.get("response_team_members") or [])
+        if response_team_members:
+            report.status = "ACTION_PENDING"
+        report.save()
+        form.save_m2m()
+        self.object = report
+
+        if response_team_members:
+            action_description = (report.immediate_actions_taken or "").strip() or f"Respond to emergency: {report.emergency_title}"
+            action_item = EmergencyActionItem.objects.create(
+                report=report,
+                action_description=action_description,
+                created_by=self.request.user,
+            )
+            action_item.assigned_to.set(response_team_members)
+            _notify_emergency_action_assigned(report, response_team_members)
+
+        for photo in self.request.FILES.getlist("photos"):
+            compressed_photo = compress_image(photo)
+            EmergencyReportPhoto.objects.create(
+                report=report,
+                photo=compressed_photo,
+                uploaded_by=self.request.user,
+            )
+
+        messages.success(self.request, f"Emergency report {report.report_number} submitted successfully.")
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
+
+
+class EmergencyReportDetailView(EmergencyAccessMixin, DetailView):
+    model = EmergencyReport
+    template_name = "emergency/report_detail.html"
+    context_object_name = "report"
+
+    def get_queryset(self):
+        return self.get_report_queryset()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["cancel_url"] = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER") or reverse("emergency:report_list")
+        action_item = getattr(self.object, "action_item", None)
+        investigation_report = getattr(self.object, "investigation_report", None)
+        context["action_item"] = action_item
+        context["investigation_report"] = investigation_report
+        context["user_can_complete_action"] = bool(
+            action_item
+            and self.request.user in action_item.assigned_to.all()
+            and self.request.user not in action_item.completed_by_users.all()
+            and action_item.status != "ACTION_PERFORMED"
+        )
+        context["can_investigate"] = (
+            self.object.status == "ACTION_PERFORMED"
+            and investigation_report is None
+            and (self.user_can_manage() or self.request.user == self.object.reported_by or self.request.user.is_superuser)
+        )
+        return context
+
+
+class EmergencyMyActionItemsView(EmergencyAccessMixin, ListView):
+    model = EmergencyActionItem
+    template_name = "emergency/my_action_items.html"
+    context_object_name = "action_items"
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = EmergencyActionItem.objects.filter(
+            assigned_to=self.request.user
+        ).select_related(
+            "report",
+            "report__plant",
+            "report__location",
+            "created_by",
+        ).prefetch_related(
+            "completed_by_users",
+            "assigned_to",
+        ).order_by("-created_at")
+
+        status_filter = self.request.GET.get("status", "").strip()
+        severity_filter = self.request.GET.get("severity", "").strip()
+
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        if severity_filter:
+            queryset = queryset.filter(report__severity_level=severity_filter)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        all_items = self.get_queryset()
+        my_completed = all_items.filter(completed_by_users=self.request.user)
+        my_pending = all_items.exclude(completed_by_users=self.request.user)
+
+        context["total_assigned"] = all_items.count()
+        context["completed_count"] = my_completed.count()
+        context["pending_count"] = my_pending.count()
+        context["overdue_count"] = 0
+        context["selected_status"] = self.request.GET.get("status", "")
+        context["selected_severity"] = self.request.GET.get("severity", "")
+        context["status_choices"] = EmergencyActionItem.STATUS_CHOICES
+        context["severity_choices"] = EmergencyReport.SEVERITY_CHOICES
+
+        for item in context["action_items"]:
+            item.user_has_completed = self.request.user in item.completed_by_users.all()
+
+        return context
+
+
+class EmergencyActionItemCompleteView(EmergencyAccessMixin, UpdateView):
+    model = EmergencyActionItem
+    form_class = EmergencyActionItemCompletionForm
+    template_name = "emergency/action_item_complete.html"
+    context_object_name = "action_item"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if request.user not in self.object.assigned_to.all():
+            messages.error(request, "You are not assigned to this emergency action item.")
+            return redirect("emergency:my_action_items")
+        if self.object.status == "ACTION_PERFORMED":
+            messages.info(request, "This emergency action has already been completed.")
+            return redirect("emergency:my_action_items")
+        if request.user in self.object.completed_by_users.all():
+            messages.info(request, "You have already completed this emergency action.")
+            return redirect("emergency:my_action_items")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["report"] = self.object.report
+        return context
+
+    def form_valid(self, form):
+        action_item = form.save(commit=False)
+        action_item.completion_datetime = form.cleaned_data["completion_datetime"]
+        action_item.completion_remarks = form.cleaned_data["completion_remarks"]
+        if form.cleaned_data.get("attachment"):
+            action_item.attachment = form.cleaned_data["attachment"]
+        action_item.save()
+        action_item.completed_by_users.add(self.request.user)
+        action_item.save()
+
+        report = action_item.report
+        report.status = "ACTION_PERFORMED"
+        report.save(update_fields=["status", "updated_at"])
+
+        _notify_emergency_action_completed(action_item)
+        messages.success(self.request, "Emergency action marked as completed successfully.")
+        return redirect("emergency:my_action_items")
+
+
+class EmergencyInvestigationCreateView(EmergencyAccessMixin, CreateView):
+    model = EmergencyInvestigationReport
+    form_class = EmergencyInvestigationReportForm
+    template_name = "emergency/investigation_create.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.report = get_object_or_404(self.get_report_queryset(), pk=self.kwargs["report_pk"])
+        if self.report.status != "ACTION_PERFORMED":
+            messages.error(request, "Investigation can start only after action is performed.")
+            return redirect("emergency:report_detail", pk=self.report.pk)
+        if hasattr(self.report, "investigation_report"):
+            messages.info(request, "Investigation report already exists for this emergency.")
+            return redirect("emergency:investigation_detail", pk=self.report.investigation_report.pk)
+        if not (self.user_can_manage() or request.user == self.report.reported_by or request.user.is_superuser):
+            messages.error(request, "You don't have permission to investigate this emergency.")
+            return redirect("emergency:report_detail", pk=self.report.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["report"] = self.report
+        context["cancel_url"] = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER") or reverse("emergency:report_detail", args=[self.report.pk])
+        return context
+
+    def form_valid(self, form):
+        investigation = form.save(commit=False)
+        investigation.report = self.report
+        investigation.investigator = self.request.user
+        investigation.save()
+
+        self.report.status = "INVESTIGATION_COMPLETED"
+        self.report.save(update_fields=["status", "updated_at"])
+
+        _notify_emergency_investigation_completed(investigation)
+        messages.success(self.request, "Emergency investigation submitted successfully.")
+        return redirect("emergency:report_detail", pk=self.report.pk)
+
+
+class EmergencyInvestigationDetailView(EmergencyAccessMixin, DetailView):
+    model = EmergencyInvestigationReport
+    template_name = "emergency/investigation_detail.html"
+    context_object_name = "investigation"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["report"] = self.object.report
+        context["cancel_url"] = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER") or reverse("emergency:report_detail", args=[self.object.report.pk])
+        return context
+
+
+class EmergencyDepartmentUsersAjaxView(EmergencyAccessMixin, TemplateView):
+    def get(self, request, *args, **kwargs):
+        department_id = request.GET.get("department_id")
+        if not department_id:
+            return JsonResponse([], safe=False)
+
+        users = User.objects.filter(
+            department_id=department_id,
+            is_active=True,
+            is_active_employee=True,
+        ).order_by("first_name", "last_name", "username")
+
+        data = [
+            {
+                "id": user.id,
+                "name": user.get_full_name() or user.username,
+                "employee_id": user.employee_id or "",
+            }
+            for user in users
+        ]
+        return JsonResponse(data, safe=False)
+
+
+class EmergencyGetZonesAjaxView(EmergencyAccessMixin, TemplateView):
+    def get(self, request, *args, **kwargs):
+        plant_id = request.GET.get("plant_id")
+        zones = Zone.objects.filter(plant_id=plant_id, is_active=True).values("id", "name", "code")
+        return JsonResponse(list(zones), safe=False)
+
+
+class EmergencyGetLocationsAjaxView(EmergencyAccessMixin, TemplateView):
+    def get(self, request, *args, **kwargs):
+        zone_id = request.GET.get("zone_id")
+        locations = Location.objects.filter(zone_id=zone_id, is_active=True).values("id", "name", "code")
+        return JsonResponse(list(locations), safe=False)
+
+
+class EmergencyGetSublocationsAjaxView(EmergencyAccessMixin, TemplateView):
+    def get(self, request, *args, **kwargs):
+        location_id = request.GET.get("location_id")
+        sublocations = SubLocation.objects.filter(location_id=location_id, is_active=True).values(
+            "id",
+            "name",
+            "code",
+        )
+        return JsonResponse(list(sublocations), safe=False)
+
+
+class ERTQuestionListView(EmergencyAccessMixin, View):
+    template_name = "emergency/question_list.html"
+
+    def get(self, request, *args, **kwargs):
+        questions = ERTDepartmentQuestion.objects.select_related("department").filter(is_active=True)
+        filter_form = ERTDepartmentQuestionFilterForm(request.GET or None)
+
+        if filter_form.is_valid():
+            department = filter_form.cleaned_data.get("department")
+            question_type = filter_form.cleaned_data.get("question_type")
+            is_critical = filter_form.cleaned_data.get("is_critical")
+            search = filter_form.cleaned_data.get("search")
+
+            if department:
+                questions = questions.filter(department=department)
+            if question_type:
+                questions = questions.filter(question_type=question_type)
+            if is_critical == "true":
+                questions = questions.filter(is_critical=True)
+            elif is_critical == "false":
+                questions = questions.filter(is_critical=False)
+            if search:
+                questions = questions.filter(
+                    Q(question_text__icontains=search)
+                    | Q(question_code__icontains=search)
+                    | Q(department__name__icontains=search)
+                )
+
+        questions = questions.order_by("department__name", "question_code")
+        paginator = Paginator(questions, 25)
+        page_obj = paginator.get_page(request.GET.get("page"))
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "filter_form": filter_form,
+                "page_obj": page_obj,
+                "total_questions": questions.count(),
+            },
+        )
+
+
+class ERTQuestionCreateView(EmergencyAccessMixin, CreateView):
+    model = ERTDepartmentQuestion
+    form_class = ERTDepartmentQuestionForm
+    template_name = "emergency/question_form.html"
+    success_url = reverse_lazy("emergency:question_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.user_can_manage():
+            messages.error(request, "You don't have permission to manage ERT department questions.")
+            return redirect("emergency:question_list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        self.object.created_by = self.request.user
+        self.object.save()
+        messages.success(self.request, f'Question "{self.object.question_code}" created successfully.')
+        if self.request.POST.get("action_type") == "save_and_add":
+            return redirect("emergency:question_create")
+        return redirect(self.success_url)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Add ERT Department Question"
+        context["action"] = "Create"
+        return context
+
+
+class ERTQuestionUpdateView(EmergencyAccessMixin, UpdateView):
+    model = ERTDepartmentQuestion
+    form_class = ERTDepartmentQuestionForm
+    template_name = "emergency/question_form.html"
+    success_url = reverse_lazy("emergency:question_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.user_can_manage():
+            messages.error(request, "You don't have permission to edit ERT department questions.")
+            return redirect("emergency:question_list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        self.object = form.save(commit=False)
+        self.object.updated_by = self.request.user
+        self.object.save()
+        messages.success(self.request, f'Question "{self.object.question_code}" updated successfully.')
+        return redirect(self.success_url)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = f"Edit Question: {self.object.question_code}"
+        context["action"] = "Update"
+        context["question"] = self.object
+        return context
+
+
+class ERTQuestionDeleteView(EmergencyAccessMixin, View):
+    template_name = "emergency/question_confirm_delete.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.user_can_manage():
+            messages.error(request, "You don't have permission to delete ERT department questions.")
+            return redirect("emergency:question_list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, pk, *args, **kwargs):
+        question = get_object_or_404(ERTDepartmentQuestion, pk=pk)
+        return render(request, self.template_name, {"question": question})
+
+    def post(self, request, pk, *args, **kwargs):
+        question = get_object_or_404(ERTDepartmentQuestion, pk=pk)
+        question.is_active = False
+        question.updated_by = request.user
+        question.save(update_fields=["is_active", "updated_by", "updated_at"])
+        messages.success(request, f'Question "{question.question_code}" deleted successfully.')
+        return redirect("emergency:question_list")
+
+
+class ContactDirectoryView(EmergencyAccessMixin, TemplateView):
+    template_name = "emergency/contact_directory.html"
+
+    department_sections = [
+        ("Medical Department", ["medical department", "medical"]),
+        ("Fire Safety Department", ["fire safety department", "fire safety", "fire department", "fire response"]),
+        ("Logistic Department", ["logistic department", "logistics department", "logistic", "logistics"]),
+        ("Management Department", ["management department", "management"]),
+        ("Security Department", ["security department", "security"]),
+        ("ERM Department", ["erm department", "erm", "emergency response management"]),
+    ]
+
+    def _normalize_department_name(self, value):
+        return re.sub(r"[^a-z0-9]+", "", (value or "").strip().lower())
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        employees = list(
+            User.objects.select_related("department", "plant")
+            .filter(
+                is_active=True,
+                is_active_employee=True,
+                department__isnull=False,
+                department__is_active=True,
+            )
+            .order_by("department__name", "first_name", "last_name", "username")
+        )
+
+        employees_by_department = {}
+        for employee in employees:
+            normalized_name = self._normalize_department_name(employee.department.name)
+            employees_by_department.setdefault(normalized_name, []).append(employee)
+
+        contact_sections = []
+        for section_name, aliases in self.department_sections:
+            allowed_names = {self._normalize_department_name(section_name)}
+            allowed_names.update(self._normalize_department_name(alias) for alias in aliases)
+
+            section_employees = []
+            for normalized_name, department_employees in employees_by_department.items():
+                if normalized_name in allowed_names:
+                    section_employees.extend(department_employees)
+
+            contact_sections.append(
+                {
+                    "name": section_name,
+                    "employees": section_employees,
+                    "employee_count": len(section_employees),
+                }
+            )
+        context["plants"] = (Plant.objects.filter(is_active=True).order_by("name"))
+        context["contact_sections"] = contact_sections
+        return context
+
+class EmergencySessionDetailView(EmergencyAccessMixin, DetailView):
+    model = EmergencySession
+    template_name = "emergency/session_detail.html"
+    context_object_name = "session"
+
+    def get_queryset(self):
+        return self.get_session_queryset()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        session = self.object
+        context["trainers"] = session.trainers.select_related("trainer_department").all()
+        context["trainer_count"] = context["trainers"].count()
+        context["participants"] = session.participants.select_related(
+            "employee",
+            "submission",
+            "reviewed_by",
+        ).all()
+        context["participant_count"] = context["participants"].count()
+        context["completed_participants"] = session.participants.select_related(
+            "employee",
+            "submission",
+            "submission__reviewed_by",
+        ).filter(submission__isnull=False)
+        context["can_review"] = self.can_review_sessions()
+        context["cancel_url"] = (
+            self.request.GET.get("next")
+            or self.request.META.get("HTTP_REFERER")
+            or reverse_lazy("emergency:session_list")
+        )
+        return context
+
+
+class EmergencyAddParticipantsView(EmergencyAccessMixin, View):
+    template_name = "emergency/add_participants.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.session = get_object_or_404(self.get_session_queryset(), pk=kwargs["pk"])
+        if self.session.status in ["COMPLETED", "CANCELLED"]:
+            messages.error(request, "Cannot add participants to a completed or cancelled session.")
+            return redirect("emergency:session_detail", pk=self.session.pk)
+        if not self.user_can_manage():
+            messages.error(request, "You don't have permission to add participants.")
+            return redirect("emergency:session_detail", pk=self.session.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def _available_employees(self, search=""):
+        already_added = self.session.participants.values_list("employee_id", flat=True)
+        employees = User.objects.filter(
+            is_active=True,
+            is_active_employee=True,
+        ).filter(
+            Q(plant=self.session.plant) | Q(assigned_plants=self.session.plant)
+        ).exclude(id__in=already_added).select_related("department", "role").distinct()
+
+        if search:
+            employees = employees.filter(
+                Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(employee_id__icontains=search)
+            )
+        return employees
+
+    def get(self, request, *args, **kwargs):
+        search = request.GET.get("search", "").strip()
+        context = {
+            "session": self.session,
+            "available_employees": self._available_employees(search),
+            "current_participants": self.session.participants.select_related("employee", "submission").all(),
+            "search_query": search,
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        employee_ids = request.POST.getlist("employee_ids")
+        added_count = 0
+        synced_count = 0
+
+        for employee in User.objects.filter(id__in=employee_ids, is_active=True):
+            participant, created = EmergencySessionParticipant.objects.get_or_create(
+                session=self.session,
+                employee=employee,
+            )
+            synced_questions = self.sync_participant_question_assignments(participant)
+            if created:
+                added_count += 1
+            if synced_questions:
+                synced_count += 1
+
+        if added_count:
+            messages.success(
+                request,
+                f"{added_count} participant(s) added successfully and department questions assigned to {synced_count} participant(s).",
+            )
+        else:
+            messages.info(request, "No new participants were added.")
+        return redirect("emergency:session_detail", pk=self.session.pk)
+
+
+class MyEmergencySessionsView(EmergencyAccessMixin, ListView):
+    model = EmergencySessionParticipant
+    template_name = "emergency/my_sessions.html"
+    context_object_name = "participants"
+    paginate_by = 15
+
+    def get_queryset(self):
+        queryset = EmergencySessionParticipant.objects.filter(
+            employee=self.request.user
+        ).select_related(
+            "session",
+            "session__topic",
+            "session__plant",
+            "session__location",
+            "submission",
+        )
+        status = self.request.GET.get("status", "").strip()
+        if status:
+            queryset = queryset.filter(status=status)
+        return queryset.order_by("-session__scheduled_date", "-session__scheduled_time")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["selected_status"] = self.request.GET.get("status", "").strip()
+        context["status_choices"] = EmergencySessionParticipant.STATUS_CHOICES
+        context["stats"] = {
+            "all": EmergencySessionParticipant.objects.filter(employee=self.request.user).count(),
+            "assigned": EmergencySessionParticipant.objects.filter(employee=self.request.user, status="ASSIGNED").count(),
+            "in_progress": EmergencySessionParticipant.objects.filter(employee=self.request.user, status="IN_PROGRESS").count(),
+            "completed": EmergencySessionParticipant.objects.filter(employee=self.request.user, status="COMPLETED").count(),
+            "approved": EmergencySessionParticipant.objects.filter(employee=self.request.user, status="APPROVED").count(),
+            "rejected": EmergencySessionParticipant.objects.filter(employee=self.request.user, status="REJECTED").count(),
+        }
+        return context
+
+
+class EmergencySessionStartView(EmergencyAccessMixin, View):
+    template_name = "emergency/session_start.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.participant = get_object_or_404(
+            EmergencySessionParticipant.objects.select_related(
+                "session",
+                "session__topic",
+                "session__plant",
+                "session__location",
+                "employee",
+            ),
+            pk=kwargs["participant_id"],
+            employee=request.user,
+        )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        if self.participant.has_submission and self.participant.status in ["COMPLETED", "APPROVED"]:
+            return redirect("emergency:submission_review", submission_id=self.participant.submission.id)
+
+        assigned_question_count = self.sync_participant_question_assignments(self.participant)
+        if not assigned_question_count and self.participant.employee.department_id:
+            messages.warning(
+                request,
+                f"No active department questions are available for {self.participant.employee.department.name}.",
+            )
+
+        if self.participant.status == "ASSIGNED":
+            self.participant.status = "IN_PROGRESS"
+            self.participant.started_at = timezone.now()
+            self.participant.save(update_fields=["status", "started_at"])
+            if self.participant.session.status == "SCHEDULED":
+                self.participant.session.status = "ONGOING"
+                self.participant.session.save(update_fields=["status", "updated_at"])
+
+        assignments = self.participant.question_assignments.select_related(
+            "question",
+            "question__department",
+        )
+        existing_submission = getattr(self.participant, "submission", None)
+        existing_responses = {}
+        if existing_submission:
+            existing_responses = {
+                response.assignment_id: response
+                for response in existing_submission.responses.select_related("question", "question__department")
+            }
+
+        questions_by_department = defaultdict(list)
+        for assignment in assignments:
+            questions_by_department[assignment.question.department].append(assignment)
+
+        context = {
+            "participant": self.participant,
+            "session": self.participant.session,
+            "questions_by_department": dict(questions_by_department),
+            "total_questions": assignments.count(),
+            "existing_responses": existing_responses,
+        }
+        return render(request, self.template_name, context)
+
+
+class EmergencySessionSubmitView(EmergencyAccessMixin, View):
+    def post(self, request, participant_id):
+        participant = get_object_or_404(
+            EmergencySessionParticipant.objects.select_related("session", "employee"),
+            pk=participant_id,
+            employee=request.user,
+        )
+        if participant.has_submission and participant.status in ["COMPLETED", "APPROVED"]:
+            messages.info(request, "This submission is already completed and is available in read-only mode.")
+            return redirect("emergency:submission_review", submission_id=participant.submission.id)
+
+        assignments = participant.question_assignments.select_related("question")
+        if not assignments.exists():
+            self.sync_participant_question_assignments(participant)
+            assignments = participant.question_assignments.select_related("question")
+        if not assignments.exists():
+            messages.error(request, "No questions are assigned for this session.")
+            return redirect("emergency:my_sessions")
+
+        with transaction.atomic():
+            submission, _ = EmergencySessionSubmission.objects.get_or_create(
+                participant=participant,
+                defaults={
+                    "submitted_by": request.user,
+                    "overall_remarks": "",
+                },
+            )
+            if submission.submitted_by_id != request.user.id:
+                submission.submitted_by = request.user
+            submission.overall_remarks = ""
+            existing_responses = {response.assignment_id: response for response in submission.responses.all()}
+
+            missing_answers = []
+            for assignment in assignments:
+                question = assignment.question
+                answer = request.POST.get(f"question_{assignment.id}", "").strip()
+                remarks = request.POST.get(f"remarks_{assignment.id}", "").strip()
+                photo = request.FILES.get(f"photo_{assignment.id}")
+                existing_response = existing_responses.get(assignment.id)
+                has_existing_photo = bool(existing_response and existing_response.photo)
+
+                if not answer:
+                    missing_answers.append(question.question_code)
+                    continue
+
+                if question.is_remarks_mandatory and not remarks:
+                    missing_answers.append(f"{question.question_code} remarks")
+                    continue
+
+                if question.is_photo_required and not photo and not has_existing_photo:
+                    missing_answers.append(f"{question.question_code} photo")
+                    continue
+
+                response_defaults = {
+                    "question": question,
+                    "answer": answer,
+                    "remarks": remarks,
+                }
+                if photo:
+                    response_defaults["photo"] = photo
+                elif existing_response and existing_response.photo:
+                    response_defaults["photo"] = existing_response.photo
+
+                EmergencySessionResponse.objects.update_or_create(
+                    submission=submission,
+                    assignment=assignment,
+                    defaults=response_defaults,
+                )
+
+            if missing_answers:
+                transaction.set_rollback(True)
+                messages.error(request, f"Please complete all required fields: {', '.join(missing_answers[:5])}")
+                return redirect("emergency:session_start", participant_id=participant.id)
+
+            stale_assignment_ids = set(existing_responses.keys()) - set(assignments.values_list("id", flat=True))
+            if stale_assignment_ids:
+                submission.responses.filter(assignment_id__in=stale_assignment_ids).delete()
+
+            submission.compliance_score = submission.calculate_compliance_score()
+            submission.review_status = "PENDING"
+            submission.reviewed_by = None
+            submission.reviewed_at = None
+            submission.reviewer_remarks = ""
+            submission.save()
+
+            participant.status = "COMPLETED"
+            participant.completed_at = timezone.now()
+            participant.save(update_fields=["status", "completed_at"])
+
+            if participant.session.participants.exclude(status__in=["COMPLETED", "APPROVED"]).exists():
+                participant.session.status = "ONGOING"
+            else:
+                participant.session.status = "COMPLETED"
+            participant.session.save(update_fields=["status", "updated_at"])
+
+        messages.success(request, "Your session answers were submitted successfully.")
+        return redirect("emergency:my_sessions")
+
+
+class EmergencySubmissionReviewView(EmergencyAccessMixin, View):
+    template_name = "emergency/session_review.html"
+
+    def dispatch(self, request, submission_id, *args, **kwargs):
+        self.submission = get_object_or_404(
+            EmergencySessionSubmission.objects.select_related(
+                "participant",
+                "participant__session",
+                "participant__employee",
+                "submitted_by",
+            ).prefetch_related(
+                "responses__question",
+                "responses__question__department",
+            ),
+            pk=submission_id,
+        )
+        can_view = (
+            request.user == self.submission.submitted_by
+            or self.can_review_sessions()
+            or request.user.is_superuser
+        )
+        if not can_view:
+            messages.error(request, "You are not authorized to view this submission.")
+            return redirect("emergency:my_sessions")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self):
+        responses_by_department = defaultdict(list)
+        for response in self.submission.responses.select_related("question", "question__department"):
+            responses_by_department[response.question.department].append(response)
+        return {
+            "submission": self.submission,
+            "participant": self.submission.participant,
+            "session": self.submission.participant.session,
+            "responses_by_department": dict(responses_by_department),
+            "can_review": self.can_review_sessions(),
+            "is_owner": self.request.user == self.submission.submitted_by,
+            "show_review_actions": self.can_review_sessions() and self.submission.review_status == "PENDING",
+            'cancel_url' : (self.request.GET.get('next') or self.request.META.get('HTTP_REFERER') or '/')
+        }
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, self.get_context_data())
+
+    def post(self, request, *args, **kwargs):
+        if not self.can_review_sessions():
+            messages.error(request, "You don't have permission to review this submission.")
+            return redirect("emergency:submission_review", submission_id=self.submission.id)
+
+        action = request.POST.get("action")
+        remarks = request.POST.get("reviewer_remarks", "").strip()
+        if action not in ["approve", "reject"]:
+            messages.error(request, "Invalid review action.")
+            return redirect("emergency:submission_review", submission_id=self.submission.id)
+
+        self.submission.review_status = "APPROVED" if action == "approve" else "REJECTED"
+        self.submission.reviewer_remarks = remarks
+        self.submission.reviewed_by = request.user
+        self.submission.reviewed_at = timezone.now()
+        self.submission.save(update_fields=["review_status", "reviewer_remarks", "reviewed_by", "reviewed_at"])
+
+        participant = self.submission.participant
+        participant.status = "APPROVED" if action == "approve" else "REJECTED"
+        participant.reviewed_by = request.user
+        participant.reviewed_at = timezone.now()
+        participant.save(update_fields=["status", "reviewed_by", "reviewed_at"])
+
+        messages.success(request, f"Submission {self.submission.review_status.lower()} successfully.")
+        return redirect("emergency:submission_review", submission_id=self.submission.id)

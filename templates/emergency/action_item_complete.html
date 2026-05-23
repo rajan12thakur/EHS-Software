@@ -1,0 +1,81 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Complete Emergency Action{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'emergency:my_action_items' %}">My Action Items</a></li>
+<li class="breadcrumb-item active">Complete Action Item</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="fas fa-check-circle text-success mr-2"></i>Complete Emergency Action</h3>
+        <a href="{% url 'emergency:my_action_items' %}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left mr-1"></i>Back to My Actions</a>
+      </div>
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0"><i class="fas fa-bell text-danger mr-2"></i>Emergency Information</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Report Number:</strong> <span class="badge badge-info">{{ report.report_number }}</span></p>
+              <p><strong>Emergency Title:</strong> {{ report.emergency_title }}</p>
+              <p><strong>Type:</strong> {{ report.get_emergency_type_display }}</p>
+            </div>
+            <div class="col-md-6">
+              <p><strong>Severity:</strong> {{ report.get_severity_level_display }}</p>
+              <p><strong>Location:</strong> {{ report.plant.name }} / {{ report.location.name }}</p>
+              <p><strong>Description:</strong> {{ report.description|truncatewords:15 }}</p>
+            </div>
+            <div class="col-md-12">
+              <strong>Assigned Action:</strong>
+              <p class="mt-2 p-3 bg-light border-left border-primary">{{ action_item.action_description }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm">
+        <div class="card-header bg-success text-white">
+          <h5 class="mb-0"><i class="fas fa-clipboard-check mr-2"></i>Mark as Complete</h5>
+        </div>
+        <div class="card-body">
+          <form method="post" enctype="multipart/form-data" id="completionForm">
+            {% csrf_token %}
+            <div class="form-group">
+              <label class="font-weight-bold">Completion Date & Time <span class="text-danger">*</span></label>
+              {{ form.completion_datetime }}
+            </div>
+            <div class="form-group">
+              <label class="font-weight-bold">Completion Remarks <span class="text-danger">*</span></label>
+              {{ form.completion_remarks }}
+            </div>
+            <div class="form-group">
+              <label class="font-weight-bold">Upload Attachment</label>
+              {{ form.attachment }}
+            </div>
+            <button type="submit" class="btn btn-success btn-lg" id="submitBtn"><i class="fas fa-check-circle mr-1"></i>Mark as Completed</button>
+            <a href="{% url 'emergency:my_action_items' %}" class="btn btn-outline-secondary btn-lg ml-2">Cancel</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('completionForm');
+  const btn = document.getElementById('submitBtn');
+  form.addEventListener('submit', function () {
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Processing...';
+  });
+});
+</script>
+{% endblock %}

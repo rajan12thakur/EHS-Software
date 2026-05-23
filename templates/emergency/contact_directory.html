@@ -1,0 +1,649 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Contact Directory{% endblock %}
+{% block page_title %}Emergency Contact Directory{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item">
+  <a href="{% url 'emergency:home' %}">Emergency Response Management</a>
+</li>
+<li class="breadcrumb-item active">Contact Directory</li>
+{% endblock %}
+
+{% block content %}
+
+<style>
+  .directory-shell {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .directory-banner,
+  .department-panel {
+    border: none;
+    border-radius: 20px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+  }
+
+  .directory-banner {
+    overflow: hidden;
+  }
+
+  .directory-banner .card-body {
+    padding: 1.5rem;
+    background:
+      radial-gradient(circle at top right, rgba(220, 38, 38, 0.08), transparent 32%),
+      radial-gradient(circle at left center, rgba(37, 99, 235, 0.1), transparent 28%);
+  }
+
+  .directory-subtitle {
+    max-width: 760px;
+    color: #64748b;
+    margin-bottom: 0;
+  }
+
+  .department-panel .card-body {
+    padding: 1.5rem;
+  }
+
+  .department-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .department-title {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+
+  .department-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #dbeafe, #eff6ff);
+    color: #2563eb;
+    font-size: 1.15rem;
+  }
+
+  .department-title h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .department-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  .employee-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .employee-card {
+    height: 100%;
+    border: 2px solid #dbe4f0;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .employee-card:hover {
+    transform: translateY(-4px);
+    border-color: #93c5fd;
+    box-shadow: 0 18px 35px rgba(37, 99, 235, 0.12);
+  }
+
+  .employee-card .card-body {
+    padding: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .employee-top {
+    display: flex;
+    gap: 0.95rem;
+    align-items: flex-start;
+  }
+
+  .employee-avatar {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #eef2ff, #e0f2fe);
+    color: #475569;
+    font-size: 1.5rem;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18);
+  }
+
+  .employee-name {
+    margin: 0;
+    color: #111827;
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  .employee-designation {
+    color: #64748b;
+    font-size: 0.96rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .employee-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .employee-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.38rem 0.7rem;
+    border-radius: 999px;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .employee-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .icon-action {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    border: 1px solid #dbe4f0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #1f2937;
+    background: #fff;
+    transition: all 0.2s ease;
+  }
+
+  .icon-action:not(a) {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .icon-action:hover {
+    color: #fff;
+    background: #2563eb;
+    border-color: #2563eb;
+    text-decoration: none;
+  }
+
+  .employee-contact {
+    padding-top: 0.9rem;
+    border-top: 1px solid #e2e8f0;
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .contact-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+    color: #475569;
+    font-size: 0.92rem;
+    word-break: break-word;
+  }
+
+  .contact-line i {
+    width: 16px;
+    margin-top: 0.18rem;
+    color: #64748b;
+  }
+
+  .empty-state {
+    border: 1px dashed #cbd5e1;
+    border-radius: 18px;
+    padding: 1.4rem;
+    text-align: center;
+    color: #64748b;
+    background: #f8fafc;
+  }
+
+  .directory-banner .card-body {
+  padding: 1.5rem 1.75rem;
+  background:
+    radial-gradient(circle at top right, rgba(220, 38, 38, 0.06), transparent 30%),
+    radial-gradient(circle at left center, rgba(37, 99, 235, 0.08), transparent 28%);
+}
+
+.directory-filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.55rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.filter-label i {
+  color: #2563eb;
+  font-size: 0.85rem;
+}
+
+.filter-control {
+  height: 50px;
+  border-radius: 14px;
+  border: 1px solid #d6deea;
+  background: #fff;
+  padding: 0 1rem;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  box-shadow: none !important;
+}
+
+.filter-control:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.08) !important;
+}
+
+.filter-reset-btn {
+  height: 50px;
+  min-width: 130px;
+  border-radius: 14px;
+  font-weight: 700;
+  padding: 0 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-button-group {
+  justify-content: flex-end;
+}
+
+@media (max-width: 1200px) {
+  .directory-filter-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .directory-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-reset-btn {
+    width: 100%;
+  }
+}
+</style>
+
+<div class="directory-shell">
+
+  <!-- FILTER + SEARCH -->
+  <!-- FILTER + SEARCH -->
+<div class="card directory-banner">
+  <div class="card-body">
+
+    <div class="directory-filter-grid">
+
+      <!-- Search -->
+      <div class="filter-group filter-search">
+        <label class="filter-label">
+          <i class="fas fa-search"></i>
+          Search Employee
+        </label>
+
+        <input
+          type="text"
+          id="directorySearch"
+          class="form-control filter-control"
+          placeholder="Search by name, email, phone or employee ID">
+      </div>
+
+      <!-- Department -->
+      <div class="filter-group">
+        <label class="filter-label">
+          <i class="fas fa-sitemap"></i>
+          Department
+        </label>
+
+        <select id="departmentFilter" class="form-select filter-control">
+          <option value="">All Departments</option>
+
+          {% for section in contact_sections %}
+          <option value="{{ section.name|lower }}">
+            {{ section.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Plant -->
+      <div class="filter-group">
+        <label class="filter-label">
+          <i class="fas fa-industry"></i>
+          Plant
+        </label>
+
+        <select id="plantFilter" class="form-select filter-control">
+          <option value="">All Plants</option>
+
+          {% for plant in plants %}
+          <option value="{{ plant.name|lower }}">
+            {{ plant.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Reset -->
+      <div class="filter-group filter-button-group">
+        <button
+          type="button"
+          id="resetFilters"
+          class="btn btn-primary filter-reset-btn">
+
+          <i class="fas fa-rotate-left me-1"></i>
+          Reset
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+  <!-- DEPARTMENTS -->
+  {% for section in contact_sections %}
+  <div class="card department-panel">
+
+    <div class="card-body">
+
+      <div class="department-header">
+
+        <div class="department-title">
+          <span class="department-icon">
+            <i class="fas fa-shield-alt"></i>
+          </span>
+
+          <div>
+            <h4>{{ section.name }}</h4>
+            <small class="text-muted">
+              Emergency response employees in this department
+            </small>
+          </div>
+        </div>
+
+        <span class="department-count">
+          <i class="fas fa-user-friends"></i>
+          {{ section.employee_count }}
+          Member{{ section.employee_count|pluralize }}
+        </span>
+
+      </div>
+
+      {% if section.employees %}
+
+      <div class="employee-grid">
+
+        {% for employee in section.employees %}
+        <div
+          class="employee-card"
+          data-name="{{ employee.get_full_name|lower }}"
+          data-email="{{ employee.email|default:''|lower }}"
+          data-phone="{{ employee.phone|default:''|lower }}"
+          data-employeeid="{{ employee.employee_id|default:''|lower }}"
+          data-department="{{ employee.department.name|lower }}"
+          data-plant="{{ employee.plant.name|default:''|lower }}">
+
+          <div class="card-body">
+
+            <div class="employee-top">
+
+              <span class="employee-avatar">
+                <i class="fas fa-user"></i>
+              </span>
+
+              <div>
+                <h5 class="employee-name">
+                  {{ employee.get_full_name }}
+                </h5>
+
+                <div class="employee-designation">
+                  {{ employee.job_title|default:"Emergency Response Team Member" }}
+                </div>
+              </div>
+
+            </div>
+
+            <div class="employee-meta">
+
+              <span class="employee-badge">
+                <i class="fas fa-sitemap"></i>
+                {{ employee.department.name }}
+              </span>
+
+              {% if employee.plant %}
+              <span class="employee-badge">
+                <i class="fas fa-industry"></i>
+                {{ employee.plant.name }}
+              </span>
+              {% endif %}
+
+            </div>
+
+            <div class="employee-actions">
+
+              {% if employee.phone %}
+              <a
+                href="tel:{{ employee.phone }}"
+                class="icon-action"
+                title="Call {{ employee.get_full_name }}">
+
+                <i class="fas fa-phone-alt"></i>
+              </a>
+              {% else %}
+              <span class="icon-action" title="Phone not available">
+                <i class="fas fa-phone-alt"></i>
+              </span>
+              {% endif %}
+
+              {% if employee.email %}
+              <a
+                href="mailto:{{ employee.email }}"
+                class="icon-action"
+                title="Email {{ employee.get_full_name }}">
+
+                <i class="fas fa-envelope"></i>
+              </a>
+              {% else %}
+              <span class="icon-action" title="Email not available">
+                <i class="fas fa-envelope"></i>
+              </span>
+              {% endif %}
+
+            </div>
+
+            <div class="employee-contact">
+
+              {% if employee.phone %}
+              <div class="contact-line">
+                <i class="fas fa-phone-alt"></i>
+                <span>{{ employee.phone }}</span>
+              </div>
+              {% endif %}
+
+              {% if employee.email %}
+              <div class="contact-line">
+                <i class="fas fa-envelope"></i>
+                <span>{{ employee.email }}</span>
+              </div>
+              {% endif %}
+
+              {% if employee.employee_id %}
+              <div class="contact-line">
+                <i class="fas fa-id-badge"></i>
+                <span>{{ employee.employee_id }}</span>
+              </div>
+              {% endif %}
+
+            </div>
+
+          </div>
+        </div>
+        {% endfor %}
+
+      </div>
+
+      {% else %}
+
+      <div class="empty-state">
+        <i class="fas fa-user-slash mb-2"></i>
+        <div>
+          No active employees found in {{ section.name }}.
+        </div>
+      </div>
+
+      {% endif %}
+
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- NO RESULTS -->
+  <div id="noResultsMessage" class="empty-state d-none">
+    <i class="fas fa-search-minus mb-2"></i>
+    <div>No employees found matching your filters.</div>
+  </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  const searchInput = document.getElementById('directorySearch');
+  const departmentFilter = document.getElementById('departmentFilter');
+  const plantFilter = document.getElementById('plantFilter');
+  const resetBtn = document.getElementById('resetFilters');
+
+  const employeeCards = document.querySelectorAll('.employee-card');
+  const departmentPanels = document.querySelectorAll('.department-panel');
+  const noResultsMessage = document.getElementById('noResultsMessage');
+
+  function filterDirectory() {
+
+    const search = searchInput.value.toLowerCase().trim();
+    const department = departmentFilter.value;
+    const plant = plantFilter.value;
+
+    let visibleEmployees = 0;
+
+    employeeCards.forEach(card => {
+
+      const name = card.dataset.name || '';
+      const email = card.dataset.email || '';
+      const phone = card.dataset.phone || '';
+      const employeeId = card.dataset.employeeid || '';
+      const dept = card.dataset.department || '';
+      const plantName = card.dataset.plant || '';
+
+      const matchesSearch =
+        name.includes(search) ||
+        email.includes(search) ||
+        phone.includes(search) ||
+        employeeId.includes(search);
+
+      const matchesDepartment =
+        !department || dept.includes(department);
+
+      const matchesPlant =
+        !plant || plantName.includes(plant);
+
+      const shouldShow =
+        matchesSearch &&
+        matchesDepartment &&
+        matchesPlant;
+
+      card.style.display = shouldShow ? '' : 'none';
+
+      if (shouldShow) {
+        visibleEmployees++;
+      }
+
+    });
+
+    // Hide empty department panels
+    departmentPanels.forEach(panel => {
+
+      const visibleCards = [...panel.querySelectorAll('.employee-card')]
+        .filter(card => card.style.display !== 'none');
+
+      panel.style.display =
+        visibleCards.length > 0 ? '' : 'none';
+
+    });
+
+    noResultsMessage.classList.toggle(
+      'd-none',
+      visibleEmployees !== 0
+    );
+  }
+
+  searchInput.addEventListener('input', filterDirectory);
+  departmentFilter.addEventListener('change', filterDirectory);
+  plantFilter.addEventListener('change', filterDirectory);
+
+  resetBtn.addEventListener('click', function () {
+
+    searchInput.value = '';
+    departmentFilter.value = '';
+    plantFilter.value = '';
+
+    filterDirectory();
+  });
+
+});
+</script>
+
+{% endblock %}

@@ -555,7 +555,6 @@
               </a>
             </li>
             {% endif %}
-            {% if my_pending_actions_count > 0 %}
             <li class="nav-item">
               <a href="{% url 'hazards:my_action_items' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'my_action_items' %}active{% endif %}">
@@ -566,7 +565,6 @@
                   </p>
                 </a>
               </li>
-              {% endif %}
           </ul>
         </li>
 
@@ -604,7 +602,6 @@
               </a>
             </li>
             {% endif %}
-             {% if my_pending_incidents_actions_count > 0 %}
             <li class="nav-item">
               <a href="{% url 'accidents:my_action_items' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'my_action_items' %}active{% endif %}">
@@ -612,7 +609,6 @@
                 <p>My Action Items</p>
               </a>
             </li>
-            {% endif %}
           </ul>
         </li>
 
@@ -940,6 +936,110 @@
           </ul>
         </li>
         {% endif %}
+        <li class="nav-item {% if 'emergency' in request.path %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if 'emergency' in request.path %}active{% endif %}">
+                <i class="nav-icon fas fa-broadcast-tower"></i>
+                <p>
+                    Emergency Response Management
+                    <i class="right fas fa-angle-left"></i>
+                </p>
+            </a>
+            <ul class="nav nav-treeview">
+                <li class="nav-item {% if request.resolver_match.url_name == 'topic_list' or request.resolver_match.url_name == 'question_list' %}menu-open{% endif %}">
+                    <a href="#" class="nav-link {% if request.resolver_match.url_name == 'topic_list' or request.resolver_match.url_name == 'question_list' %}active{% endif %}">
+                        <i class="nav-icon fas fa-cogs"></i>
+                        <p>
+                            Configurations
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:topic_list' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'topic_list' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Manage Topics</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:question_list' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'question_list' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Department Questions</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item {% if request.resolver_match.url_name in 'session_create session_list my_sessions contact_directory' %}menu-open{% endif %}">
+                    <a href="#" class="nav-link {% if request.resolver_match.url_name in 'session_create session_list my_sessions contact_directory' %}active{% endif %}">
+                        <i class="nav-icon fas fa-user-shield"></i>
+                        <p>
+                            Emergency Drill
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:session_create' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'session_create' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Schedule Session</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:session_list' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'session_list' or 'session_detail' in request.path %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>All Sessions</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:my_sessions' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'my_sessions' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>My Sessions</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:contact_directory' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'contact_directory' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Contact Directory</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}menu-open{% endif %}">
+                    <a href="#" class="nav-link {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}active{% endif %}">
+                        <i class="nav-icon fas fa-exclamation-triangle"></i>
+                        <p>
+                            Emergency Report
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:report_create' %}" class="nav-link {% if request.resolver_match.url_name == 'report_create' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Report Emergency</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:report_list' %}" class="nav-link {% if request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>All Emergency Reports</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                          <a href="{% url 'emergency:my_action_items' %}" class="nav-link {% if request.resolver_match.url_name == 'my_action_items' or request.resolver_match.url_name == 'action_item_complete' %}active{% endif %}">
+                            <i class="far fa-circle nav-icon"></i>
+                            <p>My Actions</p>
+                          </a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
         <li class="nav-item">
           <a href="#" class="nav-link">
             <i class="nav-icon fa-solid fa-person-digging"></i>
@@ -968,12 +1068,6 @@
                 <a href="#" class="nav-link">
                   <i class="nav-icon far fa-circle"></i>
                   <p>ToolBox Management</p>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a href="#" class="nav-link">
-                  <i class="nav-icon far fa-circle"></i>
-                  <p>Emergency Management</p>
                 </a>
               </li>
               <li class="nav-item">

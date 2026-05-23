@@ -387,6 +387,7 @@ class Permissions(models.Model):
             ('INJURY', 'Injury Module'),
             ('HAZARD', 'Hazard Module'),
             ('INSPECTION', 'Inspection Module'),
+            ('EMERGENCY', 'Emergency Module'),
             ('REPORTS', 'Reports Module'),
             ('ENV_DATA', 'Environmental Data Module'),
         ],

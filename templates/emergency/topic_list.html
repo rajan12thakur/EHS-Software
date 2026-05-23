@@ -1,0 +1,122 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Emergency Topics{% endblock %}
+{% block page_title %}Emergency Topics{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
+<li class="breadcrumb-item active">Manage Topics</li>
+{% endblock %}
+
+{% block content %}
+<style>
+.ehs-card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.table thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 2; }
+.table tbody tr:hover { background: rgba(0,123,255,0.05); }
+.badge { font-size: 0.75rem; padding: 5px 8px; border-radius: 6px; }
+@media(max-width: 768px) {
+  .table thead { display: none; }
+  .table tbody tr { display: block; margin-bottom: 15px; background: #fff; border-radius: 10px; padding: 10px; }
+  .table tbody td { display: flex; justify-content: space-between; padding: 6px 10px; border: none; }
+  .table tbody td::before { content: attr(data-label); font-weight: 600; color: #6c757d; }
+}
+</style>
+
+<div class="ehs-card mb-3">
+  <div class="card-body py-3">
+    <form method="GET" class="form-row align-items-center">
+      <div class="col-md-4 mb-2">
+        <input type="text" name="search" class="form-control form-control-sm" placeholder="Search topic..." value="{{ search_query }}">
+      </div>
+      <div class="col-md-3 mb-2">
+        <select name="category" class="form-control form-control-sm">
+          <option value="">All Categories</option>
+          {% for val, label in category_choices %}
+          <option value="{{ val }}" {% if selected_category == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-5 mb-2 text-md-right">
+        <button type="submit" class="btn btn-primary btn-sm mr-2">Filter</button>
+        <a href="{% url 'emergency:topic_list' %}" class="btn btn-outline-secondary btn-sm mr-2">Clear</a>
+        <a href="{% url 'emergency:topic_create' %}" class="btn btn-outline-primary btn-sm">+ Add Topic</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="ehs-card">
+  <div class="card-body p-0">
+    {% if topics %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Code</th>
+            <th>Category</th>
+            <th>Validity</th>
+            <th>Score</th>
+            <th>Mandatory</th>
+            <th>Sessions</th>
+            <th>Status</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for topic in topics %}
+          <tr>
+            <td data-label="Name">
+              <strong>{{ topic.name }}</strong><br>
+              <small class="text-muted">{{ topic.description|truncatechars:50 }}</small>
+            </td>
+            <td data-label="Code"><span class="badge badge-secondary">{{ topic.code }}</span></td>
+            <td data-label="Category">{{ topic.get_category_display }}</td>
+            <td data-label="Validity">{{ topic.validity_period_days }} days</td>
+            <td data-label="Score"><span class="badge badge-info">{{ topic.passing_score }}%</span></td>
+            <td data-label="Mandatory">
+              {% if topic.is_mandatory %}
+              <span class="badge badge-danger">Yes</span>
+              {% else %}
+              <span class="badge badge-light">No</span>
+              {% endif %}
+            </td>
+            <td data-label="Sessions"><span class="badge badge-primary">{{ topic.session_count }}</span></td>
+            <td data-label="Status">
+              {% if topic.is_active %}
+              <span class="badge badge-success">Active</span>
+              {% else %}
+              <span class="badge badge-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            <td data-label="Actions" class="text-center">
+              <a href="{% url 'emergency:topic_edit' topic.pk %}" class="btn btn-sm btn-outline-primary" title="Edit">
+                <i class="fas fa-edit"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if is_paginated %}
+    <div class="card-footer text-center">
+      {% if page_obj.has_previous %}
+      <a class="btn btn-sm btn-light mr-2" href="?page={{ page_obj.previous_page_number }}&search={{ search_query }}&category={{ selected_category }}">Prev</a>
+      {% endif %}
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+      <a class="btn btn-sm btn-light ml-2" href="?page={{ page_obj.next_page_number }}&search={{ search_query }}&category={{ selected_category }}">Next</a>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-broadcast-tower fa-3x mb-3"></i>
+      <p>No emergency topics found.</p>
+      <a href="{% url 'emergency:topic_create' %}" class="btn btn-primary">+ Add First Topic</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

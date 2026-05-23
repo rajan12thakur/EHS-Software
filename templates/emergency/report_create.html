@@ -1,0 +1,373 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}Report Emergency{% endblock %}
+{% block page_title %}Report Emergency{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
+<li class="breadcrumb-item active">Report Emergency</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .response-dropdown-menu {
+    max-height: 260px;
+    overflow-y: auto;
+    width: 100%;
+    padding: 0.75rem;
+  }
+  .response-dropdown-menu .form-check {
+    margin-bottom: 0.5rem;
+  }
+  .readonly-field {
+    background-color: #e9ecef !important;
+  }
+  .camera-only {
+    display: none;
+  }
+  @media (max-width: 767.98px) {
+    .camera-only {
+      display: block;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-md-12">
+    <div class="ehs-card">
+      <div class="card-header bg-danger text-white">
+        <h3 class="card-title mb-0">
+          <i class="fas fa-bell mr-2"></i>Report Emergency
+        </h3>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" id="emergencyReportForm">
+        {% csrf_token %}
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle mr-2"></i>
+            <strong>Note:</strong> All fields marked with <span class="text-danger">*</span> are mandatory.
+          </div>
+
+          {% if form.errors or form.non_field_errors %}
+          <div class="alert alert-danger">
+            <h5 class="mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Please correct the errors below</h5>
+            {{ form.non_field_errors }}
+            {% for field in form %}
+              {% if field.errors %}
+              <div><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <h5 class="mb-3"><i class="fas fa-exclamation-circle mr-2"></i>Emergency Information</h5>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label for="{{ form.emergency_title.id_for_label }}">Emergency Title <span class="text-danger">*</span></label>
+              {{ form.emergency_title }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="{{ form.emergency_type.id_for_label }}">Emergency Type <span class="text-danger">*</span></label>
+              {{ form.emergency_type }}
+            </div>
+            <div class="col-md-4 mb-3" id="otherEmergencyTypeWrapper" style="display:none;">
+              <label for="{{ form.other_emergency_type.id_for_label }}">Other Emergency Type <span class="text-danger">*</span></label>
+              {{ form.other_emergency_type }}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.severity_level.id_for_label }}">Severity Level <span class="text-danger">*</span></label>
+              {{ form.severity_level }}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.incident_date.id_for_label }}">Date of Incident <span class="text-danger">*</span></label>
+              {{ form.incident_date }}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.incident_time.id_for_label }}">Time of Incident <span class="text-danger">*</span></label>
+              {{ form.incident_time }}
+            </div>
+          </div>
+
+          <hr>
+
+          <h5 class="mb-3"><i class="fas fa-map-marker-alt mr-2"></i>Location Information</h5>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label for="id_plant">Plant <span class="text-danger">*</span></label>
+              {% if user_assigned_plants.count == 1 %}
+                <input type="text" class="form-control readonly-field" value="{{ user_assigned_plants.first.name }} ({{ user_assigned_plants.first.code }})" readonly>
+                <input type="hidden" name="plant" id="id_plant" value="{{ user_assigned_plants.first.id }}">
+              {% else %}
+                {{ form.plant }}
+              {% endif %}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.zone.id_for_label }}">Zone</label>
+              {{ form.zone }}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.location.id_for_label }}">Location <span class="text-danger">*</span></label>
+              {{ form.location }}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.sublocation.id_for_label }}">Sub-Location</label>
+              {{ form.sublocation }}
+            </div>
+            <div class="col-md-12 mb-3">
+              <label for="{{ form.additional_location_details.id_for_label }}">Additional Location Details</label>
+              {{ form.additional_location_details }}
+            </div>
+          </div>
+
+          <hr>
+
+          <h5 class="mb-3"><i class="fas fa-file-alt mr-2"></i>Incident Description</h5>
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label for="{{ form.description.id_for_label }}">Detailed Description <span class="text-danger">*</span></label>
+              {{ form.description }}
+            </div>
+            <div class="col-md-12 mb-3">
+              <label for="{{ form.immediate_actions_taken.id_for_label }}">Immediate Actions Taken</label>
+              {{ form.immediate_actions_taken }}
+            </div>
+          </div>
+
+          <hr>
+
+          <h5 class="mb-3"><i class="fas fa-users mr-2"></i>Emergency Response Team</h5>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.department.id_for_label }}">Department</label>
+              {{ form.department }}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label>Response Team Members</label>
+              <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-block text-left dropdown-toggle" type="button" id="responseTeamDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  Select response team members
+                </button>
+                <div class="dropdown-menu response-dropdown-menu" aria-labelledby="responseTeamDropdown" id="responseTeamMenu">
+                  <div class="text-muted small" id="responseTeamPlaceholder">Select a department to load team members.</div>
+                  <div id="responseTeamOptions"></div>
+                </div>
+              </div>
+              {{ form.response_team_members }}
+            </div>
+          </div>
+
+          <hr>
+
+          <h5 class="mb-3"><i class="fas fa-camera mr-2"></i>Attachments</h5>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="photos">Upload Photos</label>
+              <input type="file" class="form-control-file" id="photos" name="photos" multiple accept="image/*">
+              <small class="form-text text-muted">You can attach multiple images.</small>
+            </div>
+            <div class="col-md-6 mb-3 camera-only">
+              <label for="mobile_photos">Click Photo</label>
+              <input type="file" class="form-control-file" id="mobile_photos" name="photos" accept="image/*" capture="environment">
+              <small class="form-text text-muted">Mobile users can capture a photo directly.</small>
+            </div>
+          </div>
+          <hr>
+          <h5 class="mb-3"><i class="fas fa-user-edit mr-2"></i>Reporting Information</h5>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label>Reported By</label>
+                <input type="text" class="form-control readonly-field" value="{{ user.get_full_name|default:user.username }}" readonly>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label>Reported Date</label>
+                <input type="text" class="form-control readonly-field" value="{% now 'd/m/Y H:i' %}" readonly>
+              </div>
+            </div>
+        </div>
+
+        <div class="card-footer">
+          <button type="submit" class="btn btn-danger btn-lg">
+            <i class="fas fa-paper-plane mr-2"></i>Submit Emergency Report
+          </button>
+          <a href="{{ cancel_url }}" class="btn btn-secondary btn-lg ml-2">
+            <i class="fas fa-times mr-2"></i>Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const plantField = document.getElementById('id_plant');
+  const zoneField = document.getElementById('id_zone');
+  const locationField = document.getElementById('id_location');
+  const sublocationField = document.getElementById('id_sublocation');
+  const emergencyTypeField = document.getElementById('id_emergency_type');
+  const otherEmergencyWrapper = document.getElementById('otherEmergencyTypeWrapper');
+  const otherEmergencyInput = document.getElementById('id_other_emergency_type');
+  const departmentField = document.getElementById('id_department');
+  const responseTeamOptions = document.getElementById('responseTeamOptions');
+  const responseTeamPlaceholder = document.getElementById('responseTeamPlaceholder');
+  const responseTeamDropdown = document.getElementById('responseTeamDropdown');
+  const responseTeamSelect = document.getElementById('id_response_team_members');
+
+  function populateSelect(select, items, emptyLabel) {
+    if (!select) return;
+    select.innerHTML = '';
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = emptyLabel;
+    select.appendChild(emptyOption);
+    items.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = item.name;
+      select.appendChild(option);
+    });
+  }
+
+  function updateOtherEmergencyType() {
+    const show = emergencyTypeField && emergencyTypeField.value === 'OTHER';
+    otherEmergencyWrapper.style.display = show ? 'block' : 'none';
+    if (show) {
+      otherEmergencyInput.setAttribute('required', 'required');
+    } else {
+      otherEmergencyInput.removeAttribute('required');
+      otherEmergencyInput.value = '';
+    }
+  }
+
+  function getSelectedTeamNames() {
+    return Array.from(responseTeamOptions.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.dataset.name);
+  }
+
+  function syncResponseTeamButton() {
+    const names = getSelectedTeamNames();
+    responseTeamDropdown.textContent = names.length ? names.join(', ') : 'Select response team members';
+  }
+
+  function renderResponseTeamOptions(users) {
+    const selectedValues = new Set(Array.from(responseTeamSelect.options).filter(option => option.selected).map(option => option.value));
+    responseTeamOptions.innerHTML = '';
+    responseTeamSelect.innerHTML = '';
+
+    if (!users.length) {
+      responseTeamPlaceholder.textContent = 'No users found for the selected department.';
+      responseTeamPlaceholder.style.display = 'block';
+      syncResponseTeamButton();
+      return;
+    }
+
+    responseTeamPlaceholder.style.display = 'none';
+
+    users.forEach(user => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'form-check';
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'form-check-input';
+      checkbox.id = `response_team_${user.id}`;
+      checkbox.value = user.id;
+      checkbox.dataset.name = user.employee_id ? `${user.name} (${user.employee_id})` : user.name;
+      checkbox.checked = selectedValues.has(String(user.id));
+
+      const label = document.createElement('label');
+      label.className = 'form-check-label';
+      label.setAttribute('for', checkbox.id);
+      label.textContent = checkbox.dataset.name;
+
+      const option = document.createElement('option');
+      option.value = user.id;
+      option.textContent = checkbox.dataset.name;
+      option.selected = checkbox.checked;
+      responseTeamSelect.appendChild(option);
+
+      checkbox.addEventListener('change', function () {
+        Array.from(responseTeamSelect.options).forEach(selectOption => {
+          if (selectOption.value === checkbox.value) {
+            selectOption.selected = checkbox.checked;
+          }
+        });
+        syncResponseTeamButton();
+      });
+
+      wrapper.appendChild(checkbox);
+      wrapper.appendChild(label);
+      responseTeamOptions.appendChild(wrapper);
+    });
+
+    syncResponseTeamButton();
+  }
+
+  function fetchResponseTeamMembers() {
+    if (!departmentField || !departmentField.value) {
+      responseTeamOptions.innerHTML = '';
+      responseTeamSelect.innerHTML = '';
+      responseTeamPlaceholder.textContent = 'Select a department to load team members.';
+      responseTeamPlaceholder.style.display = 'block';
+      syncResponseTeamButton();
+      return;
+    }
+
+    fetch(`{% url 'emergency:ajax_department_users' %}?department_id=${departmentField.value}`)
+      .then(response => response.json())
+      .then(data => renderResponseTeamOptions(data))
+      .catch(() => {
+        responseTeamPlaceholder.textContent = 'Unable to load team members right now.';
+        responseTeamPlaceholder.style.display = 'block';
+      });
+  }
+
+  if (plantField) {
+    plantField.addEventListener('change', function () {
+      fetch(`{% url 'emergency:ajax_get_zones' %}?plant_id=${this.value}`)
+        .then(response => response.json())
+        .then(data => {
+          populateSelect(zoneField, data, '-- Select Zone --');
+          populateSelect(locationField, [], '-- Select Location --');
+          populateSelect(sublocationField, [], '-- Select Sub-Location --');
+        });
+    });
+  }
+
+  if (zoneField) {
+    zoneField.addEventListener('change', function () {
+      fetch(`{% url 'emergency:ajax_get_locations' %}?zone_id=${this.value}`)
+        .then(response => response.json())
+        .then(data => {
+          populateSelect(locationField, data, '-- Select Location --');
+          populateSelect(sublocationField, [], '-- Select Sub-Location --');
+        });
+    });
+  }
+
+  if (locationField) {
+    locationField.addEventListener('change', function () {
+      fetch(`{% url 'emergency:ajax_get_sublocations' %}?location_id=${this.value}`)
+        .then(response => response.json())
+        .then(data => populateSelect(sublocationField, data, '-- Select Sub-Location --'));
+    });
+  }
+
+  if (emergencyTypeField) {
+    emergencyTypeField.addEventListener('change', updateOtherEmergencyType);
+    updateOtherEmergencyType();
+  }
+
+  if (departmentField) {
+    departmentField.addEventListener('change', fetchResponseTeamMembers);
+    fetchResponseTeamMembers();
+  }
+});
+</script>
+{% endblock %}

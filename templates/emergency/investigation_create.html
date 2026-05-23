@@ -1,0 +1,82 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Emergency Investigation{% endblock %}
+{% block page_title %}Emergency Investigation{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'emergency:report_detail' report.pk %}">{{ report.report_number }}</a></li>
+<li class="breadcrumb-item active">Investigation</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="card shadow">
+    <div class="card-header bg-warning">
+      <h3 class="card-title mb-0"><i class="fas fa-search mr-2"></i>Emergency Investigation Report</h3>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info">
+        Complete this investigation report. All fields marked with <span class="text-danger">*</span> are mandatory.
+      </div>
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+          <h5 class="mb-0">Emergency Information</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-4"><p><strong>Report Number:</strong> {{ report.report_number }}</p></div>
+            <div class="col-md-4"><p><strong>Emergency Title:</strong> {{ report.emergency_title }}</p></div>
+            <div class="col-md-4"><p><strong>Status:</strong> {{ report.get_status_display }}</p></div>
+          </div>
+        </div>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label>Investigation Date <span class="text-danger">*</span></label>
+            {{ form.investigation_date }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label>Completed Date <span class="text-danger">*</span></label>
+            {{ form.completed_date }}
+          </div>
+          <div class="col-md-12 mb-3">
+            <label>Investigation Team <span class="text-danger">*</span></label>
+            {{ form.investigation_team }}
+          </div>
+          <div class="col-md-12 mb-3">
+            <label>Sequence of Events <span class="text-danger">*</span></label>
+            {{ form.sequence_of_events }}
+          </div>
+          <div class="col-md-12 mb-3">
+            <label>Root Cause Analysis <span class="text-danger">*</span></label>
+            {{ form.root_cause_analysis }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label>Evidence Collected</label>
+            {{ form.evidence_collected }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label>Witness Statements</label>
+            {{ form.witness_statements }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label>Immediate Corrective Actions <span class="text-danger">*</span></label>
+            {{ form.immediate_corrective_actions }}
+          </div>
+          <div class="col-md-6 mb-3">
+            <label>Preventive Measures <span class="text-danger">*</span></label>
+            {{ form.preventive_measures }}
+          </div>
+        </div>
+        <button type="submit" class="btn btn-warning btn-lg"><i class="fas fa-save mr-1"></i>Submit Investigation</button>
+        <a href="{{ cancel_url }}" class="btn btn-secondary btn-lg ml-2">Cancel</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
