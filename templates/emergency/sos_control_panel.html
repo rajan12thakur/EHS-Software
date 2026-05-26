@@ -1,0 +1,228 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Emergency SOS Control Panel{% endblock %}
+{% block page_title %}Emergency SOS Control Panel{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
+<li class="breadcrumb-item active">SOS Control Panel</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .readonly-field { background-color: #e9ecef !important; }
+  .sos-shell { border: none; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 45px rgba(220, 53, 69, 0.15); }
+  .sos-header { background: linear-gradient(135deg, #b5121b, #e53935 55%, #ff8a65); color: #fff; padding: 1.4rem 1.5rem; }
+  .sos-header h3 { margin: 0; font-weight: 700; }
+  .sos-pulse { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.18); box-shadow: 0 0 0 0 rgba(255,255,255,0.45); animation: pulse 1.8s infinite; }
+  .sos-strip { background: linear-gradient(90deg, rgba(181,18,27,0.08), rgba(229,57,53,0.02)); border-left: 4px solid #dc3545; padding: 0.85rem 1rem; border-radius: 12px; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.45); }
+    70% { box-shadow: 0 0 0 16px rgba(255,255,255,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-10 offset-lg-1">
+    <div class="card sos-shell">
+      <div class="sos-header d-flex justify-content-between align-items-center">
+        <div>
+          <h3><i class="fas fa-exclamation-triangle mr-2"></i>Emergency SOS Control Panel</h3>
+          <div class="small mt-2">Raise an emergency alert quickly and route it to the right response department.</div>
+        </div>
+        <div class="sos-pulse">
+          <i class="fas fa-broadcast-tower fa-lg"></i>
+        </div>
+      </div>
+
+      <form method="post" id="sosForm">
+        {% csrf_token %}
+        <div class="card-body p-4">
+
+          {% if form.errors or form.non_field_errors %}
+          <div class="alert alert-danger">
+            <h6 class="mb-2"><i class="fas fa-exclamation-circle mr-2"></i>Please correct the errors below</h6>
+            {{ form.non_field_errors }}
+            {% for field in form %}
+              {% if field.errors %}
+              <div><strong>{{ field.label }}:</strong> {{ field.errors|join:", " }}</div>
+              {% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <h5 class="mb-3">Emergency Information</h5>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <label for="{{ form.emergency_title.id_for_label }}">Incident Title</label>
+              {{ form.emergency_title }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="{{ form.emergency_type.id_for_label }}">Emergency Type <span class="text-danger">*</span></label>
+              {{ form.emergency_type }}
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="{{ form.severity_level.id_for_label }}">Severity Level <span class="text-danger">*</span></label>
+              {{ form.severity_level }}
+            </div>
+            <div class="col-md-6 mb-3" id="otherEmergencyTypeWrapper" style="display:none;">
+              <label for="{{ form.other_emergency_type.id_for_label }}">Other Emergency Type <span class="text-danger">*</span></label>
+              {{ form.other_emergency_type }}
+            </div>
+          </div>
+
+          <hr>
+
+          <h5 class="mb-3">Location Information</h5>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label for="id_plant">Plant <span class="text-danger">*</span></label>
+              {% if user_assigned_plants.count == 1 %}
+                <input type="text" class="form-control readonly-field" value="{{ user_assigned_plants.first.name }} ({{ user_assigned_plants.first.code }})" readonly>
+                <input type="hidden" name="plant" id="id_plant" value="{{ user_assigned_plants.first.id }}">
+              {% else %}
+                {{ form.plant }}
+              {% endif %}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.zone.id_for_label }}">Zone</label>
+              {{ form.zone }}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.location.id_for_label }}">Location <span class="text-danger">*</span></label>
+              {{ form.location }}
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="{{ form.sublocation.id_for_label }}">Sub-Location</label>
+              {{ form.sublocation }}
+            </div>
+          </div>
+
+          <hr>
+
+          <h5 class="mb-3">Incident Description</h5>
+          <div class="row">
+            <div class="col-md-12 mb-3">
+              <label for="{{ form.description.id_for_label }}">Description <span class="text-danger">*</span></label>
+              {{ form.description }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer bg-white">
+          <button type="submit" class="btn btn-danger btn-lg" id="submitBtn">
+            <i class="fas fa-broadcast-tower mr-2"></i>Trigger SOS Alert
+          </button>
+          <a href="{{ cancel_url }}" class="btn btn-secondary btn-lg ml-2">
+            <i class="fas fa-times mr-2"></i>Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('sosForm');
+  const emergencyTypeField = document.getElementById('id_emergency_type');
+  const emergencyTitleField = document.getElementById('id_emergency_title');
+  const otherEmergencyWrapper = document.getElementById('otherEmergencyTypeWrapper');
+  const otherEmergencyInput = document.getElementById('id_other_emergency_type');
+  const plantField = document.getElementById('id_plant');
+  const zoneField = document.getElementById('id_zone');
+  const locationField = document.getElementById('id_location');
+  const sublocationField = document.getElementById('id_sublocation');
+  const submitBtn = document.getElementById('submitBtn');
+  let isSubmitting = false;
+
+  function populateSelect(select, items, emptyLabel) {
+    if (!select) return;
+    select.innerHTML = '';
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = emptyLabel;
+    select.appendChild(emptyOption);
+    items.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = item.code ? `${item.name} (${item.code})` : item.name;
+      select.appendChild(option);
+    });
+  }
+
+  function updateTitleFromType() {
+    if (!emergencyTypeField || !emergencyTitleField) return;
+    const selected = emergencyTypeField.options[emergencyTypeField.selectedIndex];
+    emergencyTitleField.value = selected && selected.value ? `SOS-${selected.text}` : 'SOS-Emergency';
+  }
+
+  function updateOtherEmergencyType() {
+    const show = emergencyTypeField && emergencyTypeField.value === 'OTHER';
+    otherEmergencyWrapper.style.display = show ? 'block' : 'none';
+    if (show) {
+      otherEmergencyInput.setAttribute('required', 'required');
+    } else {
+      otherEmergencyInput.removeAttribute('required');
+      otherEmergencyInput.value = '';
+    }
+  }
+
+  if (plantField) {
+    plantField.addEventListener('change', function () {
+      fetch(`{% url 'emergency:ajax_get_zones' %}?plant_id=${this.value}`)
+        .then(response => response.json())
+        .then(data => {
+          populateSelect(zoneField, data, '-- Select Zone --');
+          populateSelect(locationField, [], '-- Select Location --');
+          populateSelect(sublocationField, [], '-- Select Sub-Location --');
+        });
+    });
+  }
+
+  if (zoneField) {
+    zoneField.addEventListener('change', function () {
+      fetch(`{% url 'emergency:ajax_get_locations' %}?zone_id=${this.value}`)
+        .then(response => response.json())
+        .then(data => {
+          populateSelect(locationField, data, '-- Select Location --');
+          populateSelect(sublocationField, [], '-- Select Sub-Location --');
+        });
+    });
+  }
+
+  if (locationField) {
+    locationField.addEventListener('change', function () {
+      fetch(`{% url 'emergency:ajax_get_sublocations' %}?location_id=${this.value}`)
+        .then(response => response.json())
+        .then(data => populateSelect(sublocationField, data, '-- Select Sub-Location --'));
+    });
+  }
+
+  if (emergencyTypeField) {
+    emergencyTypeField.addEventListener('change', function () {
+      updateTitleFromType();
+      updateOtherEmergencyType();
+    });
+    updateTitleFromType();
+    updateOtherEmergencyType();
+  }
+
+  form.addEventListener('submit', function (event) {
+    if (isSubmitting) {
+      event.preventDefault();
+      return false;
+    }
+    isSubmitting = true;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sending SOS...';
+  });
+});
+</script>
+{% endblock %}

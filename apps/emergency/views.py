@@ -1,13 +1,9 @@
 import re
 from collections import defaultdict
-from urllib.parse import urljoin
-
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Count, Prefetch, Q
 from django.db import transaction
-from django.contrib.contenttypes.models import ContentType
-from django.conf import settings
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, reverse_lazy
@@ -17,120 +13,49 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, TemplateView, UpdateView
 from apps.accounts.models import User
-from apps.organizations.models import Location, Plant, SubLocation, Zone
+from apps.organizations.models import Department, Location, Plant, SubLocation, Zone
 from apps.common.image_utils import compress_image
-from apps.notifications.models import Notification
 from apps.notifications.services import NotificationService
 from .forms import *
 from .models import *
 from apps.organizations.models import Plant, Zone, Location, SubLocation
 
 
-def _build_absolute_url(path):
-    base_url = getattr(settings, "SITE_URL", "").rstrip("/")
-    if not base_url:
-        return path
-    return urljoin(f"{base_url}/", path.lstrip("/"))
+SOS_DEPARTMENT_ALIAS_MAP = {
+    "FIRE": ["fire safety department", "fire safety", "fire department", "fire response"],
+    "CHEMICAL_SPILL": ["fire safety department", "fire safety", "erm department", "erm"],
+    "GAS_LEAK": ["fire safety department", "fire safety", "erm department", "erm"],
+    "ELECTRICAL": ["fire safety department", "fire safety"],
+    "MEDICAL": ["medical department", "medical"],
+    "EXPLOSION": ["fire safety department", "fire safety", "management department", "management"],
+    "NATURAL_DISASTER": ["management department", "management", "security department", "security"],
+    "OTHER": ["erm department", "erm"],
+}
 
 
-def _notify_emergency_action_assigned(report, recipients):
-    report_url = _build_absolute_url(reverse("emergency:report_detail", args=[report.id]))
-    title = f"Emergency Action Assigned | {report.report_number}"
-    subject = f"Emergency action assigned - {report.report_number}"
-    message = (
-        f"Hello,\n\n"
-        f"You have been assigned to respond to emergency report {report.report_number}.\n\n"
-        f"Emergency Title : {report.emergency_title}\n"
-        f"Type            : {report.get_emergency_type_display()}\n"
-        f"Severity        : {report.get_severity_level_display()}\n"
-        f"Plant           : {report.plant.name}\n"
-        f"Location        : {report.location.name}\n"
-        f"Reported By     : {report.reported_by.get_full_name()}\n\n"
-        f"Description:\n{report.description[:400]}\n\n"
-        f"Open report: {report_url}\n"
-    )
-    content_type = ContentType.objects.get_for_model(report)
-    for recipient in recipients:
-        Notification.objects.create(
-            recipient=recipient,
-            content_type=content_type,
-            object_id=report.id,
-            notification_type="INCIDENT_ACTION_ASSIGNED",
-            title=title,
-            message=message,
-        )
-        NotificationService.send_email(
-            recipient=recipient,
-            subject=subject,
-            message=message,
-        )
+def _normalize_department_name(value):
+    return re.sub(r"[^a-z0-9]+", "", (value or "").strip().lower())
 
 
-def _notify_emergency_action_completed(action_item):
-    report = action_item.report
-    report_url = _build_absolute_url(reverse("emergency:report_detail", args=[report.id]))
-    recipients = [report.reported_by]
-    title = f"Emergency Action Performed | {report.report_number}"
-    subject = f"Emergency action performed - {report.report_number}"
-    message = (
-        f"Hello,\n\n"
-        f"An emergency response action has been completed for report {report.report_number}.\n\n"
-        f"Emergency Title : {report.emergency_title}\n"
-        f"Completed By    : "
-        f"{', '.join(user.get_full_name() or user.username for user in action_item.completed_by_users.all())}\n"
-        f"Completed On    : {timezone.localtime(action_item.completion_datetime).strftime('%d %b %Y %H:%M') if action_item.completion_datetime else 'N/A'}\n\n"
-        f"Open report: {report_url}\n"
-    )
-    content_type = ContentType.objects.get_for_model(report)
-    for recipient in recipients:
-        Notification.objects.create(
-            recipient=recipient,
-            content_type=content_type,
-            object_id=report.id,
-            notification_type="INCIDENT_ACTION_ASSIGNED",
-            title=title,
-            message=message,
-        )
-        NotificationService.send_email(
-            recipient=recipient,
-            subject=subject,
-            message=message,
-        )
+def _get_sos_department_for_type(emergency_type):
+    aliases = SOS_DEPARTMENT_ALIAS_MAP.get(emergency_type, SOS_DEPARTMENT_ALIAS_MAP["OTHER"])
+    normalized_aliases = {_normalize_department_name(alias) for alias in aliases}
+    for department in Department.objects.filter(is_active=True).order_by("name"):
+        if _normalize_department_name(department.name) in normalized_aliases:
+            return department
+    return None
 
 
-def _notify_emergency_investigation_completed(investigation):
-    report = investigation.report
-    report_url = _build_absolute_url(reverse("emergency:report_detail", args=[report.id]))
-    recipients = list(report.response_team_members.all())
-    if report.reported_by not in recipients:
-        recipients.append(report.reported_by)
-
-    title = f"Emergency Investigation Completed | {report.report_number}"
-    subject = f"Emergency investigation completed - {report.report_number}"
-    message = (
-        f"Hello,\n\n"
-        f"The investigation for emergency report {report.report_number} has been completed.\n\n"
-        f"Emergency Title   : {report.emergency_title}\n"
-        f"Investigator      : {investigation.investigator.get_full_name() if investigation.investigator else 'N/A'}\n"
-        f"Investigation Date: {investigation.investigation_date}\n"
-        f"Completed On      : {investigation.completed_date}\n\n"
-        f"Open report: {report_url}\n"
-    )
-    content_type = ContentType.objects.get_for_model(report)
-    for recipient in recipients:
-        Notification.objects.create(
-            recipient=recipient,
-            content_type=content_type,
-            object_id=report.id,
-            notification_type="INCIDENT_INVESTIGATION_COMPLETED",
-            title=title,
-            message=message,
-        )
-        NotificationService.send_email(
-            recipient=recipient,
-            subject=subject,
-            message=message,
-        )
+def _get_department_users_for_report(report, department):
+    if not department:
+        return User.objects.none()
+    return User.objects.filter(
+        department=department,
+        is_active=True,
+        is_active_employee=True,
+    ).filter(
+        Q(plant=report.plant) | Q(assigned_plants=report.plant)
+    ).distinct().order_by("first_name", "last_name", "username")
 
 
 class EmergencyAccessMixin(LoginRequiredMixin):
@@ -149,6 +74,12 @@ class EmergencyAccessMixin(LoginRequiredMixin):
         user = self.request.user
         return user.is_superuser or user.has_permission(code)
 
+    def can_manage_emergency_capa(self):
+        return self.user_can_manage() or self.has_emergency_permission("CREATE_CAPA")
+
+    def can_close_emergency(self):
+        return self.user_can_manage() or self.has_emergency_permission("CLOSE_EMERGENCY")
+
     def get_session_queryset(self):
         queryset = EmergencySession.objects.select_related(
             "topic",
@@ -158,7 +89,14 @@ class EmergencyAccessMixin(LoginRequiredMixin):
             "sublocation",
             "created_by",
         ).prefetch_related(
-            Prefetch("trainers", queryset=EmergencySessionTrainer.objects.select_related("trainer_department"))
+            Prefetch(
+                "trainers",
+                queryset=EmergencySessionTrainer.objects.select_related(
+                    "trainer_department",
+                    "trainer_user",
+                    "trainer_user__department",
+                ),
+            )
         )
         user = self.request.user
         if user.is_superuser or user.is_admin_user:
@@ -228,10 +166,19 @@ class EmergencyAccessMixin(LoginRequiredMixin):
             "sublocation",
             "department",
             "reported_by",
+            "closed_by",
         ).select_related(
             "action_item",
             "investigation_report",
-        ).prefetch_related("response_team_members", "photos", "action_item__assigned_to", "action_item__completed_by_users")
+        ).prefetch_related(
+            "response_team_members",
+            "photos",
+            "action_item__assigned_to",
+            "action_item__completed_by_users",
+            "capas__assigned_to",
+            "capas__created_by",
+            "capas__closed_by",
+        )
 
         user = self.request.user
         if user.is_superuser or user.is_admin_user:
@@ -410,6 +357,11 @@ class EmergencySessionListView(EmergencyAccessMixin, ListView):
                 Q(session_number__icontains=search)
                 | Q(topic__name__icontains=search)
                 | Q(trainers__trainer_name__icontains=search)
+                | Q(trainers__trainer_user__first_name__icontains=search)
+                | Q(trainers__trainer_user__last_name__icontains=search)
+                | Q(trainers__trainer_user__username__icontains=search)
+                | Q(trainers__trainer_user__employee_id__icontains=search)
+                | Q(trainers__trainer_department__name__icontains=search)
             ).distinct()
 
         topic = self.request.GET.get("topic", "").strip()
@@ -540,6 +492,13 @@ class EmergencyReportCreateView(EmergencyAccessMixin, CreateView):
         form.save_m2m()
         self.object = report
 
+        NotificationService.notify(
+            content_object=report,
+            notification_type="EMERGENCY_REPORTED",
+            module="EMERGENCY",
+            extra_recipients=[report.reported_by],
+        )
+
         if response_team_members:
             action_description = (report.immediate_actions_taken or "").strip() or f"Respond to emergency: {report.emergency_title}"
             action_item = EmergencyActionItem.objects.create(
@@ -548,7 +507,12 @@ class EmergencyReportCreateView(EmergencyAccessMixin, CreateView):
                 created_by=self.request.user,
             )
             action_item.assigned_to.set(response_team_members)
-            _notify_emergency_action_assigned(report, response_team_members)
+            NotificationService.notify(
+                content_object=action_item,
+                notification_type="EMERGENCY_ACTION_ASSIGNED",
+                module="EMERGENCY",
+                extra_recipients=response_team_members + [report.reported_by],
+            )
 
         for photo in self.request.FILES.getlist("photos"):
             compressed_photo = compress_image(photo)
@@ -559,6 +523,97 @@ class EmergencyReportCreateView(EmergencyAccessMixin, CreateView):
             )
 
         messages.success(self.request, f"Emergency report {report.report_number} submitted successfully.")
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
+
+
+class EmergencySOSControlPanelView(EmergencyAccessMixin, CreateView):
+    model = EmergencyReport
+    form_class = EmergencySOSReportForm
+    template_name = "emergency/sos_control_panel.html"
+    success_url = reverse_lazy("emergency:report_list")
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(self.get_location_context())
+        context["cancel_url"] = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER") or reverse("emergency:home")
+        return context
+
+    def form_valid(self, form):
+        report = form.save(commit=False)
+        report.reported_by = self.request.user
+        report.incident_date = timezone.localdate()
+        report.incident_time = timezone.localtime().time().replace(second=0, microsecond=0)
+        report.immediate_actions_taken = ""
+        report.additional_location_details = ""
+
+        user = self.request.user
+        if user.assigned_plants.count() == 1 and not form.cleaned_data.get("plant"):
+            report.plant = user.assigned_plants.first()
+        elif not user.assigned_plants.exists() and user.plant_id and not form.cleaned_data.get("plant"):
+            report.plant = user.plant
+        if user.assigned_zones.count() == 1 and not form.cleaned_data.get("zone"):
+            report.zone = user.assigned_zones.first()
+        if user.assigned_locations.count() == 1 and not form.cleaned_data.get("location"):
+            report.location = user.assigned_locations.first()
+        if user.assigned_sublocations.count() == 1 and not form.cleaned_data.get("sublocation"):
+            report.sublocation = user.assigned_sublocations.first()
+
+        target_department = _get_sos_department_for_type(report.emergency_type)
+        report.department = target_department
+        recipients = list(_get_department_users_for_report(report, target_department))
+        if recipients:
+            report.status = "ACTION_PENDING"
+        report.save()
+        self.object = report
+
+        if recipients:
+            report.response_team_members.set(recipients)
+            action_item = EmergencyActionItem.objects.create(
+                report=report,
+                action_description=f"SOS emergency response required: {report.emergency_title}",
+                created_by=self.request.user,
+            )
+            action_item.assigned_to.set(recipients)
+            NotificationService.notify(
+                content_object=report,
+                notification_type="EMERGENCY_REPORTED",
+                module="EMERGENCY",
+                extra_recipients=[report.reported_by],
+            )
+            NotificationService.notify(
+                content_object=action_item,
+                notification_type="EMERGENCY_ACTION_ASSIGNED",
+                module="EMERGENCY",
+                extra_recipients=recipients + [report.reported_by],
+            )
+        else:
+            NotificationService.notify(
+                content_object=report,
+                notification_type="EMERGENCY_REPORTED",
+                module="EMERGENCY",
+                extra_recipients=[report.reported_by],
+            )
+
+        messages.success(self.request, f"SOS alert {report.report_number} reported successfully.")
+        if target_department and not recipients:
+            messages.warning(
+                self.request,
+                f"The alert was mapped to {target_department.name}, but no active users were found for the selected plant.",
+            )
+        elif not target_department:
+            messages.warning(
+                self.request,
+                "The alert was saved, but no matching response department was found for this emergency type.",
+            )
         return redirect(self.get_success_url())
 
     def form_invalid(self, form):
@@ -579,8 +634,17 @@ class EmergencyReportDetailView(EmergencyAccessMixin, DetailView):
         context["cancel_url"] = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER") or reverse("emergency:report_list")
         action_item = getattr(self.object, "action_item", None)
         investigation_report = getattr(self.object, "investigation_report", None)
+        can_create_capa, capa_message = self.object.can_create_capa
+        can_close, closure_message = self.object.can_be_closed
         context["action_item"] = action_item
         context["investigation_report"] = investigation_report
+        context["capas"] = self.object.capas.select_related("assigned_to", "created_by", "closed_by")
+        context["latest_capa"] = self.object.latest_capa
+        context["can_create_capa"] = can_create_capa and self.can_manage_emergency_capa()
+        context["capa_message"] = capa_message
+        context["show_closure_action"] = self.can_close_emergency()
+        context["can_close_report"] = can_close and self.can_close_emergency()
+        context["closure_message"] = closure_message
         context["user_can_complete_action"] = bool(
             action_item
             and self.request.user in action_item.assigned_to.all()
@@ -683,7 +747,12 @@ class EmergencyActionItemCompleteView(EmergencyAccessMixin, UpdateView):
         report.status = "ACTION_PERFORMED"
         report.save(update_fields=["status", "updated_at"])
 
-        _notify_emergency_action_completed(action_item)
+        NotificationService.notify(
+            content_object=action_item,
+            notification_type="EMERGENCY_ACTION_COMPLETED",
+            module="EMERGENCY",
+            extra_recipients=[report.reported_by] + list(report.response_team_members.all()) + list(action_item.assigned_to.all()),
+        )
         messages.success(self.request, "Emergency action marked as completed successfully.")
         return redirect("emergency:my_action_items")
 
@@ -721,7 +790,12 @@ class EmergencyInvestigationCreateView(EmergencyAccessMixin, CreateView):
         self.report.status = "INVESTIGATION_COMPLETED"
         self.report.save(update_fields=["status", "updated_at"])
 
-        _notify_emergency_investigation_completed(investigation)
+        NotificationService.notify(
+            content_object=investigation,
+            notification_type="EMERGENCY_INVESTIGATION_COMPLETED",
+            module="EMERGENCY",
+            extra_recipients=[self.report.reported_by, self.request.user] + list(self.report.response_team_members.all()),
+        )
         messages.success(self.request, "Emergency investigation submitted successfully.")
         return redirect("emergency:report_detail", pk=self.report.pk)
 
@@ -737,24 +811,191 @@ class EmergencyInvestigationDetailView(EmergencyAccessMixin, DetailView):
         context["cancel_url"] = self.request.GET.get("next") or self.request.META.get("HTTP_REFERER") or reverse("emergency:report_detail", args=[self.object.report.pk])
         return context
 
+class EmergencyCAPACreateView(EmergencyAccessMixin, CreateView):
+    model = EmergencyCAPA
+    form_class = EmergencyCAPACreateForm
+    template_name = "emergency/capa_create.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.report = get_object_or_404(self.get_report_queryset(), pk=kwargs["report_pk"])
+        if not self.can_manage_emergency_capa():
+            messages.error(request, "You don't have permission to create CAPA for this emergency.")
+            return redirect("emergency:report_detail", pk=self.report.pk)
+        can_create, message = self.report.can_create_capa
+        if not can_create:
+            messages.error(request, message)
+            return redirect("emergency:report_detail", pk=self.report.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["report"] = self.report
+        context["previous_capas"] = self.report.capas.select_related("assigned_to")
+        context["cancel_url"] = reverse("emergency:report_detail", args=[self.report.pk])
+        return context
+
+    def form_valid(self, form):
+        form.instance.report = self.report
+        form.instance.created_by = self.request.user
+        response = super().form_valid(form)
+        NotificationService.notify(
+            content_object=self.object,
+            notification_type="EMERGENCY_CAPA_CREATED",
+            module="EMERGENCY",
+            extra_recipients=[self.report.reported_by, self.request.user, self.object.assigned_to] + list(self.report.response_team_members.all()),
+        )
+        messages.success(self.request, "Emergency CAPA created successfully.")
+        return response
+
+    def get_success_url(self):
+        return reverse("emergency:report_detail", kwargs={"pk": self.report.pk})
+
+
+class EmergencyCAPAUpdateView(EmergencyAccessMixin, UpdateView):
+    model = EmergencyCAPA
+    form_class = EmergencyCAPAUpdateForm
+    template_name = "emergency/capa_update.html"
+    context_object_name = "capa"
+
+    def get_queryset(self):
+        return EmergencyCAPA.objects.select_related("report", "assigned_to", "created_by", "closed_by")
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if not (
+            self.can_manage_emergency_capa()
+            or request.user == self.object.assigned_to
+            or request.user == self.object.report.reported_by
+        ):
+            messages.error(request, "You don't have permission to update this CAPA.")
+            return redirect("emergency:report_detail", pk=self.object.report.pk)
+        if self.object.report.status == "CLOSED":
+            messages.error(request, "CAPA cannot be updated after the emergency has been closed.")
+            return redirect("emergency:report_detail", pk=self.object.report.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        capa = form.save(commit=False)
+        if capa.status == EmergencyCAPA.STATUS_CLOSED:
+            capa.closed_by = self.request.user
+            capa.closed_at = timezone.now()
+        else:
+            capa.closed_by = None
+            capa.closed_at = None
+        capa.save()
+        capa_recipients = [capa.report.reported_by, capa.assigned_to, capa.created_by]
+        if capa.closed_by:
+            capa_recipients.append(capa.closed_by)
+        capa_recipients.extend(list(capa.report.response_team_members.all()))
+        NotificationService.notify(
+            content_object=capa,
+            notification_type="EMERGENCY_CAPA_UPDATED",
+            module="EMERGENCY",
+            extra_recipients=capa_recipients,
+        )
+        messages.success(self.request, "Emergency CAPA updated successfully.")
+        return redirect("emergency:report_detail", pk=capa.report.pk)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["report"] = self.object.report
+        context["cancel_url"] = reverse("emergency:report_detail", args=[self.object.report.pk])
+        return context
+
+
+class EmergencyClosureCheckView(EmergencyAccessMixin, View):
+    template_name = "emergency/closure_check.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.report = get_object_or_404(self.get_report_queryset(), pk=kwargs["pk"])
+        if not self.can_close_emergency():
+            messages.error(request, "You don't have permission to close this emergency.")
+            return redirect("emergency:report_detail", pk=self.report.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        can_close, closure_message = self.report.can_be_closed
+        context = {
+            "report": self.report,
+            "action_item": getattr(self.report, "action_item", None),
+            "investigation": getattr(self.report, "investigation_report", None),
+            "capas": self.report.capas.select_related("assigned_to", "closed_by"),
+            "can_close": can_close,
+            "closure_message": closure_message,
+        }
+        return render(request, self.template_name, context)
+
+
+class EmergencyClosureView(EmergencyAccessMixin, UpdateView):
+    model = EmergencyReport
+    form_class = EmergencyClosureForm
+    template_name = "emergency/closure_form.html"
+    context_object_name = "report"
+
+    def get_queryset(self):
+        return self.get_report_queryset()
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if not self.can_close_emergency():
+            messages.error(request, "You don't have permission to close this emergency.")
+            return redirect("emergency:report_detail", pk=self.object.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        can_close, closure_message = self.object.can_be_closed
+        context["can_close"] = can_close
+        context["closure_message"] = closure_message
+        return context
+
+    def form_valid(self, form):
+        report = form.save(commit=False)
+        can_close, closure_message = report.can_be_closed
+        if not can_close:
+            messages.error(self.request, closure_message)
+            return redirect("emergency:closure_check", pk=report.pk)
+
+        report.status = "CLOSED"
+        report.closure_date = timezone.now()
+        report.closed_by = self.request.user
+        report.save()
+        NotificationService.notify(
+            content_object=report,
+            notification_type="EMERGENCY_CLOSED",
+            module="EMERGENCY",
+            extra_recipients=[report.reported_by, self.request.user] + list(report.response_team_members.all()),
+        )
+        messages.success(self.request, f"Emergency report {report.report_number} has been closed successfully.")
+        return redirect("emergency:report_detail", pk=report.pk)
+
 
 class EmergencyDepartmentUsersAjaxView(EmergencyAccessMixin, TemplateView):
     def get(self, request, *args, **kwargs):
         department_id = request.GET.get("department_id")
-        if not department_id:
-            return JsonResponse([], safe=False)
+        plant_id = request.GET.get("plant_id")
 
         users = User.objects.filter(
-            department_id=department_id,
             is_active=True,
             is_active_employee=True,
-        ).order_by("first_name", "last_name", "username")
+            department__isnull=False,
+            department__is_active=True,
+        ).select_related("department").order_by("first_name", "last_name", "username")
+
+        if department_id:
+            users = users.filter(department_id=department_id)
+        if plant_id:
+            users = users.filter(
+                Q(plant_id=plant_id) | Q(assigned_plants__id=plant_id)
+            ).distinct()
 
         data = [
             {
                 "id": user.id,
                 "name": user.get_full_name() or user.username,
                 "employee_id": user.employee_id or "",
+                "department_id": user.department_id,
+                "department_name": user.department.name if user.department else "",
             }
             for user in users
         ]
@@ -919,7 +1160,7 @@ class ContactDirectoryView(EmergencyAccessMixin, TemplateView):
     ]
 
     def _normalize_department_name(self, value):
-        return re.sub(r"[^a-z0-9]+", "", (value or "").strip().lower())
+        return _normalize_department_name(value)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -972,7 +1213,11 @@ class EmergencySessionDetailView(EmergencyAccessMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         session = self.object
-        context["trainers"] = session.trainers.select_related("trainer_department").all()
+        context["trainers"] = session.trainers.select_related(
+            "trainer_department",
+            "trainer_user",
+            "trainer_user__department",
+        ).all()
         context["trainer_count"] = context["trainers"].count()
         context["participants"] = session.participants.select_related(
             "employee",

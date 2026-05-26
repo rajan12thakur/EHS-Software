@@ -4,8 +4,6 @@
 {% block page_title %}Emergency Report Details{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
-<li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
 <li class="breadcrumb-item"><a href="{% url 'emergency:report_list' %}">Emergency Reports</a></li>
 <li class="breadcrumb-item active">{{ report.report_number }}</li>
 {% endblock %}
@@ -29,6 +27,16 @@
         {% if investigation_report %}
         <a href="{% url 'emergency:investigation_detail' investigation_report.pk %}" class="btn btn-info mr-2">
           <i class="fas fa-eye mr-1"></i>View Investigation
+        </a>
+        {% endif %}
+        {% if can_create_capa %}
+        <a href="{% url 'emergency:capa_create' report.pk %}" class="btn btn-primary mr-2">
+          <i class="fas fa-tools mr-1"></i>{% if latest_capa and latest_capa.status == 'CLOSED' %}Create Another CAPA{% else %}Create CAPA{% endif %}
+        </a>
+        {% endif %}
+        {% if show_closure_action %}
+        <a href="{% url 'emergency:closure_check' report.pk %}" class="btn btn-dark mr-2">
+          <i class="fas fa-check-double mr-1"></i>{% if report.status == 'CLOSED' %}View Closure{% else %}Closure Check{% endif %}
         </a>
         {% endif %}
         <a href="{{ cancel_url }}" class="btn btn-secondary"><i class="fas fa-arrow-left mr-1"></i>Back</a>
@@ -169,6 +177,104 @@
         <label class="text-muted">Completed Date</label>
         <p class="mb-0">{{ investigation_report.completed_date|date:"d M Y" }}</p>
       </div>
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="mb-0">CAPA Tracking</h5>
+      {% if report.status == 'INVESTIGATION_COMPLETED' and not can_create_capa and capa_message %}
+      <span class="text-muted small">{{ capa_message }}</span>
+      {% endif %}
+    </div>
+
+    {% if capas %}
+    <div class="table-responsive">
+      <table class="table table-bordered table-sm">
+        <thead class="thead-light">
+          <tr>
+            <th>CAPA No.</th>
+            <th>Action Required</th>
+            <th>Assigned To</th>
+            <th>Target Date</th>
+            <th>Status</th>
+            <th>Action Taken</th>
+            <th>Update</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for capa in capas %}
+          <tr>
+            <td>{{ capa.capa_number }}</td>
+            <td>{{ capa.action_required|truncatechars:80 }}</td>
+            <td>{{ capa.assigned_to.get_full_name|default:capa.assigned_to.username }}</td>
+            <td>{{ capa.target_date|date:"d M Y" }}</td>
+            <td>
+              <span class="badge {% if capa.status == 'CLOSED' %}badge-success{% elif capa.status == 'IN_PROGRESS' %}badge-warning{% else %}badge-info{% endif %}">
+                {{ capa.get_status_display }}
+              </span>
+            </td>
+            <td>{{ capa.action_taken|default:"-"|truncatechars:60 }}</td>
+            <td>
+              <a href="{% url 'emergency:capa_update' capa.pk %}" class="btn btn-sm btn-outline-primary">Update</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No CAPA has been created for this emergency yet.</p>
+    {% endif %}
+
+    {% if latest_capa and latest_capa.status == 'CLOSED' and report.status != 'CLOSED' %}
+    <div class="alert alert-info mt-3 mb-0">
+      The previous CAPA is closed. If a new root cause is identified, you can create another CAPA for this emergency.
+    </div>
+    {% elif capa_message and not can_create_capa %}
+    <div class="alert alert-warning mt-3 mb-0">
+      {{ capa_message }}
+    </div>
+    {% endif %}
+
+    <hr>
+
+    <h5 class="mb-3">Closure Status</h5>
+    {% if report.status == 'CLOSED' %}
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label class="text-muted">Closure Date</label>
+        <p class="mb-0">{{ report.closure_date|date:"d M Y H:i" }}</p>
+      </div>
+      <div class="col-md-4 mb-3">
+        <label class="text-muted">Closed By</label>
+        <p class="mb-0">{{ report.closed_by.get_full_name|default:report.closed_by.username }}</p>
+      </div>
+      <div class="col-md-4 mb-3">
+        <label class="text-muted">Days to Close</label>
+        <p class="mb-0">{{ report.days_to_close }}</p>
+      </div>
+      <div class="col-md-12 mb-3">
+        <label class="text-muted">Closure Remarks</label>
+        <div>{{ report.closure_remarks|linebreaks }}</div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="text-muted">Lessons Learned</label>
+        <div>{{ report.lessons_learned|linebreaks }}</div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="text-muted">Preventive Measures</label>
+        <div>{{ report.preventive_measures|linebreaks }}</div>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert {% if can_close_report %}alert-success{% else %}alert-warning{% endif %} mb-0">
+      {% if can_close_report %}
+      This emergency is ready for closure.
+      {% else %}
+      {{ closure_message }}
+      {% endif %}
     </div>
     {% endif %}
 

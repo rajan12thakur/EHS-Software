@@ -18,6 +18,28 @@ class NotificationService:
     """
     Generic notification service that uses NotificationMaster configurations
     """
+
+    @staticmethod
+    def _normalize_users(value):
+        """
+        Normalize a single user, queryset, many-related manager, or list into User objects.
+        """
+        if not value:
+            return []
+
+        if hasattr(value, "all"):
+            return [user for user in value.all() if user]
+
+        if isinstance(value, (list, tuple, set)):
+            users = []
+            for item in value:
+                users.extend(NotificationService._normalize_users(item))
+            return users
+
+        if hasattr(value, "pk"):
+            return [value]
+
+        return []
     
     @staticmethod
     def get_stakeholders_for_event(event_type, plant=None, location=None, zone=None):
@@ -212,6 +234,11 @@ class NotificationService:
             plant = incident.plant
             location = incident.location
             zone = incident.zone
+        elif hasattr(content_object, 'report'):
+            report = content_object.report
+            plant = report.plant
+            location = report.location
+            zone = report.zone
         elif hasattr(content_object, 'hazard'):
             hazard = content_object.hazard
             plant = hazard.plant
@@ -233,7 +260,7 @@ class NotificationService:
         if notification_type == 'INSPECTION_SCHEDULE':
             stakeholders = []
             if hasattr(content_object, 'assigned_to') and content_object.assigned_to:
-                stakeholders.append(content_object.assigned_to)
+                stakeholders.extend(NotificationService._normalize_users(content_object.assigned_to))
         else:
             stakeholders = NotificationService.get_stakeholders_for_event(
                 event_type=notification_type,
@@ -244,18 +271,19 @@ class NotificationService:
 
             # For responsible person
             if extra_recipients:
-                for user in extra_recipients:
+                for user in NotificationService._normalize_users(extra_recipients):
                     if user not in stakeholders:
                         stakeholders.append(user)
 
             # Add assigned_to if present
             if hasattr(content_object, 'assigned_to') and content_object.assigned_to:
-                if content_object.assigned_to not in stakeholders:
-                    stakeholders.append(content_object.assigned_to)
+                for user in NotificationService._normalize_users(content_object.assigned_to):
+                    if user not in stakeholders:
+                        stakeholders.append(user)
 
             # Add responsible persons for action items
             if hasattr(content_object, 'responsible_person'):
-                for user in content_object.responsible_person.all():
+                for user in NotificationService._normalize_users(content_object.responsible_person):
                     if user not in stakeholders:
                         stakeholders.append(user)
 
@@ -289,6 +317,20 @@ class NotificationService:
             context = NotificationService._build_hazard_context(content_object)
         elif notification_type in ['HAZARD_ACTION_COMPLETED', 'HAZARD_ACTION_ASSIGNED']:
             context = NotificationService._build_hazard_action_context(content_object)
+        elif notification_type == 'EMERGENCY_REPORTED':
+            context = NotificationService._build_emergency_reported_context(content_object)
+        elif notification_type == 'EMERGENCY_ACTION_ASSIGNED':
+            context = NotificationService._build_emergency_action_assigned_context(content_object)
+        elif notification_type == 'EMERGENCY_ACTION_COMPLETED':
+            context = NotificationService._build_emergency_action_completed_context(content_object)
+        elif notification_type == 'EMERGENCY_INVESTIGATION_COMPLETED':
+            context = NotificationService._build_emergency_investigation_context(content_object)
+        elif notification_type == 'EMERGENCY_CAPA_CREATED':
+            context = NotificationService._build_emergency_capa_created_context(content_object)
+        elif notification_type == 'EMERGENCY_CAPA_UPDATED':
+            context = NotificationService._build_emergency_capa_updated_context(content_object)
+        elif notification_type == 'EMERGENCY_CLOSED':
+            context = NotificationService._build_emergency_closed_context(content_object)
         elif notification_type == 'ENV_DATA_SUBMITTED':
             context = NotificationService._build_environment_context(content_object)
         elif notification_type == 'NOTIFY_INSPECTION':
@@ -326,7 +368,14 @@ class NotificationService:
                 is_active=True
             ).first()
 
-            should_send_email = notification_type == 'INSPECTION_SCHEDULE' or is_responsible_user or (role_config and role_config.email_enabled)
+            normalized_extra_recipients = NotificationService._normalize_users(extra_recipients)
+            is_extra_recipient = stakeholder in normalized_extra_recipients
+            should_send_email = (
+                notification_type == 'INSPECTION_SCHEDULE'
+                or is_responsible_user
+                or (notification_type.startswith('EMERGENCY_') and is_extra_recipient)
+                or (role_config and role_config.email_enabled)
+            )
             if should_send_email:
                 context['recipient'] = stakeholder
                 email_sent = NotificationService.send_email(
@@ -632,6 +681,252 @@ EHS Management System
             'hazard': hazard,
             'action_item': action_item,
             'action_url': action_url,
+        }
+
+    @staticmethod
+    def _build_emergency_reported_context(report):
+        report_url = f"{settings.SITE_URL}{reverse('emergency:report_detail', args=[report.id])}"
+        return {
+            'title': f"Emergency Reported | {report.report_number}",
+            'subject': f"Emergency Reported - {report.report_number}",
+            'message': f"""
+Hello,
+
+A new emergency has been reported.
+
+EMERGENCY DETAILS
+--------------------------------------------------
+Emergency Number : {report.report_number}
+Emergency Title  : {report.emergency_title}
+Type             : {report.get_emergency_type_display()}
+Severity         : {report.get_severity_level_display()}
+Date & Time      : {report.incident_date} {report.incident_time}
+Plant            : {report.plant.name}
+Zone             : {report.zone.name if report.zone else 'N/A'}
+Location         : {report.location.name if report.location else 'N/A'}
+Sub-Location     : {report.sublocation.name if report.sublocation else 'N/A'}
+Reported By      : {report.reported_by.get_full_name()}
+
+DESCRIPTION
+--------------------------------------------------
+{report.description[:500]}{'...' if len(report.description) > 500 else ''}
+
+Please review and take necessary action.
+
+Regards,
+EHS Management System
+""",
+            'report': report,
+            'report_url': report_url,
+        }
+
+    @staticmethod
+    def _build_emergency_action_assigned_context(action_item):
+        report = action_item.report
+        report_url = f"{settings.SITE_URL}{reverse('emergency:report_detail', args=[report.id])}"
+        return {
+            'title': f"Emergency Action Assigned | {report.report_number}",
+            'subject': f"Emergency Action Assigned - {report.report_number}",
+            'message': f"""
+Hello,
+
+An emergency action item has been assigned.
+
+EMERGENCY DETAILS
+--------------------------------------------------
+Emergency Number : {report.report_number}
+Emergency Title  : {report.emergency_title}
+Type             : {report.get_emergency_type_display()}
+Severity         : {report.get_severity_level_display()}
+Plant            : {report.plant.name}
+Location         : {report.location.name if report.location else 'N/A'}
+Reported By      : {report.reported_by.get_full_name()}
+
+ACTION DETAILS
+--------------------------------------------------
+Description      : {action_item.action_description[:500]}{'...' if len(action_item.action_description) > 500 else ''}
+Status           : {action_item.get_status_display()}
+
+Please review and complete the assigned emergency action.
+
+Regards,
+EHS Management System
+""",
+            'report': report,
+            'action_item': action_item,
+            'report_url': report_url,
+        }
+
+    @staticmethod
+    def _build_emergency_action_completed_context(action_item):
+        report = action_item.report
+        report_url = f"{settings.SITE_URL}{reverse('emergency:report_detail', args=[report.id])}"
+        completed_by = ", ".join(
+            user.get_full_name() or user.username
+            for user in action_item.completed_by_users.all()
+        ) or 'N/A'
+        return {
+            'title': f"Emergency Action Completed | {report.report_number}",
+            'subject': f"Emergency Action Completed - {report.report_number}",
+            'message': f"""
+Hello,
+
+An emergency action has been completed.
+
+EMERGENCY DETAILS
+--------------------------------------------------
+Emergency Number : {report.report_number}
+Emergency Title  : {report.emergency_title}
+Type             : {report.get_emergency_type_display()}
+Severity         : {report.get_severity_level_display()}
+Plant            : {report.plant.name}
+Location         : {report.location.name if report.location else 'N/A'}
+
+ACTION COMPLETION
+--------------------------------------------------
+Completed By     : {completed_by}
+Completed On     : {action_item.completion_datetime if action_item.completion_datetime else 'N/A'}
+Remarks          : {(action_item.completion_remarks or 'N/A')[:500]}
+
+Regards,
+EHS Management System
+""",
+            'report': report,
+            'action_item': action_item,
+            'report_url': report_url,
+        }
+
+    @staticmethod
+    def _build_emergency_investigation_context(investigation):
+        report = investigation.report
+        report_url = f"{settings.SITE_URL}{reverse('emergency:report_detail', args=[report.id])}"
+        return {
+            'title': f"Emergency Investigation Completed | {report.report_number}",
+            'subject': f"Emergency Investigation Completed - {report.report_number}",
+            'message': f"""
+Hello,
+
+The emergency investigation has been completed.
+
+EMERGENCY DETAILS
+--------------------------------------------------
+Emergency Number : {report.report_number}
+Emergency Title  : {report.emergency_title}
+Type             : {report.get_emergency_type_display()}
+Plant            : {report.plant.name}
+Location         : {report.location.name if report.location else 'N/A'}
+
+INVESTIGATION DETAILS
+--------------------------------------------------
+Investigator     : {investigation.investigator.get_full_name() if investigation.investigator else 'N/A'}
+Investigation Date: {investigation.investigation_date}
+Completed On     : {investigation.completed_date}
+
+Regards,
+EHS Management System
+""",
+            'report': report,
+            'investigation': investigation,
+            'report_url': report_url,
+        }
+
+    @staticmethod
+    def _build_emergency_capa_created_context(capa):
+        report = capa.report
+        report_url = f"{settings.SITE_URL}{reverse('emergency:report_detail', args=[report.id])}"
+        return {
+            'title': f"Emergency CAPA Created | {capa.capa_number}",
+            'subject': f"Emergency CAPA Created - {capa.capa_number}",
+            'message': f"""
+Hello,
+
+A CAPA has been created for an emergency report.
+
+CAPA DETAILS
+--------------------------------------------------
+CAPA Number      : {capa.capa_number}
+Emergency Number : {report.report_number}
+Emergency Title  : {report.emergency_title}
+Assigned To      : {capa.assigned_to.get_full_name() if capa.assigned_to else 'N/A'}
+Target Date      : {capa.target_date}
+Status           : {capa.get_status_display()}
+
+ACTION REQUIRED
+--------------------------------------------------
+{capa.action_required[:500]}{'...' if len(capa.action_required) > 500 else ''}
+
+Regards,
+EHS Management System
+""",
+            'report': report,
+            'capa': capa,
+            'report_url': report_url,
+        }
+
+    @staticmethod
+    def _build_emergency_capa_updated_context(capa):
+        report = capa.report
+        report_url = f"{settings.SITE_URL}{reverse('emergency:report_detail', args=[report.id])}"
+        return {
+            'title': f"Emergency CAPA Updated | {capa.capa_number}",
+            'subject': f"Emergency CAPA Updated - {capa.capa_number}",
+            'message': f"""
+Hello,
+
+An emergency CAPA has been updated.
+
+CAPA DETAILS
+--------------------------------------------------
+CAPA Number      : {capa.capa_number}
+Emergency Number : {report.report_number}
+Assigned To      : {capa.assigned_to.get_full_name() if capa.assigned_to else 'N/A'}
+Status           : {capa.get_status_display()}
+Target Date      : {capa.target_date}
+Closed By        : {capa.closed_by.get_full_name() if capa.closed_by else 'N/A'}
+
+ACTION TAKEN
+--------------------------------------------------
+{(capa.action_taken or 'N/A')[:500]}
+
+Regards,
+EHS Management System
+""",
+            'report': report,
+            'capa': capa,
+            'report_url': report_url,
+        }
+
+    @staticmethod
+    def _build_emergency_closed_context(report):
+        report_url = f"{settings.SITE_URL}{reverse('emergency:report_detail', args=[report.id])}"
+        return {
+            'title': f"Emergency Closed | {report.report_number}",
+            'subject': f"Emergency Closed - {report.report_number}",
+            'message': f"""
+Hello,
+
+The emergency report has been closed.
+
+EMERGENCY DETAILS
+--------------------------------------------------
+Emergency Number : {report.report_number}
+Emergency Title  : {report.emergency_title}
+Type             : {report.get_emergency_type_display()}
+Severity         : {report.get_severity_level_display()}
+Plant            : {report.plant.name}
+Location         : {report.location.name if report.location else 'N/A'}
+Closed By        : {report.closed_by.get_full_name() if report.closed_by else 'N/A'}
+Closed On        : {report.closure_date if report.closure_date else 'N/A'}
+
+CLOSURE REMARKS
+--------------------------------------------------
+{(report.closure_remarks or 'N/A')[:500]}
+
+Regards,
+EHS Management System
+""",
+            'report': report,
+            'report_url': report_url,
         }
     
     @staticmethod

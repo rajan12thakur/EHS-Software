@@ -135,11 +135,9 @@
             <td>
               {% for trainer in session.trainers.all %}
               <div class="mb-1">
-                {{ trainer.trainer_name }}
-                {% if trainer.trainer_department %}
-                <br><small class="text-muted">{{ trainer.trainer_department.name }}</small>
-                {% elif trainer.trainer_is_external %}
-                <br><small class="text-muted">{{ trainer.trainer_organization }}</small>
+                {{ trainer.display_name }}
+                {% if trainer.display_department %}
+                <br><small class="text-muted">{{ trainer.display_department.name }}</small>
                 {% endif %}
               </div>
               {% endfor %}

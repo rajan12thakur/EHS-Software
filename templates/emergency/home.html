@@ -15,6 +15,7 @@
       <div class="card-body text-center py-5">
         <h4 class="mb-3">Emergency Response Management</h4>
         <p class="text-muted mb-4">Manage emergency drill topics, schedule sessions, and track all created sessions.</p>
+        <a href="{% url 'emergency:sos_control_panel' %}" class="btn btn-danger mr-2">SOS Control Panel</a>
         <a href="{% url 'emergency:session_list' %}" class="btn btn-primary mr-2">All Sessions</a>
         <a href="{% url 'emergency:session_create' %}" class="btn btn-outline-primary mr-2">Schedule Session</a>
         <a href="{% url 'emergency:topic_list' %}" class="btn btn-outline-secondary">Manage Topics</a>

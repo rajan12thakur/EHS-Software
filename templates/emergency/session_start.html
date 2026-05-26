@@ -5,7 +5,6 @@
 {% block page_title %}Emergency Session: {{ session.session_number }}{% endblock %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
 <li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
 <li class="breadcrumb-item"><a href="{% url 'emergency:my_sessions' %}">My Sessions</a></li>
 <li class="breadcrumb-item active">{{ session.session_number }}</li>

@@ -14,7 +14,7 @@
     <div class="ehs-card">
       <div class="card-header">
         <h5 class="mb-0"><i class="fas fa-user-plus mr-2"></i>Select Participants</h5>
-        <a href="{% url 'emergency:session_detail' session.pk %}" class="btn btn-sm btn-outline-secondary">
+        <a href="{% url 'emergency:session_detail' session.pk %}" class="btn btn-sm btn-outline-secondary" style="position:absolute; top:10px; right:10px;">
           <i class="fas fa-arrow-left mr-1"></i> Back
         </a>
       </div>
@@ -22,6 +22,7 @@
         <form method="get" class="form-inline mb-3">
           <input type="text" name="search" value="{{ search_query }}" class="form-control mr-2" placeholder="Search employee name or ID">
           <button type="submit" class="btn btn-outline-primary">Search</button>
+          <a href="{% url 'emergency:add_participants' session.pk %}" class="form-control ml-2">Reset</a>
         </form>
 
         <form method="post">

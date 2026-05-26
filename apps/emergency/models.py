@@ -159,7 +159,7 @@ class EmergencySession(models.Model):
 
     @property
     def trainer_summary(self):
-        trainer_names = list(self.trainers.order_by("id").values_list("trainer_name", flat=True))
+        trainer_names = [trainer.display_name for trainer in self.trainers.order_by("id")]
         if not trainer_names:
             return "No trainers added"
         if len(trainer_names) == 1:
@@ -172,6 +172,13 @@ class EmergencySessionTrainer(models.Model):
         EmergencySession,
         on_delete=models.CASCADE,
         related_name="trainers",
+    )
+    trainer_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="emergency_session_trainer_entries",
     )
     trainer_name = models.CharField(max_length=200)
     trainer_designation = models.CharField(max_length=100, blank=True)
@@ -190,8 +197,29 @@ class EmergencySessionTrainer(models.Model):
         verbose_name = "Emergency Session Trainer"
         verbose_name_plural = "Emergency Session Trainers"
 
-    def __str__(self):
+    @property
+    def display_name(self):
+        if self.trainer_user_id:
+            return self.trainer_user.get_full_name() or self.trainer_user.username
         return self.trainer_name
+
+    @property
+    def display_department(self):
+        if self.trainer_user_id and self.trainer_user.department_id:
+            return self.trainer_user.department
+        return self.trainer_department
+
+    def save(self, *args, **kwargs):
+        if self.trainer_user_id:
+            self.trainer_name = self.trainer_user.get_full_name() or self.trainer_user.username
+            self.trainer_department = self.trainer_user.department
+            self.trainer_designation = ""
+            self.trainer_is_external = False
+            self.trainer_organization = ""
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.display_name
 
 
 class ERTDepartmentQuestion(models.Model):
@@ -519,6 +547,18 @@ class EmergencyReport(models.Model):
     )
     reported_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="REPORTED")
+    closure_remarks = models.TextField(blank=True)
+    lessons_learned = models.TextField(blank=True)
+    preventive_measures = models.TextField(blank=True)
+    is_recurrence_possible = models.BooleanField(default=False)
+    closure_date = models.DateTimeField(null=True, blank=True)
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="closed_emergency_reports",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -568,6 +608,42 @@ class EmergencyReport(models.Model):
             "CLOSED": "badge-secondary",
         }
         return status_classes.get(self.status, "badge-secondary")
+
+    @property
+    def active_capas(self):
+        return self.capas.exclude(status=EmergencyCAPA.STATUS_CLOSED)
+
+    @property
+    def latest_capa(self):
+        return self.capas.order_by("-created_at", "-id").first()
+
+    @property
+    def can_create_capa(self):
+        if self.status == "CLOSED":
+            return False, "CAPA creation is blocked after the emergency has been closed."
+        if self.status != "INVESTIGATION_COMPLETED" or not hasattr(self, "investigation_report"):
+            return False, "CAPA can be created only after the investigation is completed."
+        if self.active_capas.exists():
+            return False, "An existing CAPA is still open or in progress."
+        return True, "CAPA can be created."
+
+    @property
+    def can_be_closed(self):
+        if self.status == "CLOSED":
+            return False, "This emergency is already closed."
+        if not hasattr(self, "investigation_report") or self.status != "INVESTIGATION_COMPLETED":
+            return False, "Complete the investigation before closing the emergency."
+        if hasattr(self, "action_item") and self.action_item.status != "ACTION_PERFORMED":
+            return False, "Complete the emergency action item before closure."
+        if self.active_capas.exists():
+            return False, "Close all open CAPAs before closing the emergency."
+        return True, "Ready for closure."
+
+    @property
+    def days_to_close(self):
+        if self.closure_date:
+            return (self.closure_date.date() - self.incident_date).days
+        return None
 
 
 class EmergencyActionItem(models.Model):
@@ -667,6 +743,69 @@ class EmergencyInvestigationReport(models.Model):
 
     def __str__(self):
         return f"Investigation - {self.report.report_number}"
+
+class EmergencyCAPA(models.Model):
+    STATUS_OPEN = "OPEN"
+    STATUS_IN_PROGRESS = "IN_PROGRESS"
+    STATUS_CLOSED = "CLOSED"
+
+    STATUS_CHOICES = [
+        (STATUS_OPEN, "Open"),
+        (STATUS_IN_PROGRESS, "In Progress"),
+        (STATUS_CLOSED, "Closed"),
+    ]
+
+    capa_number = models.CharField(max_length=50, unique=True, editable=False)
+    report = models.ForeignKey(
+        EmergencyReport,
+        on_delete=models.CASCADE,
+        related_name="capas",
+    )
+    action_required = models.TextField()
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="emergency_capas_assigned",
+    )
+    target_date = models.DateField()
+    action_taken = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    evidence = models.FileField(upload_to="emergency_capa/%Y/%m/", blank=True, null=True)
+    closure_remarks = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="emergency_capas_created",
+    )
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="emergency_capas_closed",
+    )
+    closed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Emergency CAPA"
+        verbose_name_plural = "Emergency CAPAs"
+
+    def __str__(self):
+        return f"{self.capa_number} - {self.report.report_number}"
+
+    def save(self, *args, **kwargs):
+        if not self.capa_number:
+            today = datetime.date.today()
+            date_str = today.strftime("%Y%m%d")
+            prefix = f"ECAPA-{date_str}"
+            count = EmergencyCAPA.objects.filter(capa_number__startswith=prefix).count()
+            self.capa_number = f"{prefix}-{count + 1:03d}"
+        super().save(*args, **kwargs)
 
 
 class EmergencyReportPhoto(models.Model):

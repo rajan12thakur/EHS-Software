@@ -188,34 +188,17 @@
               </div>
               {% for hidden in trainer_form.hidden_fields %}{{ hidden }}{% endfor %}
               <div class="row">
-                <div class="col-md-4 mb-3">
-                  <label>{{ trainer_form.trainer_name.label }} <span class="text-danger">*</span></label>
-                  {{ trainer_form.trainer_name }}
-                  {% if trainer_form.trainer_name.errors %}<div class="text-danger small">{{ trainer_form.trainer_name.errors }}</div>{% endif %}
-                </div>
-                <div class="col-md-3 mb-3">
-                  <label>{{ trainer_form.trainer_designation.label }}</label>
-                  {{ trainer_form.trainer_designation }}
-                  {% if trainer_form.trainer_designation.errors %}<div class="text-danger small">{{ trainer_form.trainer_designation.errors }}</div>{% endif %}
-                </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-5 mb-3">
                   <label>{{ trainer_form.trainer_department.label }}</label>
                   {{ trainer_form.trainer_department }}
                   {% if trainer_form.trainer_department.errors %}<div class="text-danger small">{{ trainer_form.trainer_department.errors }}</div>{% endif %}
+                  <small class="form-text text-muted">Choose a department to filter trainers.</small>
                 </div>
-                <div class="col-md-2 mb-3">
-                  <label class="d-block">Type</label>
-                  <div class="form-check mt-2">
-                    {{ trainer_form.trainer_is_external }}
-                    <label class="form-check-label" for="{{ trainer_form.trainer_is_external.id_for_label }}">External</label>
-                  </div>
-                </div>
-              </div>
-              <div class="row trainer-org-row" style="display:none;">
-                <div class="col-md-6 mb-1">
-                  <label>{{ trainer_form.trainer_organization.label }}</label>
-                  {{ trainer_form.trainer_organization }}
-                  {% if trainer_form.trainer_organization.errors %}<div class="text-danger small">{{ trainer_form.trainer_organization.errors }}</div>{% endif %}
+                <div class="col-md-7 mb-3">
+                  <label>{{ trainer_form.trainer_user.label }} <span class="text-danger">*</span></label>
+                  {{ trainer_form.trainer_user }}
+                  {% if trainer_form.trainer_user.errors %}<div class="text-danger small">{{ trainer_form.trainer_user.errors }}</div>{% endif %}
+                  <small class="form-text text-muted">Trainer names are loaded from active user accounts.</small>
                 </div>
               </div>
             </div>
@@ -231,30 +214,13 @@
               {% with trainer_form=trainer_formset.empty_form %}
               {% for hidden in trainer_form.hidden_fields %}{{ hidden }}{% endfor %}
               <div class="row">
-                <div class="col-md-4 mb-3">
-                  <label>{{ trainer_form.trainer_name.label }} <span class="text-danger">*</span></label>
-                  {{ trainer_form.trainer_name }}
-                </div>
-                <div class="col-md-3 mb-3">
-                  <label>{{ trainer_form.trainer_designation.label }}</label>
-                  {{ trainer_form.trainer_designation }}
-                </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-5 mb-3">
                   <label>{{ trainer_form.trainer_department.label }}</label>
                   {{ trainer_form.trainer_department }}
                 </div>
-                <div class="col-md-2 mb-3">
-                  <label class="d-block">Type</label>
-                  <div class="form-check mt-2">
-                    {{ trainer_form.trainer_is_external }}
-                    <label class="form-check-label" for="{{ trainer_form.trainer_is_external.id_for_label }}">External</label>
-                  </div>
-                </div>
-              </div>
-              <div class="row trainer-org-row" style="display:none;">
-                <div class="col-md-6 mb-1">
-                  <label>{{ trainer_form.trainer_organization.label }}</label>
-                  {{ trainer_form.trainer_organization }}
+                <div class="col-md-7 mb-3">
+                  <label>{{ trainer_form.trainer_user.label }} <span class="text-danger">*</span></label>
+                  {{ trainer_form.trainer_user }}
                 </div>
               </div>
               {% endwith %}
@@ -340,22 +306,86 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  function setupExternalToggle(scope) {
-    const checkbox = scope.querySelector('input[type="checkbox"][name$="trainer_is_external"]');
-    const deptSelect = scope.querySelector('select[name$="trainer_department"]');
-    const orgRow = scope.querySelector('.trainer-org-row');
-    const orgInput = scope.querySelector('input[name$="trainer_organization"]');
-    if (!checkbox) return;
-
-    const sync = () => {
-      const isExternal = checkbox.checked;
-      orgRow.style.display = isExternal ? 'flex' : 'none';
-      if (deptSelect) deptSelect.disabled = isExternal;
-      if (orgInput) orgInput.disabled = !isExternal;
+  function getTrainerFields(scope) {
+    return {
+      departmentSelect: scope.querySelector('select[name$="trainer_department"]'),
+      trainerSelect: scope.querySelector('select[name$="trainer_user"]')
     };
+  }
 
-    checkbox.addEventListener('change', sync);
-    sync();
+  function renderTrainerOptions(select, users, selectedValue) {
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Select Trainer --</option>';
+    users.forEach((user) => {
+      const labelParts = [user.name];
+      if (user.employee_id) {
+        labelParts.push(`(${user.employee_id})`);
+      }
+      const option = new Option(labelParts.join(' '), user.id);
+      option.dataset.departmentId = user.department_id || '';
+      option.dataset.departmentName = user.department_name || '';
+      if (selectedValue && String(user.id) === String(selectedValue)) {
+        option.selected = true;
+      }
+      select.add(option);
+    });
+    select.disabled = users.length === 0;
+  }
+
+  function loadTrainersForDepartment(scope, preserveSelection = true) {
+    const { departmentSelect, trainerSelect } = getTrainerFields(scope);
+    if (!departmentSelect || !trainerSelect) return;
+
+    const departmentId = departmentSelect.value;
+    const plantId = plantSelect ? plantSelect.value : '';
+    const selectedValue = preserveSelection ? trainerSelect.value : '';
+
+    if (!departmentId) {
+      renderTrainerOptions(trainerSelect, [], '');
+      trainerSelect.disabled = true;
+      return;
+    }
+
+    trainerSelect.disabled = true;
+    trainerSelect.innerHTML = '<option value="">Loading trainers...</option>';
+
+    const params = new URLSearchParams({ department_id: departmentId });
+    if (plantId) {
+      params.append('plant_id', plantId);
+    }
+
+    fetch(`{% url 'emergency:ajax_department_users' %}?${params.toString()}`)
+      .then(response => response.json())
+      .then(data => renderTrainerOptions(trainerSelect, data, selectedValue))
+      .catch(() => {
+        trainerSelect.innerHTML = '<option value="">Unable to load trainers</option>';
+        trainerSelect.disabled = true;
+      });
+  }
+
+  function setupTrainerSelectors(scope) {
+    const { departmentSelect, trainerSelect } = getTrainerFields(scope);
+    if (!departmentSelect || !trainerSelect) return;
+
+    departmentSelect.addEventListener('change', function () {
+      loadTrainersForDepartment(scope, false);
+    });
+
+    trainerSelect.addEventListener('change', function () {
+      const selectedOption = trainerSelect.options[trainerSelect.selectedIndex];
+      const departmentId = selectedOption ? selectedOption.dataset.departmentId : '';
+      if (departmentId && departmentSelect.value !== departmentId) {
+        departmentSelect.value = departmentId;
+      }
+    });
+
+    const hasDepartment = Boolean(departmentSelect.value);
+    const hasTrainer = Boolean(trainerSelect.value);
+    if (hasDepartment || hasTrainer) {
+      loadTrainersForDepartment(scope, true);
+    } else {
+      trainerSelect.disabled = true;
+    }
   }
 
   function renumberTrainerForms() {
@@ -379,11 +409,11 @@ document.addEventListener('DOMContentLoaded', function () {
       .replace(/__number__/g, index + 1);
     trainerContainer.insertAdjacentHTML('beforeend', html);
     const newCard = trainerContainer.lastElementChild;
-    setupExternalToggle(newCard);
+    setupTrainerSelectors(newCard);
     renumberTrainerForms();
   }
 
-  trainerContainer.querySelectorAll('.trainer-form-item').forEach(setupExternalToggle);
+  trainerContainer.querySelectorAll('.trainer-form-item').forEach(setupTrainerSelectors);
 
   addTrainerBtn.addEventListener('click', addTrainerForm);
 
@@ -417,6 +447,9 @@ document.addEventListener('DOMContentLoaded', function () {
       resetSelect(zoneSelect, 'Select Zone');
       resetSelect(locationSelect, 'Select Zone First');
       resetSelect(sublocationSelect, 'Select Location First');
+      trainerContainer.querySelectorAll('.trainer-form-item').forEach((card) => {
+        loadTrainersForDepartment(card, false);
+      });
       if (plantId) {
         fetch(`{% url 'emergency:ajax_get_zones' %}?plant_id=${plantId}`)
           .then(r => r.json())

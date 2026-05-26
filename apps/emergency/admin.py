@@ -1,17 +1,6 @@
 from django.contrib import admin
 
-from .models import (
-    ERTDepartmentQuestion,
-    EmergencyActionItem,
-    EmergencyInvestigationReport,
-    EmergencyReport,
-    EmergencyReportPhoto,
-    EmergencySession,
-    EmergencySessionParticipant,
-    EmergencySessionSubmission,
-    EmergencySessionTrainer,
-    EmergencyTopic,
-)
+from .models import *
 
 
 class EmergencySessionTrainerInline(admin.TabularInline):
@@ -91,3 +80,9 @@ class EmergencyActionItemAdmin(admin.ModelAdmin):
 class EmergencyInvestigationReportAdmin(admin.ModelAdmin):
     list_display = ("report", "investigation_date", "investigator", "completed_date")
     search_fields = ("report__report_number", "sequence_of_events", "root_cause_analysis")
+
+@admin.register(EmergencyCAPA)
+class EmergencyCAPAAdmin(admin.ModelAdmin):
+    list_display = ("capa_number", "report", "assigned_to", "target_date", "status", "closed_at")
+    list_filter = ("status", "report__plant")
+    search_fields = ("capa_number", "report__report_number", "action_required", "action_taken")

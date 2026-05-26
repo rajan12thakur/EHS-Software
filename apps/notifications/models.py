@@ -14,6 +14,7 @@ class NotificationMaster(models.Model):
     MODULE_CHOICES = [
         ('INCIDENT', 'Incident Management'),
         ('HAZARD', 'Hazard/Near Miss'),
+        ('EMERGENCY', 'Emergency Management'),
         ('ENVIRONMENTAL', 'Environmental Data'),
         ('INSPECTION', 'Inspection Management'),
     ]
@@ -29,8 +30,16 @@ class NotificationMaster(models.Model):
         
         # Hazard Module
         ('HAZARD_REPORTED', 'Hazard/Near Miss Reported'),
-        
         ('HAZARD_CLOSED', 'Hazard Closed'),
+
+        # Emergency Module
+        ('EMERGENCY_REPORTED', 'Emergency Reported'),
+        ('EMERGENCY_ACTION_ASSIGNED', 'Emergency Action Assigned'),
+        ('EMERGENCY_ACTION_COMPLETED', 'Emergency Action Completed'),
+        ('EMERGENCY_INVESTIGATION_COMPLETED', 'Emergency Investigation Completed'),
+        ('EMERGENCY_CAPA_CREATED', 'Emergency CAPA Created'),
+        ('EMERGENCY_CAPA_UPDATED', 'Emergency CAPA Updated'),
+        ('EMERGENCY_CLOSED', 'Emergency Closed'),
         
         # Environmental Module
         ('ENV_MONTHLY_REPORT_GENERATED', 'Monthly Report Generated'),

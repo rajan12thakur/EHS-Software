@@ -109,6 +109,25 @@
         <p class="mt-1 text-muted">{{ session.agenda|linebreaksbr }}</p>
         {% endif %}
 
+        {% if trainers %}
+        <hr>
+        <strong>Trainers:</strong>
+        <div class="mt-2">
+          {% for trainer in trainers %}
+          <div class="mb-2">
+            <div>{{ trainer.display_name }}</div>
+            <small class="text-muted">
+              {% if trainer.display_department %}
+              {{ trainer.display_department.name }}
+              {% else %}
+              Department not assigned
+              {% endif %}
+            </small>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
         {% if session.attachment %}
         <a href="{{ session.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
           <i class="fas fa-file-download mr-1"></i> Download Attachment
