@@ -19,6 +19,57 @@ NUMBER_INPUT = {"class": "form-control"}
 FILE_INPUT = {"class": "form-control-file"}
 CHECKBOX = {"class": "form-check-input"}
 
+def set_default_location_hierarchy(self):
+    """
+    Auto select first assigned plant -> zone -> location -> sublocation
+    """
+
+    if not self.user:
+        return
+    assigned_plants = self.fields["plant"].queryset
+    first_plant = assigned_plants.order_by("name").first()
+
+    if first_plant:
+        self.initial.setdefault("plant", first_plant.pk)
+        self.fields["zone"].queryset = Zone.objects.filter(
+            plant=first_plant,
+            is_active=True,
+        ).order_by("name")
+
+    assigned_zones = self.user.assigned_zones.filter(
+        is_active=True,
+        plant=first_plant if first_plant else None,
+    )
+
+    first_zone = assigned_zones.order_by("name").first()
+
+    if first_zone:
+        self.initial.setdefault("zone", first_zone.pk)
+        self.fields["location"].queryset = Location.objects.filter(
+            zone=first_zone,
+            is_active=True,
+        ).order_by("name")
+
+    assigned_locations = self.user.assigned_locations.filter(
+        is_active=True,
+        zone=first_zone if first_zone else None,
+    )
+    first_location = assigned_locations.order_by("name").first()
+    if first_location:
+        self.initial.setdefault("location", first_location.pk)
+        self.fields["sublocation"].queryset = SubLocation.objects.filter(
+            location=first_location,
+            is_active=True,
+        ).order_by("name")
+    assigned_sublocations = self.user.assigned_sublocations.filter(
+        is_active=True,
+        location=first_location if first_location else None,
+    )
+    first_sublocation = assigned_sublocations.order_by("name").first()
+
+    if first_sublocation:
+        self.initial.setdefault("sublocation", first_sublocation.pk)
+
 
 class EmergencyTopicForm(forms.ModelForm):
     class Meta:
@@ -402,6 +453,9 @@ class EmergencyReportForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
+        if not self.data and not self.instance.pk:
+            set_default_location_hierarchy(self)
+
         now = timezone.localtime()
         if not self.instance.pk:
             self.fields["incident_date"].initial = now.date()
@@ -584,6 +638,9 @@ class EmergencySOSReportForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+
+        if not self.data and not self.instance.pk:
+            set_default_location_hierarchy(self)
 
         self.fields["emergency_type"].choices = [("", "-- Select Emergency Type --"), *EmergencyReport.EMERGENCY_TYPE_CHOICES]
         self.fields["severity_level"].choices = [("", "-- Select Severity Level --"), *EmergencyReport.SEVERITY_CHOICES]
