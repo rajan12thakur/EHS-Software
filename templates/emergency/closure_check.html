@@ -1,0 +1,93 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Emergency Closure Check{% endblock %}
+{% block page_title %}Emergency Closure Check{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'emergency:report_detail' report.pk %}">{{ report.report_number }}</a></li>
+<li class="breadcrumb-item active">Closure Check</li>
+{% endblock %}
+
+{% block content %}
+<div class="ehs-card">
+  <div class="card-header {% if can_close %}bg-success{% else %}bg-warning{% endif %}">
+    <h3 class="card-title mb-0 text-white"><i class="fas fa-check-double mr-2"></i>Emergency Closure Verification</h3>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-info">
+      <strong>{{ report.report_number }}</strong> - {{ report.emergency_title }}<br>
+      Status: {{ report.get_status_display }}
+    </div>
+
+    <div class="alert {% if can_close %}alert-success{% else %}alert-danger{% endif %}">
+      {% if can_close %}
+      All required steps are complete. This emergency is ready to close.
+      {% else %}
+      <strong>Closure Blocked:</strong> {{ closure_message }}
+      {% endif %}
+    </div>
+
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label class="text-muted">Action Item</label>
+        <p class="mb-0">
+          {% if action_item %}
+            {{ action_item.get_status_display }}
+          {% else %}
+            Not required
+          {% endif %}
+        </p>
+      </div>
+      <div class="col-md-4 mb-3">
+        <label class="text-muted">Investigation</label>
+        <p class="mb-0">{% if investigation %}Completed{% else %}Pending{% endif %}</p>
+      </div>
+      <div class="col-md-4 mb-3">
+        <label class="text-muted">Open CAPAs</label>
+        <p class="mb-0">{{ report.active_capas.count }}</p>
+      </div>
+    </div>
+
+    <h5 class="mt-3">CAPA Summary</h5>
+    {% if capas %}
+    <div class="table-responsive">
+      <table class="table table-sm table-bordered">
+        <thead class="thead-light">
+          <tr>
+            <th>CAPA No.</th>
+            <th>Assigned To</th>
+            <th>Target Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for capa in capas %}
+          <tr>
+            <td>{{ capa.capa_number }}</td>
+            <td>{{ capa.assigned_to.get_full_name|default:capa.assigned_to.username }}</td>
+            <td>{{ capa.target_date|date:"d M Y" }}</td>
+            <td>{{ capa.get_status_display }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted">No CAPA created for this emergency.</p>
+    {% endif %}
+
+    <div class="mt-4">
+      {% if can_close %}
+      <a href="{% url 'emergency:closure_form' report.pk %}" class="btn btn-success">
+        <i class="fas fa-check-circle mr-1"></i>Proceed to Close Emergency
+      </a>
+      {% else %}
+      <button class="btn btn-secondary" disabled>
+        <i class="fas fa-lock mr-1"></i>Closure Not Available
+      </button>
+      {% endif %}
+      <a href="{% url 'emergency:report_detail' report.pk %}" class="btn btn-secondary">Back to Report</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

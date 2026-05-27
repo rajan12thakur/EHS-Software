@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ subject }}</title>
+</head>
+<body style="margin:0;padding:24px;background:#f5f7fa;font-family:Arial,sans-serif;color:#1f2937;">
+    <div style="max-width:720px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+        <div style="background:#b91c1c;color:#ffffff;padding:20px 24px;">
+            <h2 style="margin:0;font-size:22px;">{{ title }}</h2>
+            <p style="margin:8px 0 0;font-size:14px;opacity:0.9;">Emergency report {{ report.report_number }}</p>
+        </div>
+        <div style="padding:24px;">
+            <p style="margin-top:0;">Hello{% if recipient %} {{ recipient.get_full_name|default:recipient.username }}{% endif %},</p>
+
+            <p>{{ report.emergency_title }} has an update in the EHS emergency module.</p>
+
+            <table style="width:100%;border-collapse:collapse;font-size:14px;margin:20px 0;">
+                <tr>
+                    <td style="padding:8px;border:1px solid #e5e7eb;"><strong>Emergency Number</strong></td>
+                    <td style="padding:8px;border:1px solid #e5e7eb;">{{ report.report_number }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px;border:1px solid #e5e7eb;"><strong>Type</strong></td>
+                    <td style="padding:8px;border:1px solid #e5e7eb;">{{ report.get_emergency_type_display }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px;border:1px solid #e5e7eb;"><strong>Severity</strong></td>
+                    <td style="padding:8px;border:1px solid #e5e7eb;">{{ report.get_severity_level_display }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px;border:1px solid #e5e7eb;"><strong>Plant</strong></td>
+                    <td style="padding:8px;border:1px solid #e5e7eb;">{{ report.plant.name }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px;border:1px solid #e5e7eb;"><strong>Location</strong></td>
+                    <td style="padding:8px;border:1px solid #e5e7eb;">{{ report.location.name }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px;border:1px solid #e5e7eb;"><strong>Status</strong></td>
+                    <td style="padding:8px;border:1px solid #e5e7eb;">{{ report.get_status_display }}</td>
+                </tr>
+            </table>
+
+            <p style="white-space:pre-line;line-height:1.6;">{{ message }}</p>
+
+            <p style="margin:24px 0 0;">
+                <a href="{{ report_url }}" style="display:inline-block;background:#b91c1c;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;">Open Emergency Report</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

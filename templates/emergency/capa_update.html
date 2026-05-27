@@ -1,0 +1,69 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Update Emergency CAPA{% endblock %}
+{% block page_title %}Update Emergency CAPA{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
+<li class="breadcrumb-item"><a href="{% url 'emergency:report_detail' report.pk %}">{{ report.report_number }}</a></li>
+<li class="breadcrumb-item active">Update CAPA</li>
+{% endblock %}
+
+{% block content %}
+<div class="ehs-card">
+  <div class="card-header">
+    <h3 class="card-title mb-0"><i class="fas fa-edit mr-2"></i>{{ capa.capa_number }}</h3>
+  </div>
+  <div class="card-body">
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label class="text-muted">Assigned To</label>
+        <p class="mb-0">{{ capa.assigned_to.get_full_name|default:capa.assigned_to.username }}</p>
+      </div>
+      <div class="col-md-6">
+        <label class="text-muted">Target Date</label>
+        <p class="mb-0">{{ capa.target_date|date:"d M Y" }}</p>
+      </div>
+      <div class="col-md-12 mt-3">
+        <label class="text-muted">Action Required</label>
+        <div>{{ capa.action_required|linebreaks }}</div>
+      </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="{{ form.action_taken.id_for_label }}">Action Taken</label>
+        {{ form.action_taken }}
+        {{ form.action_taken.errors }}
+      </div>
+      <div class="form-row">
+        <div class="form-group col-md-6">
+          <label for="{{ form.status.id_for_label }}">Status</label>
+          {{ form.status }}
+          {{ form.status.errors }}
+        </div>
+        <div class="form-group col-md-6">
+          <label for="{{ form.evidence.id_for_label }}">Evidence</label>
+          {{ form.evidence }}
+          {{ form.evidence.errors }}
+          {% if capa.evidence %}
+          <div class="mt-2">
+            <a href="{{ capa.evidence.url }}" target="_blank" class="btn btn-sm btn-outline-info">View Current Evidence</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="{{ form.closure_remarks.id_for_label }}">Closure Remarks <span class="text-danger">*</span></label>
+        {{ form.closure_remarks }}
+        {{ form.closure_remarks.errors }}
+      </div>
+      <button type="submit" class="btn btn-primary">
+        <i class="fas fa-save mr-1"></i>Update CAPA
+      </button>
+      <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'base/base.html' %}
+
+{% block title %}My Sessions{% endblock %}
+{% block page_title %}My Sessions{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
+<li class="breadcrumb-item active">My Sessions</li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+  <div class="col-md-2 col-6">
+    <div class="info-box"><span class="info-box-icon bg-secondary"><i class="fas fa-inbox"></i></span><div class="info-box-content"><span class="info-box-text">Assigned</span><span class="info-box-number">{{ stats.assigned }}</span></div></div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="info-box"><span class="info-box-icon bg-warning"><i class="fas fa-edit"></i></span><div class="info-box-content"><span class="info-box-text">In Progress</span><span class="info-box-number">{{ stats.in_progress }}</span></div></div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="info-box"><span class="info-box-icon bg-info"><i class="fas fa-paper-plane"></i></span><div class="info-box-content"><span class="info-box-text">Completed</span><span class="info-box-number">{{ stats.completed }}</span></div></div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="info-box"><span class="info-box-icon bg-success"><i class="fas fa-check"></i></span><div class="info-box-content"><span class="info-box-text">Approved</span><span class="info-box-number">{{ stats.approved }}</span></div></div>
+  </div>
+  <div class="col-md-2 col-6">
+    <div class="info-box"><span class="info-box-icon bg-danger"><i class="fas fa-times"></i></span><div class="info-box-content"><span class="info-box-text">Rejected</span><span class="info-box-number">{{ stats.rejected }}</span></div></div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="form-inline">
+      <label class="mr-2">Filter by Status:</label>
+      <select name="status" class="form-control mr-2">
+        <option value="" {% if not selected_status %}selected{% endif %}>All Sessions</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if selected_status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn btn-primary mr-2">Apply</button>
+      <a href="{% url 'emergency:my_sessions' %}" class="btn btn-outline-secondary">Clear</a>
+    </form>
+  </div>
+</div>
+
+<div class="ehs-card">
+  <div class="card-header">
+    <h5 class="mb-0"><i class="fas fa-clipboard-list mr-2"></i>Assigned Emergency Sessions</h5>
+  </div>
+  <div class="card-body">
+    {% if page_obj %}
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Session</th>
+            <th>Topic</th>
+            <th>Scheduled</th>
+            <th>Location</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for participant in page_obj %}
+          <tr>
+            <td><strong>{{ participant.session.session_number }}</strong></td>
+            <td>{{ participant.session.topic.name }}</td>
+            <td>{{ participant.session.scheduled_date|date:"d M Y" }} {{ participant.session.scheduled_time|time:"H:i" }}</td>
+            <td>{{ participant.session.plant.name }}<br><small class="text-muted">{{ participant.session.location.name }}</small></td>
+            <td>
+              <span class="badge
+                {% if participant.status == 'APPROVED' %}badge-success
+                {% elif participant.status == 'REJECTED' %}badge-danger
+                {% elif participant.status == 'COMPLETED' %}badge-info
+                {% elif participant.status == 'IN_PROGRESS' %}badge-warning
+                {% else %}badge-secondary{% endif %}">
+                {{ participant.get_status_display }}
+              </span>
+            </td>
+            <td>
+              {% if participant.status == 'ASSIGNED' %}
+              <a href="{% url 'emergency:session_start' participant.id %}" class="btn btn-sm btn-success"><i class="fas fa-play"></i> Start</a>
+              {% elif participant.status == 'IN_PROGRESS' or participant.status == 'REJECTED' %}
+              <a href="{% url 'emergency:session_start' participant.id %}" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Continue</a>
+              {% endif %}
+              {% if participant.has_submission %}
+              <a href="{% url 'emergency:submission_review' participant.submission.id %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i> Review</a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="fas fa-clipboard fa-3x mb-3"></i>
+      <p class="mb-0">No sessions are assigned to you.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

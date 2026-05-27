@@ -119,6 +119,18 @@ class Command(BaseCommand):
             ('EXPORT_ENV_DATA', 'Export Env Data', 'Can export data', 
              'ENV_DATA', 'EXPORT', 3),
 
+            # === EMERGENCY MODULE ===
+            ('ACCESS_EMERGENCY_MODULE', 'Access Emergency Module', 'Can access emergency module',
+             'EMERGENCY', 'MODULE_ACCESS', 0),
+            ('CREATE_EMERGENCY_REPORT', 'Create Emergency Report', 'Can create emergency reports',
+             'EMERGENCY', 'CREATE', 1),
+            ('VIEW_EMERGENCY_REPORT', 'View Emergency Report', 'Can view emergency reports',
+             'EMERGENCY', 'VIEW', 2),
+            ('CREATE_CAPA', 'Create CAPA', 'Can create CAPAs',
+             'EMERGENCY', 'CREATE', 3), 
+            ('CLOSE_EMERGENCY', 'Close Emergency', 'Can close emergency reports',
+             'EMERGENCY', 'CLOSE', 4),
+
             # === TRAINING MODULE ===
             ('ACCESS_TRAINING_MODULE', 'Access Training Module', 'Can access training module',
             'TRAINING', 'MODULE_ACCESS', 0),

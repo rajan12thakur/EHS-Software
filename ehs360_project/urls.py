@@ -37,7 +37,7 @@ urlpatterns = [
     path('chemicals/', include('apps.chemicals.urls')),
     path('audits/', include('apps.audits.urls')),
     path('legal-compliance/', include('apps.legal_compliance.urls')),
-
+    path('emergency/', include('apps.emergency.urls')),
     #path('observations/', include('apps.observations.urls')),
 
     # Redirect root to login

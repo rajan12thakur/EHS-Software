@@ -1,0 +1,79 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Close Emergency{% endblock %}
+{% block page_title %}Close Emergency{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'emergency:report_detail' report.pk %}">{{ report.report_number }}</a></li>
+<li class="breadcrumb-item active">Close Emergency</li>
+{% endblock %}
+
+{% block content %}
+<div class="ehs-card">
+  <div class="card-header bg-success">
+    <h3 class="card-title mb-0 text-white"><i class="fas fa-check-circle mr-2"></i>Close Emergency</h3>
+  </div>
+  <div class="card-body">
+    <div class="alert alert-info">
+      <strong>{{ report.report_number }}</strong> - {{ report.emergency_title }}
+    </div>
+
+    {% if not can_close %}
+    <div class="alert alert-danger">
+      <strong>Cannot close:</strong> {{ closure_message }}
+    </div>
+    {% endif %}
+
+    <form method="post" id="closureForm">
+      {% csrf_token %}
+      <div class="form-group">
+        <label for="{{ form.closure_remarks.id_for_label }}">Closure Remarks <span class="text-danger">*</span></label>
+        {{ form.closure_remarks }}
+        {{ form.closure_remarks.errors }}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.lessons_learned.id_for_label }}">Lessons Learned <span class="text-danger">*</span></label>
+        {{ form.lessons_learned }}
+        {{ form.lessons_learned.errors }}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.preventive_measures.id_for_label }}">Preventive Measures <span class="text-danger">*</span></label>
+        {{ form.preventive_measures }}
+        {{ form.preventive_measures.errors }}
+      </div>
+      <div class="form-group">
+        <div class="form-check">
+          {{ form.is_recurrence_possible }}
+          <label class="form-check-label" for="{{ form.is_recurrence_possible.id_for_label }}">
+            Is recurrence still possible?
+          </label>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-success" {% if not can_close %}disabled{% endif %}>
+        <i class="fas fa-check-circle mr-1"></i>Close Emergency
+      </button>
+      <a href="{% url 'emergency:closure_check' report.pk %}" class="btn btn-secondary">Cancel</a>
+    </form>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.getElementById('closureForm');
+  if (!form) return;
+  let submitting = false;
+  form.addEventListener('submit', function (event) {
+    if (submitting) {
+      event.preventDefault();
+      return;
+    }
+    submitting = true;
+    const button = form.querySelector('button[type="submit"]');
+    if (button) {
+      button.disabled = true;
+      button.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>Closing...';
+    }
+  });
+});
+</script>
+{% endblock %}

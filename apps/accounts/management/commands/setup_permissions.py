@@ -26,6 +26,10 @@ class Command(BaseCommand):
             ('HAZARD_DASHBOARD', 'Access Hazard Dashboard', 'Can view hazard dashboard'),
             ('INSPECTION_DASHBOARD', 'Access Inspection Dashboard', 'Can view inspection dashboard'),
 
+            # Emergency Permissions
+            ('CREATE_EMERGENCY_REPORT', 'Create Emergency Report', 'Can create/report new emergency reports'),
+            ('VIEW_EMERGENCY_REPORT', 'View Emergency Report', 'Can view emergency report details'),
+
             # Injury Permissions
             ('CREATE_INJURY', 'Create Injury', 'Can create/report new injuries'),
             ('EDIT_INJURY', 'Edit Injury', 'Can edit injury reports'),
@@ -54,6 +58,7 @@ class Command(BaseCommand):
             ('ACCESS_INJURY_MODULE', 'Access Injury Module', 'Can access injury management module'),
             ('ACCESS_HAZARD_MODULE', 'Access Hazard Module', 'Can access hazard management module'),
             ('ACCESS_INSPECTION_MODULE', 'Access Inspection Module', 'Can access inspection module'),
+            ('ACCESS_EMERGENCY_MODULE', 'Access Emergency Module', 'Can access emergency module'),
             # ('ACCESS_AUDIT_MODULE', 'Access Audit Module', 'Can access audit module'),
             # ('ACCESS_TRAINING_MODULE', 'Access Training Module', 'Can access training module'),
             # ('ACCESS_PERMIT_MODULE', 'Access Permit Module', 'Can access work permit module'),
