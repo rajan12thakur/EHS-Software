@@ -645,54 +645,6 @@
                 </li>
                 {% endif %}
             </ul>
-        <!-- 7. INSPECTION MANAGEMENT (without configuration inside) -->
-        {% if request.user.can_access_inspection_module %}
-        <li class="nav-item {% if 'inspections' in request.path %}menu-open{% endif %}">
-          <a href="#" class="nav-link {% if 'inspections' in request.path %}active{% endif %}">
-            <i class="nav-icon fas fa-clipboard-check"></i>
-            <p>Inspection Management <i class="right fas fa-angle-left"></i></p>
-          </a>
-          <ul class="nav nav-treeview">
-            {% if request.user|has_perm:'INSPECTION_DASHBOARD' %}
-            <li class="nav-item">
-              <a href="{% url 'inspections:inspection_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'inspection_dashboard' %}active{% endif %}">
-                <i class="nav-icon far fa-circle"></i>
-                <p>Dashboard</p>
-              </a>
-            </li>
-            {% endif %}
-            
-            <li class="nav-item">
-              <a href="{% url 'inspections:my_inspections' %}" class="nav-link {% if request.resolver_match.url_name == 'my_inspections' %}active{% endif %}">
-                <i class="nav-icon far fa-circle"></i>
-                <p>My Inspections</p>
-              </a>
-            </li>
-            {% if request.user|has_perm:'CREATE_INSPECTION' %}
-            <li class="nav-item">
-              <a href="{% url 'inspections:schedule_create' %}" class="nav-link {% if request.resolver_match.url_name == 'schedule_create' %}active{% endif %}">
-                <i class="nav-icon far fa-circle"></i>
-                <p>Schedule Inspection</p>
-              </a>
-            </li>
-            {% endif %}
-            {% if request.user|has_perm:'VIEW_INSPECTION' %}
-            <li class="nav-item">
-              <a href="{% url 'inspections:schedule_list' %}" class="nav-link {% if request.resolver_match.url_name == 'schedule_list' %}active{% endif %}">
-                <i class="nav-icon far fa-circle"></i>
-                <p>All Schedules</p>
-              </a>
-            </li>
-            {% endif %}
-            {% if request.user|has_perm:'VIEW_NO_ANSWER_ITEMS' %}
-            <li class="nav-item">
-              <a href="{% url 'inspections:no_answers_list' %}" class="nav-link {% if request.resolver_match.url_name == 'no_answers_list' %}active{% endif %}">
-                <i class="nav-icon far fa-circle"></i>
-                <p>No Answer Items</p>
-              </a>
-            </li>
-            {% endif %}
-          </ul>
         </li>
         {% endif %}
 
@@ -783,58 +735,6 @@
           <a href="#" class="nav-link {% if 'notifications' in request.path %}active{% endif %}">
             <i class="nav-icon fas fa-bell"></i>
             <p>Notification Configuration<i class="right fas fa-angle-left"></i></p>
-        <!-- 8. Hazard Management -->
-        <li class="nav-item {% if 'hazards' in request.path %}menu-open{% endif %}">
-          <a href="#" class="nav-link {% if 'hazards' in request.path %}active{% endif %}">
-            <i class="nav-icon fas fa-biohazard"></i>
-            <p>Hazards Management <i class="right fas fa-angle-left"></i></p>
-          </a>
-          <ul class="nav nav-treeview">
-            {% if request.user|has_perm:'HAZARD_DASHBOARD' %}
-            <li class="nav-item">
-              <a href="{% url 'hazards:dashboard' %}"
-                 class="nav-link {% if request.resolver_match.url_name == 'dashboard' and 'hazards' in request.path %}active{% endif %}">
-                <i class="nav-icon far fa-circle"></i>
-                <p>Dashboard</p>
-              </a>
-            </li>
-            {% endif %}
-            {% if request.user|has_perm:'CREATE_HAZARD' %}
-            <li class="nav-item">
-              <a href="{% url 'hazards:hazard_create' %}"
-                 class="nav-link {% if request.resolver_match.url_name == 'hazard_create' %}active{% endif %}">
-                <i class="nav-icon far fa-circle"></i>
-                <p>Report Hazard</p>
-              </a>
-            </li>
-            {% endif %}
-            {% if request.user|has_perm:'VIEW_HAZARD' %}
-            <li class="nav-item">
-              <a href="{% url 'hazards:hazard_list' %}"
-                 class="nav-link {% if request.resolver_match.url_name == 'hazard_list' %}active{% endif %}">
-                <i class="nav-icon far fa-circle"></i>
-                <p>All Hazards</p>
-              </a>
-            </li>
-            {% endif %}
-            <li class="nav-item">
-              <a href="{% url 'hazards:my_action_items' %}"
-                class="nav-link {% if request.resolver_match.url_name == 'my_action_items' %}active{% endif %}">
-                <i class="nav-icon fas fa-tasks"></i>
-                <p>
-                  My Action Items
-                    {% comment %} <span class="badge badge-danger right">{{ my_pending_actions_count }}</span> {% endcomment %}
-                  </p>
-                </a>
-              </li>
-          </ul>
-        </li>
-
-        <!-- 9. Injury Management -->
-        <li class="nav-item {% if 'accidents' in request.path %}menu-open{% endif %}">
-          <a href="#" class="nav-link {% if 'incidents' in request.path %}active{% endif %}">
-            <i class="nav-icon fas fa-exclamation-triangle"></i>
-            <p>Injury Management <i class="right fas fa-angle-left"></i></p>
           </a>
           <ul class="nav nav-treeview">
             <li class="nav-item">
@@ -856,14 +756,6 @@
                  class="nav-link {% if request.resolver_match.url_name == 'notification_tracking_view' %}active{% endif %}">
                 <i class="nav-icon far fa-circle"></i>
                 <p>Notification Tracking</p>
-              </a>
-            </li>
-            {% endif %}
-            <li class="nav-item">
-              <a href="{% url 'accidents:my_action_items' %}"
-                class="nav-link {% if request.resolver_match.url_name == 'my_action_items' %}active{% endif %}">
-                <i class="nav-icon fas fa-tasks"></i>
-                <p>My Action Items</p>
               </a>
             </li>
           </ul>
@@ -913,29 +805,19 @@
                         <p>Compliance Requirements</p>
                     </a>
                 </li>
-
                 <!-- Compliance Questions -->
                 <li class="nav-item">
-
                     <a href="{% url 'legal_compliance:question_list' %}"
                     class="nav-link
                     {% if request.resolver_match.url_name == 'question_list' %}
                             active
                     {% endif %}">
-
                         <i class="far fa-circle nav-icon"></i>
-
                         <p>
-
                             Compliance Questions
-
                         </p>
-
                     </a>
-
                 </li>
-
-
                 <!-- My Compliances -->
                 <li class="nav-item">
                     <a href="{% url 'legal_compliance:my_compliances' %}"
@@ -949,54 +831,36 @@
                         </p>
                     </a>
                 </li>
-
                 <!-- Compliance Reports -->
                 <li class="nav-item">
-
                     <a href="{% url 'legal_compliance:status_report' %}"
                     class="nav-link
                     {% if request.resolver_match.url_name == 'status_report' %}
                             active
                     {% endif %}">
-   
                         <i class="far fa-chart-bar nav-icon"></i>
-
                         <p>
-
                             Compliance Reports
-
                         </p>
-
                     </a>
-
                 </li>
-
-
                 <!-- Overdue Dashboard -->
                 <li class="nav-item">
-
                     <a href="{% url 'legal_compliance:overdue_dashboard' %}"
                     class="nav-link
                     {% if request.resolver_match.url_name == 'overdue_dashboard' %}
                             active
                     {% endif %}">
-
                         <i class="fas fa-exclamation-triangle nav-icon text-danger"></i>
-
                         <p>
-
                             Overdue Dashboard
-
                         </p>
-
                     </a>
-
                 </li>
             </ul>
-
         </li>
         {% endif %}
-        <!-- 12. MONTHLY ENVIRONMENTAL DATA -->
+
         {% if request.user.can_access_env_data_module %}
         <li class="nav-item {% if 'env-data' in request.path or 'data_collection' in request.path %}menu-open{% endif %}">
           <a href="#" class="nav-link {% if 'env-data' in request.path or 'data_collection' in request.path %}active{% endif %}">
@@ -1222,6 +1086,7 @@
         </li>
         {% endif %}
 
+        {% if request.user|has_perm:'ACCESS_EMERGENCY_MODULE' %}
         <li class="nav-item {% if 'emergency' in request.path %}menu-open{% endif %}">
             <a href="#" class="nav-link {% if 'emergency' in request.path %}active{% endif %}">
                 <i class="nav-icon fas fa-broadcast-tower"></i>
@@ -1231,6 +1096,7 @@
                 </p>
             </a>
             <ul class="nav nav-treeview">
+                {% if request.user.is_superuser or request.user.is_admin_user %}
                 <li class="nav-item {% if request.resolver_match.url_name == 'topic_list' or request.resolver_match.url_name == 'question_list' %}menu-open{% endif %}">
                     <a href="#" class="nav-link {% if request.resolver_match.url_name == 'topic_list' or request.resolver_match.url_name == 'question_list' %}active{% endif %}">
                         <i class="nav-icon fas fa-cogs"></i>
@@ -1256,6 +1122,8 @@
                         </li>
                     </ul>
                 </li>
+                {% endif %}
+                {% if request.user|has_perm:'ACCESS_EMERGENCY_DRILL_MODULE' %}
                 <li class="nav-item {% if request.resolver_match.url_name in 'session_create session_list my_sessions contact_directory' %}menu-open{% endif %}">
                     <a href="#" class="nav-link {% if request.resolver_match.url_name in 'session_create session_list my_sessions contact_directory' %}active{% endif %}">
                         <i class="nav-icon fas fa-user-shield"></i>
@@ -1265,6 +1133,7 @@
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
+                        {% if request.user|has_perm:'SCHEDULE_EMERGENCY_DRILL' %}
                         <li class="nav-item">
                             <a href="{% url 'emergency:session_create' %}"
                               class="nav-link {% if request.resolver_match.url_name == 'session_create' %}active{% endif %}">
@@ -1272,6 +1141,8 @@
                                 <p>Schedule Session</p>
                             </a>
                         </li>
+                        {% endif %}
+                        {% if request.user|has_perm:'VIEW_EMERGENCY_DRILL' %}
                         <li class="nav-item">
                             <a href="{% url 'emergency:session_list' %}"
                               class="nav-link {% if request.resolver_match.url_name == 'session_list' or 'session_detail' in request.path %}active{% endif %}">
@@ -1279,6 +1150,7 @@
                                 <p>All Sessions</p>
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a href="{% url 'emergency:my_sessions' %}"
                               class="nav-link {% if request.resolver_match.url_name == 'my_sessions' %}active{% endif %}">
@@ -1295,6 +1167,7 @@
                         </li>
                     </ul>
                 </li>
+                {% endif %}
                 <li class="nav-item {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}menu-open{% endif %}">
                     <a href="#" class="nav-link {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}active{% endif %}">
                         <i class="nav-icon fas fa-exclamation-triangle"></i>
@@ -1311,18 +1184,22 @@
                                 <p>SOS Control Panel</p>
                             </a>
                         </li>
+                        {% if request.user|has_perm:'CREATE_EMERGENCY_REPORT' %}
                         <li class="nav-item">
                             <a href="{% url 'emergency:report_create' %}" class="nav-link {% if request.resolver_match.url_name == 'report_create' %}active{% endif %}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Report Emergency</p>
                             </a>
                         </li>
+                        {% endif %}
+                        {% if request.user|has_perm:'VIEW_EMERGENCY_REPORT' %}
                         <li class="nav-item">
                             <a href="{% url 'emergency:report_list' %}" class="nav-link {% if request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}active{% endif %}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>All Emergency Reports</p>
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
                           <a href="{% url 'emergency:my_action_items' %}" class="nav-link {% if request.resolver_match.url_name == 'my_action_items' or request.resolver_match.url_name == 'action_item_complete' %}active{% endif %}">
                             <i class="far fa-circle nav-icon"></i>
@@ -1333,6 +1210,7 @@
                 </li>
             </ul>
         </li>
+        {% endif %}
         <li class="nav-item">
           <a href="#" class="nav-link">
             <i class="nav-icon fa-solid fa-person-digging"></i>
