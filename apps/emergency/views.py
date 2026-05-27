@@ -18,6 +18,7 @@ from apps.common.image_utils import compress_image
 from apps.notifications.services import NotificationService
 from .forms import *
 from .models import *
+from .utils import generate_emergency_report_pdf
 from apps.organizations.models import Plant, Zone, Location, SubLocation
 
 
@@ -657,6 +658,64 @@ class EmergencyReportDetailView(EmergencyAccessMixin, DetailView):
             and (self.user_can_manage() or self.request.user == self.object.reported_by or self.request.user.is_superuser)
         )
         return context
+
+
+class EmergencyReportUpdateView(EmergencyAccessMixin, UpdateView):
+    model = EmergencyReport
+    form_class = EmergencyReportForm
+    template_name = "emergency/report_create.html"
+    context_object_name = "report"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if not (
+            request.user.is_superuser
+            or self.user_can_manage()
+            or request.user == self.object.reported_by
+        ):
+            messages.error(request, "You do not have permission to edit this emergency report.")
+            return redirect("emergency:report_detail", pk=self.object.pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return self.get_report_queryset()
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(self.get_location_context())
+        context["cancel_url"] = self.request.GET.get("next") or reverse("emergency:report_detail", kwargs={"pk": self.object.pk})
+        context["is_edit"] = True
+        return context
+
+    def get_success_url(self):
+        return reverse("emergency:report_detail", kwargs={"pk": self.object.pk})
+
+    def form_valid(self, form):
+        self.object = form.save()
+        for photo in self.request.FILES.getlist("photos"):
+            compressed_photo = compress_image(photo)
+            EmergencyReportPhoto.objects.create(
+                report=self.object,
+                photo=compressed_photo,
+                uploaded_by=self.request.user,
+            )
+        messages.success(self.request, f"Emergency report {self.object.report_number} updated successfully.")
+        return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        messages.error(self.request, "Please correct the errors below.")
+        return super().form_invalid(form)
+
+
+class EmergencyReportPDFView(EmergencyAccessMixin, View):
+    def get(self, request, pk):
+        report = get_object_or_404(self.get_report_queryset(), pk=pk)
+        return generate_emergency_report_pdf(report)
 
 
 class EmergencyMyActionItemsView(EmergencyAccessMixin, ListView):
