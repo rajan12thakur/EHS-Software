@@ -28,18 +28,18 @@
     <form method="post">
       {% csrf_token %}
       <div class="form-group">
-        <label for="{{ form.action_required.id_for_label }}">Action Required</label>
+        <label for="{{ form.action_required.id_for_label }}">Action Required <span class="text-danger">*</span></label>
         {{ form.action_required }}
         {{ form.action_required.errors }}
       </div>
       <div class="form-row">
         <div class="form-group col-md-6">
-          <label for="{{ form.assigned_to.id_for_label }}">Assigned To</label>
+          <label for="{{ form.assigned_to.id_for_label }}">Assigned To <span class="text-danger">*</span></label>
           {{ form.assigned_to }}
           {{ form.assigned_to.errors }}
         </div>
         <div class="form-group col-md-6">
-          <label for="{{ form.target_date.id_for_label }}">Target Date</label>
+          <label for="{{ form.target_date.id_for_label }}">Target Date <span class="text-danger">*</span></label>
           {{ form.target_date }}
           {{ form.target_date.errors }}
         </div>

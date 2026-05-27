@@ -17,6 +17,111 @@
   .sos-header h3 { margin: 0; font-weight: 700; }
   .sos-pulse { display: inline-flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.18); box-shadow: 0 0 0 0 rgba(255,255,255,0.45); animation: pulse 1.8s infinite; }
   .sos-strip { background: linear-gradient(90deg, rgba(181,18,27,0.08), rgba(229,57,53,0.02)); border-left: 4px solid #dc3545; padding: 0.85rem 1rem; border-radius: 12px; }
+  .emergency-type-field { position: absolute; opacity: 0; pointer-events: none; height: 0; width: 0; }
+  .emergency-type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
+  }
+  .emergency-type-card {
+    position: relative;
+    border: 1px solid rgba(181, 18, 27, 0.15);
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at top, rgba(255, 138, 101, 0.14), transparent 45%),
+      linear-gradient(180deg, #fff7f6, #ffffff 72%);
+    box-shadow: 0 14px 30px rgba(181, 18, 27, 0.08);
+    min-height: 145px;
+    padding: 1rem 0.85rem 0.9rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .emergency-type-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 34px rgba(181, 18, 27, 0.14);
+    border-color: rgba(229, 57, 53, 0.3);
+  }
+  .emergency-type-card:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(229, 57, 53, 0.18), 0 18px 34px rgba(181, 18, 27, 0.14);
+  }
+  .emergency-type-card.is-selected {
+    border-color: #dc3545;
+    background:
+      radial-gradient(circle at top, rgba(255, 138, 101, 0.22), transparent 44%),
+      linear-gradient(180deg, #fff3f1, #ffffff 72%);
+    box-shadow: 0 20px 38px rgba(220, 53, 69, 0.18);
+    transform: translateY(-4px);
+  }
+  .emergency-type-card::after {
+    content: "";
+    position: absolute;
+    inset: auto -35px -35px auto;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: rgba(220, 53, 69, 0.06);
+  }
+  .emergency-type-badge {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.28rem 0.72rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .emergency-type-badge.critical { background: #f7c5ca; color: #8b1e25; }
+  .emergency-type-badge.high { background: #ffd27f; color: #7b4b00; }
+  .emergency-type-badge.medium { background: #bfd9ff; color: #1f5d9d; }
+  .emergency-type-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 0.8rem;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #fff;
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.14);
+  }
+  .emergency-type-icon.fire { background: linear-gradient(135deg, #ff6b35, #ff9f43); }
+  .emergency-type-icon.chemical_spill { background: linear-gradient(135deg, #9164ff, #5d9bff); }
+  .emergency-type-icon.gas_leak { background: linear-gradient(135deg, #17a2b8, #5bc0de); }
+  .emergency-type-icon.electrical { background: linear-gradient(135deg, #f39c12, #ff6b35); }
+  .emergency-type-icon.medical { background: linear-gradient(135deg, #e83e8c, #ff8ab4); }
+  .emergency-type-icon.explosion { background: linear-gradient(135deg, #6c757d, #495057); }
+  .emergency-type-icon.natural_disaster { background: linear-gradient(135deg, #198754, #58c27d); }
+  .emergency-type-icon.other { background: linear-gradient(135deg, #7f8c8d, #95a5a6); }
+  .emergency-type-card h6 {
+    margin-bottom: 0.25rem;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2d1f22;
+  }
+  .emergency-type-card p {
+    margin: 0;
+    text-align: center;
+    color: #7a5f64;
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .emergency-type-card.is-selected h6,
+  .emergency-type-card.is-selected p { color: #7f1118; }
+  @media (max-width: 991.98px) {
+    .emergency-type-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 575.98px) {
+    .emergency-type-grid { grid-template-columns: 1fr; }
+  }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.45); }
     70% { box-shadow: 0 0 0 16px rgba(255,255,255,0); }
@@ -62,12 +167,16 @@
               {{ form.emergency_title }}
             </div>
             <div class="col-md-4 mb-3">
-              <label for="{{ form.emergency_type.id_for_label }}">Emergency Type <span class="text-danger">*</span></label>
-              {{ form.emergency_type }}
-            </div>
-            <div class="col-md-4 mb-3">
               <label for="{{ form.severity_level.id_for_label }}">Severity Level <span class="text-danger">*</span></label>
               {{ form.severity_level }}
+            </div>
+            <div class="col-md-4 mb-3"></div>
+            <div class="col-12 mb-3">
+              <label for="{{ form.emergency_type.id_for_label }}" class="d-block">Emergency Type <span class="text-danger">*</span></label>
+              <div class="emergency-type-field">
+                {{ form.emergency_type }}
+              </div>
+              <div id="emergencyTypeCards" class="emergency-type-grid" aria-label="Emergency Type Options"></div>
             </div>
             <div class="col-md-6 mb-3" id="otherEmergencyTypeWrapper" style="display:none;">
               <label for="{{ form.other_emergency_type.id_for_label }}">Other Emergency Type <span class="text-danger">*</span></label>
@@ -132,6 +241,7 @@
 document.addEventListener('DOMContentLoaded', function () {
   const form = document.getElementById('sosForm');
   const emergencyTypeField = document.getElementById('id_emergency_type');
+  const emergencyTypeCards = document.getElementById('emergencyTypeCards');
   const emergencyTitleField = document.getElementById('id_emergency_title');
   const otherEmergencyWrapper = document.getElementById('otherEmergencyTypeWrapper');
   const otherEmergencyInput = document.getElementById('id_other_emergency_type');
@@ -141,6 +251,16 @@ document.addEventListener('DOMContentLoaded', function () {
   const sublocationField = document.getElementById('id_sublocation');
   const submitBtn = document.getElementById('submitBtn');
   let isSubmitting = false;
+  const emergencyCardMeta = {
+    FIRE: { icon: 'fa-fire', accent: 'fire', note: 'Smoke / Flame' },
+    CHEMICAL_SPILL: { icon: 'fa-vial', accent: 'chemical_spill', note: 'Chemical / Spill' },
+    GAS_LEAK: { icon: 'fa-smog', accent: 'gas_leak', note: 'Fumes / Leakage' },
+    ELECTRICAL: { icon: 'fa-bolt', accent: 'electrical', note: 'Outage / Electrical'},
+    MEDICAL: { icon: 'fa-briefcase-medical', accent: 'medical', note: 'Injury / Health' },
+    EXPLOSION: { icon: 'fa-bomb', accent: 'explosion', note: 'Blast / Impact' },
+    NATURAL_DISASTER: { icon: 'fa-house-damage', accent: 'natural_disaster', note: 'Weather / Disaster' },
+    OTHER: { icon: 'fa-ellipsis-h', accent: 'other', note: 'Custom / Unlisted' }
+  };
 
   function populateSelect(select, items, emptyLabel) {
     if (!select) return;
@@ -172,6 +292,55 @@ document.addEventListener('DOMContentLoaded', function () {
       otherEmergencyInput.removeAttribute('required');
       otherEmergencyInput.value = '';
     }
+  }
+
+  function buildEmergencyTypeCards() {
+    if (!emergencyTypeField || !emergencyTypeCards) return;
+
+    const options = Array.from(emergencyTypeField.options).filter(option => option.value);
+    emergencyTypeCards.innerHTML = '';
+
+    options.forEach(option => {
+      const meta = emergencyCardMeta[option.value] || emergencyCardMeta.OTHER;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'emergency-type-card';
+      button.dataset.value = option.value;
+      button.setAttribute('aria-pressed', 'false');
+      button.innerHTML = `
+        <span class="emergency-type-icon ${meta.accent}">
+          <i class="fas ${meta.icon}"></i>
+        </span>
+        <h6>${option.text}</h6>
+        <p>${meta.note}</p>
+      `;
+
+      button.addEventListener('click', function () {
+        emergencyTypeField.value = option.value;
+        syncEmergencyTypeCards();
+        updateTitleFromType();
+        updateOtherEmergencyType();
+      });
+
+      button.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          button.click();
+        }
+      });
+
+      emergencyTypeCards.appendChild(button);
+    });
+  }
+
+  function syncEmergencyTypeCards() {
+    if (!emergencyTypeCards) return;
+    const cards = emergencyTypeCards.querySelectorAll('.emergency-type-card');
+    cards.forEach(card => {
+      const isSelected = card.dataset.value === emergencyTypeField.value;
+      card.classList.toggle('is-selected', isSelected);
+      card.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    });
   }
 
   if (plantField) {
@@ -206,10 +375,13 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   if (emergencyTypeField) {
+    buildEmergencyTypeCards();
     emergencyTypeField.addEventListener('change', function () {
+      syncEmergencyTypeCards();
       updateTitleFromType();
       updateOtherEmergencyType();
     });
+    syncEmergencyTypeCards();
     updateTitleFromType();
     updateOtherEmergencyType();
   }

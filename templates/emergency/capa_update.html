@@ -33,13 +33,13 @@
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       <div class="form-group">
-        <label for="{{ form.action_taken.id_for_label }}">Action Taken</label>
+        <label for="{{ form.action_taken.id_for_label }}">Action Taken  <span class="text-danger">*</span></label>
         {{ form.action_taken }}
         {{ form.action_taken.errors }}
       </div>
       <div class="form-row">
         <div class="form-group col-md-6">
-          <label for="{{ form.status.id_for_label }}">Status</label>
+          <label for="{{ form.status.id_for_label }}">Status <span class="text-danger">*</span></label>
           {{ form.status }}
           {{ form.status.errors }}
         </div>
