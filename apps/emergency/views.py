@@ -231,6 +231,67 @@ class EmergencyHomeView(EmergencyAccessMixin, TemplateView):
             return redirect("dashboards:home")
         return super().dispatch(request, *args, **kwargs)
 
+class EmergencyEvacuationPlanView(EmergencyAccessMixin, TemplateView):
+    template_name = "emergency/evacuation_plan.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to access the emergency module.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
+
+    def _get_accessible_plants(self):
+        user = self.request.user
+        if user.is_superuser or user.is_admin_user:
+            return Plant.objects.filter(is_active=True).order_by("name")
+
+        assigned_plants = user.assigned_plants.filter(is_active=True).order_by("name")
+        if assigned_plants.exists():
+            return assigned_plants
+
+        if user.plant_id and user.plant.is_active:
+            return Plant.objects.filter(pk=user.plant_id, is_active=True)
+
+        return Plant.objects.none()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        plants = self._get_accessible_plants()
+        selected_plant_id = self.request.GET.get("plant", "").strip()
+        selected_plant = None
+
+        if selected_plant_id:
+            selected_plant = plants.filter(pk=selected_plant_id).first()
+        if not selected_plant and plants.count() == 1:
+            selected_plant = plants.first()
+            selected_plant_id = str(selected_plant.pk)
+
+        safety_managers = User.objects.none()
+        if selected_plant:
+            safety_managers = (
+                User.objects.select_related("department", "plant", "role")
+                .filter(
+                    is_active=True,
+                    is_active_employee=True,
+                    role__name="SAFETY MANAGER",
+                )
+                .filter(
+                    Q(plant=selected_plant) | Q(assigned_plants=selected_plant)
+                )
+                .distinct()
+                .order_by("first_name", "last_name", "username")
+            )
+
+        context.update(
+            {
+                "plants": plants,
+                "selected_plant": selected_plant_id,
+                "selected_plant_obj": selected_plant,
+                "safety_managers": safety_managers,
+            }
+        )
+        return context
+
 
 class EmergencyTopicListView(EmergencyAccessMixin, ListView):
     model = EmergencyTopic

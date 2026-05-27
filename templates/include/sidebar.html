@@ -1168,8 +1168,8 @@
                     </ul>
                 </li>
                 {% endif %}
-                <li class="nav-item {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}menu-open{% endif %}">
-                    <a href="#" class="nav-link {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}active{% endif %}">
+                <li class="nav-item {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' or request.resolver_match.url_name == 'evacuation_plan' %}menu-open{% endif %}">
+                    <a href="#" class="nav-link {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' or request.resolver_match.url_name == 'evacuation_plan' %}active{% endif %}">
                         <i class="nav-icon fas fa-exclamation-triangle"></i>
                         <p>
                             Emergency Report
@@ -1182,6 +1182,13 @@
                               class="nav-link {% if request.resolver_match.url_name == 'sos_control_panel' %}active{% endif %}">
                                 <i class="far fa-circle nav-icon text-danger"></i>
                                 <p>SOS Control Panel</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:evacuation_plan' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'evacuation_plan' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Evacuation Plan</p>
                             </a>
                         </li>
                         {% if request.user|has_perm:'CREATE_EMERGENCY_REPORT' %}
