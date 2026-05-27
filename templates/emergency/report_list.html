@@ -17,6 +17,23 @@
     padding: 20px;
     margin-bottom: 20px;
   }
+
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table {
+    min-width: 1200px;
+  }
+
+  .action-buttons {
+    white-space: nowrap;
+  }
+
+  .action-buttons .btn {
+    margin-right: 4px;
+  }
 </style>
 {% endblock %}
 
@@ -125,9 +142,15 @@
             </td>
             <td>{{ report.department.name|default:"-" }}</td>
             <td><span class="badge {{ report.status_badge_class }}">{{ report.get_status_display }}</span></td>
-            <td class="text-center">
+            <td class="text-center action-buttons">
               <a href="{% url 'emergency:report_detail' report.pk %}" class="btn btn-sm btn-info" title="View">
                 <i class="fas fa-eye"></i>
+              </a>
+              <a href="{% url 'emergency:report_update' report.pk %}" class="btn btn-sm btn-warning" title="Edit">
+                <i class="fas fa-edit"></i>
+              </a>
+              <a href="{% url 'emergency:report_pdf' report.pk %}" class="btn btn-sm btn-danger" title="Download PDF" target="_blank">
+                <i class="fas fa-file-pdf"></i>
               </a>
             </td>
           </tr>
