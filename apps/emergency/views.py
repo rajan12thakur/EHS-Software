@@ -75,11 +75,38 @@ class EmergencyAccessMixin(LoginRequiredMixin):
         user = self.request.user
         return user.is_superuser or user.has_permission(code)
 
+    def can_access_emergency_module(self):
+        return self.has_emergency_permission("ACCESS_EMERGENCY_MODULE")
+
+    def can_access_emergency_drill_module(self):
+        return self.has_emergency_permission("ACCESS_EMERGENCY_DRILL_MODULE")
+
+    def can_schedule_emergency_drill(self):
+        return self.has_emergency_permission("SCHEDULE_EMERGENCY_DRILL")
+
+    def can_view_emergency_drill(self):
+        return self.has_emergency_permission("VIEW_EMERGENCY_DRILL")
+
+    def can_create_emergency_report(self):
+        return self.has_emergency_permission("CREATE_EMERGENCY_REPORT")
+
+    def can_view_emergency_report(self):
+        return self.has_emergency_permission("VIEW_EMERGENCY_REPORT")
+
+    def can_edit_emergency_report(self):
+        return self.has_emergency_permission("EDIT_EMERGENCY_REPORT")
+
+    def can_download_emergency_report(self):
+        return self.has_emergency_permission("DOWNLOAD_EMERGENCY_REPORT")
+
+    def can_create_emergency_investigation(self):
+        return self.has_emergency_permission("CREATE_INVESTIGATION_EMERGENCY")
+
     def can_manage_emergency_capa(self):
-        return self.user_can_manage() or self.has_emergency_permission("CREATE_CAPA")
+        return self.has_emergency_permission("CREATE_CAPA")
 
     def can_close_emergency(self):
-        return self.user_can_manage() or self.has_emergency_permission("CLOSE_EMERGENCY")
+        return self.has_emergency_permission("CLOSE_EMERGENCY")
 
     def get_session_queryset(self):
         queryset = EmergencySession.objects.select_related(
@@ -132,7 +159,7 @@ class EmergencyAccessMixin(LoginRequiredMixin):
         return context
 
     def can_review_sessions(self):
-        return self.request.user.is_superuser or self.user_can_manage()
+        return self.can_view_emergency_drill()
 
     def get_department_questions_for_employee(self, employee):
         if not getattr(employee, "department_id", None):
@@ -198,12 +225,24 @@ class EmergencyAccessMixin(LoginRequiredMixin):
 class EmergencyHomeView(EmergencyAccessMixin, TemplateView):
     template_name = "emergency/home.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to access the emergency module.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
+
 
 class EmergencyTopicListView(EmergencyAccessMixin, ListView):
     model = EmergencyTopic
     template_name = "emergency/topic_list.html"
     context_object_name = "topics"
     paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to view emergency topics.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = EmergencyTopic.objects.annotate(session_count=Count("sessions")).order_by("name")
@@ -232,6 +271,9 @@ class EmergencyTopicCreateView(EmergencyAccessMixin, CreateView):
     success_url = reverse_lazy("emergency:topic_list")
 
     def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to access the emergency module.")
+            return redirect("dashboards:home")
         if not self.user_can_manage():
             messages.error(request, "You don't have permission to manage emergency topics.")
             return redirect("emergency:topic_list")
@@ -256,6 +298,9 @@ class EmergencyTopicUpdateView(EmergencyAccessMixin, UpdateView):
     success_url = reverse_lazy("emergency:topic_list")
 
     def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to access the emergency module.")
+            return redirect("dashboards:home")
         if not self.user_can_manage():
             messages.error(request, "You don't have permission to edit emergency topics.")
             return redirect("emergency:topic_list")
@@ -279,7 +324,10 @@ class EmergencySessionCreateView(EmergencyAccessMixin, CreateView):
     success_url = reverse_lazy("emergency:session_list")
 
     def dispatch(self, request, *args, **kwargs):
-        if not self.user_can_manage():
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
+        if not self.can_schedule_emergency_drill():
             messages.error(request, "You don't have permission to schedule emergency sessions.")
             return redirect("emergency:session_list")
         return super().dispatch(request, *args, **kwargs)
@@ -350,6 +398,15 @@ class EmergencySessionListView(EmergencyAccessMixin, ListView):
     context_object_name = "sessions"
     paginate_by = 20
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
+        if not self.can_view_emergency_drill():
+            messages.error(request, "You don't have permission to view emergency sessions.")
+            return redirect("emergency:home")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = self.get_session_queryset()
         search = self.request.GET.get("search", "").strip()
@@ -411,6 +468,12 @@ class EmergencyReportListView(EmergencyAccessMixin, ListView):
     context_object_name = "reports"
     paginate_by = 20
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_view_emergency_report():
+            messages.error(request, "You don't have permission to view emergency reports.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = self.get_report_queryset().order_by("-incident_date", "-incident_time", "-id")
         search = self.request.GET.get("search", "").strip()
@@ -460,6 +523,12 @@ class EmergencyReportCreateView(EmergencyAccessMixin, CreateView):
     form_class = EmergencyReportForm
     template_name = "emergency/report_create.html"
     success_url = reverse_lazy("emergency:report_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_create_emergency_report():
+            messages.error(request, "You don't have permission to create emergency reports.")
+            return redirect("emergency:report_list")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -536,6 +605,12 @@ class EmergencySOSControlPanelView(EmergencyAccessMixin, CreateView):
     form_class = EmergencySOSReportForm
     template_name = "emergency/sos_control_panel.html"
     success_url = reverse_lazy("emergency:report_list")
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to access the emergency module.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -627,6 +702,12 @@ class EmergencyReportDetailView(EmergencyAccessMixin, DetailView):
     template_name = "emergency/report_detail.html"
     context_object_name = "report"
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_view_emergency_report():
+            messages.error(request, "You don't have permission to view emergency reports.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         return self.get_report_queryset()
 
@@ -655,7 +736,7 @@ class EmergencyReportDetailView(EmergencyAccessMixin, DetailView):
         context["can_investigate"] = (
             self.object.status == "ACTION_PERFORMED"
             and investigation_report is None
-            and (self.user_can_manage() or self.request.user == self.object.reported_by or self.request.user.is_superuser)
+            and self.can_create_emergency_investigation()
         )
         return context
 
@@ -668,11 +749,7 @@ class EmergencyReportUpdateView(EmergencyAccessMixin, UpdateView):
 
     def dispatch(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if not (
-            request.user.is_superuser
-            or self.user_can_manage()
-            or request.user == self.object.reported_by
-        ):
+        if not self.can_edit_emergency_report():
             messages.error(request, "You do not have permission to edit this emergency report.")
             return redirect("emergency:report_detail", pk=self.object.pk)
         return super().dispatch(request, *args, **kwargs)
@@ -714,6 +791,9 @@ class EmergencyReportUpdateView(EmergencyAccessMixin, UpdateView):
 
 class EmergencyReportPDFView(EmergencyAccessMixin, View):
     def get(self, request, pk):
+        if not self.can_download_emergency_report():
+            messages.error(request, "You don't have permission to download emergency reports.")
+            return redirect("emergency:report_detail", pk=pk)
         report = get_object_or_404(self.get_report_queryset(), pk=pk)
         return generate_emergency_report_pdf(report)
 
@@ -723,6 +803,12 @@ class EmergencyMyActionItemsView(EmergencyAccessMixin, ListView):
     template_name = "emergency/my_action_items.html"
     context_object_name = "action_items"
     paginate_by = 20
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_view_emergency_report():
+            messages.error(request, "You don't have permission to view emergency action items.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         queryset = EmergencyActionItem.objects.filter(
@@ -829,7 +915,7 @@ class EmergencyInvestigationCreateView(EmergencyAccessMixin, CreateView):
         if hasattr(self.report, "investigation_report"):
             messages.info(request, "Investigation report already exists for this emergency.")
             return redirect("emergency:investigation_detail", pk=self.report.investigation_report.pk)
-        if not (self.user_can_manage() or request.user == self.report.reported_by or request.user.is_superuser):
+        if not self.can_create_emergency_investigation():
             messages.error(request, "You don't have permission to investigate this emergency.")
             return redirect("emergency:report_detail", pk=self.report.pk)
         return super().dispatch(request, *args, **kwargs)
@@ -1089,6 +1175,12 @@ class EmergencyGetSublocationsAjaxView(EmergencyAccessMixin, TemplateView):
 class ERTQuestionListView(EmergencyAccessMixin, View):
     template_name = "emergency/question_list.html"
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to view ERT department questions.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
+
     def get(self, request, *args, **kwargs):
         questions = ERTDepartmentQuestion.objects.select_related("department").filter(is_active=True)
         filter_form = ERTDepartmentQuestionFilterForm(request.GET or None)
@@ -1136,6 +1228,9 @@ class ERTQuestionCreateView(EmergencyAccessMixin, CreateView):
     success_url = reverse_lazy("emergency:question_list")
 
     def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to access the emergency module.")
+            return redirect("dashboards:home")
         if not self.user_can_manage():
             messages.error(request, "You don't have permission to manage ERT department questions.")
             return redirect("emergency:question_list")
@@ -1164,6 +1259,9 @@ class ERTQuestionUpdateView(EmergencyAccessMixin, UpdateView):
     success_url = reverse_lazy("emergency:question_list")
 
     def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to access the emergency module.")
+            return redirect("dashboards:home")
         if not self.user_can_manage():
             messages.error(request, "You don't have permission to edit ERT department questions.")
             return redirect("emergency:question_list")
@@ -1188,6 +1286,9 @@ class ERTQuestionDeleteView(EmergencyAccessMixin, View):
     template_name = "emergency/question_confirm_delete.html"
 
     def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_module():
+            messages.error(request, "You don't have permission to access the emergency module.")
+            return redirect("dashboards:home")
         if not self.user_can_manage():
             messages.error(request, "You don't have permission to delete ERT department questions.")
             return redirect("emergency:question_list")
@@ -1220,6 +1321,12 @@ class ContactDirectoryView(EmergencyAccessMixin, TemplateView):
 
     def _normalize_department_name(self, value):
         return _normalize_department_name(value)
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1266,6 +1373,15 @@ class EmergencySessionDetailView(EmergencyAccessMixin, DetailView):
     template_name = "emergency/session_detail.html"
     context_object_name = "session"
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
+        if not self.can_view_emergency_drill():
+            messages.error(request, "You don't have permission to view emergency sessions.")
+            return redirect("emergency:home")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         return self.get_session_queryset()
 
@@ -1302,11 +1418,14 @@ class EmergencyAddParticipantsView(EmergencyAccessMixin, View):
     template_name = "emergency/add_participants.html"
 
     def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
         self.session = get_object_or_404(self.get_session_queryset(), pk=kwargs["pk"])
         if self.session.status in ["COMPLETED", "CANCELLED"]:
             messages.error(request, "Cannot add participants to a completed or cancelled session.")
             return redirect("emergency:session_detail", pk=self.session.pk)
-        if not self.user_can_manage():
+        if not self.can_schedule_emergency_drill():
             messages.error(request, "You don't have permission to add participants.")
             return redirect("emergency:session_detail", pk=self.session.pk)
         return super().dispatch(request, *args, **kwargs)
@@ -1370,6 +1489,12 @@ class MyEmergencySessionsView(EmergencyAccessMixin, ListView):
     context_object_name = "participants"
     paginate_by = 15
 
+    def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
+        return super().dispatch(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = EmergencySessionParticipant.objects.filter(
             employee=self.request.user
@@ -1404,6 +1529,9 @@ class EmergencySessionStartView(EmergencyAccessMixin, View):
     template_name = "emergency/session_start.html"
 
     def dispatch(self, request, *args, **kwargs):
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
         self.participant = get_object_or_404(
             EmergencySessionParticipant.objects.select_related(
                 "session",
@@ -1464,6 +1592,9 @@ class EmergencySessionStartView(EmergencyAccessMixin, View):
 
 class EmergencySessionSubmitView(EmergencyAccessMixin, View):
     def post(self, request, participant_id):
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
         participant = get_object_or_404(
             EmergencySessionParticipant.objects.select_related("session", "employee"),
             pk=participant_id,
@@ -1565,6 +1696,9 @@ class EmergencySubmissionReviewView(EmergencyAccessMixin, View):
     template_name = "emergency/session_review.html"
 
     def dispatch(self, request, submission_id, *args, **kwargs):
+        if not self.can_access_emergency_drill_module():
+            messages.error(request, "You don't have permission to access the emergency drill module.")
+            return redirect("dashboards:home")
         self.submission = get_object_or_404(
             EmergencySessionSubmission.objects.select_related(
                 "participant",

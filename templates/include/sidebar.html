@@ -1192,14 +1192,12 @@
                             </a>
                         </li>
                         {% endif %}
-                        {% if request.user|has_perm:'VIEW_EMERGENCY_REPORT' %}
                         <li class="nav-item">
                             <a href="{% url 'emergency:report_list' %}" class="nav-link {% if request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}active{% endif %}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>All Emergency Reports</p>
                             </a>
                         </li>
-                        {% endif %}
                         <li class="nav-item">
                           <a href="{% url 'emergency:my_action_items' %}" class="nav-link {% if request.resolver_match.url_name == 'my_action_items' or request.resolver_match.url_name == 'action_item_complete' %}active{% endif %}">
                             <i class="far fa-circle nav-icon"></i>

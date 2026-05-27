@@ -1,4 +1,5 @@
 {% extends 'base/base.html' %}
+{% load permission_tags %}
 
 {% block title %}Emergency Reports{% endblock %}
 {% block page_title %}Emergency Reports{% endblock %}
@@ -143,15 +144,21 @@
             <td>{{ report.department.name|default:"-" }}</td>
             <td><span class="badge {{ report.status_badge_class }}">{{ report.get_status_display }}</span></td>
             <td class="text-center action-buttons">
+              {% if request.user|has_perm:'VIEW_EMERGENCY_REPORT' %}
               <a href="{% url 'emergency:report_detail' report.pk %}" class="btn btn-sm btn-info" title="View">
                 <i class="fas fa-eye"></i>
               </a>
+              {% endif %}
+              {% if request.user|has_perm:'EDIT_EMERGENCY_REPORT' %}
               <a href="{% url 'emergency:report_update' report.pk %}" class="btn btn-sm btn-warning" title="Edit">
                 <i class="fas fa-edit"></i>
               </a>
+              {% endif %}
+              {% if request.user|has_perm:'DOWNLOAD_EMERGENCY_REPORT' %}
               <a href="{% url 'emergency:report_pdf' report.pk %}" class="btn btn-sm btn-danger" title="Download PDF" target="_blank">
                 <i class="fas fa-file-pdf"></i>
               </a>
+              {% endif %}
             </td>
           </tr>
           {% empty %}
