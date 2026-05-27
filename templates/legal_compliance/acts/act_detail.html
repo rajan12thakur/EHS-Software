@@ -1,0 +1,425 @@
+{% extends 'base/base.html' %}
+{% load permission_tags %}
+{% block title %}
+{{ act.act_name }}
+{% endblock %}
+
+{% block page_title %}
+Legal Act Details
+{% endblock %}
+
+{% block breadcrumb %}
+
+<li class="breadcrumb-item">
+    <a href="{% url 'dashboards:home' %}">
+        Home
+    </a>
+</li>
+
+<li class="breadcrumb-item">
+    <a href="{% url 'legal_compliance:dashboard' %}">
+        Legal Compliance
+    </a>
+</li>
+
+<li class="breadcrumb-item">
+    <a href="{% url 'legal_compliance:act_list' %}">
+        Legal Acts
+    </a>
+</li>
+
+<li class="breadcrumb-item active">
+    Details
+</li>
+
+{% endblock %}
+
+
+{% block content %}
+
+<div class="row">
+
+    <!-- LEFT SECTION -->
+
+    <div class="col-md-8">
+
+        <!-- ACT INFORMATION -->
+
+        <div class="ehs-card mb-4">
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-gavel"></i>
+                    {{ act.act_name }}
+
+                </h3>
+
+                {% if request.user|has_perm:'MANAGE_LEGAL_COMPLIANCE_CONFIGURATION' %}
+
+                <div>
+
+                    <a href="{% url 'legal_compliance:act_edit' act.pk %}"
+                    class="btn btn-warning btn-sm">
+
+                        <i class="fas fa-edit"></i>
+                        Edit
+
+                    </a>
+
+                    <a href="{% url 'legal_compliance:act_delete' act.pk %}"
+                    class="btn btn-danger btn-sm">
+
+                        <i class="fas fa-trash"></i>
+                        Delete
+
+                    </a>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="row mb-3">
+
+                    <div class="col-md-4">
+
+                        <strong>Act Code</strong>
+
+                        <p class="text-muted">
+                            {{ act.act_code }}
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <strong>Short Name</strong>
+
+                        <p class="text-muted">
+
+                            {% if act.short_name %}
+                                {{ act.short_name }}
+                            {% else %}
+                                -
+                            {% endif %}
+
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <strong>Status</strong>
+
+                        <p>
+
+                            {% if act.is_active %}
+
+                            <span class="badge badge-success">
+                                Active
+                            </span>
+
+                            {% else %}
+
+                            <span class="badge badge-danger">
+                                Inactive
+                            </span>
+
+                            {% endif %}
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="row mb-3">
+
+                    <div class="col-md-4">
+
+                        <strong>Authority Name</strong>
+
+                        <p class="text-muted">
+                            {{ act.authority_name }}
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <strong>Government Level</strong>
+
+                        <p>
+
+                            <span class="badge badge-info">
+
+                                {{ act.get_government_level_display }}
+
+                            </span>
+
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <strong>Category</strong>
+
+                        <p>
+
+                            <span class="badge badge-secondary">
+
+                                {{ act.get_category_display }}
+
+                            </span>
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div class="row mb-3">
+
+                    <div class="col-md-4">
+
+                        <strong>Effective Date</strong>
+
+                        <p class="text-muted">
+
+                            {% if act.effective_date %}
+                                {{ act.effective_date|date:"d M Y" }}
+                            {% else %}
+                                -
+                            {% endif %}
+
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <strong>Created By</strong>
+
+                        <p class="text-muted">
+
+                            {% if act.created_by %}
+                                {{ act.created_by.get_full_name }}
+                            {% else %}
+                                -
+                            {% endif %}
+
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-4">
+
+                        <strong>Created At</strong>
+
+                        <p class="text-muted">
+                            {{ act.created_at|date:"d M Y H:i" }}
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <hr>
+
+                <div class="mb-4">
+
+                    <strong>Description</strong>
+
+                    <div class="border rounded p-3 bg-light mt-2">
+
+                        {% if act.description %}
+                            {{ act.description|linebreaks }}
+                        {% else %}
+                            <span class="text-muted">
+                                No description available.
+                            </span>
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+                <div>
+
+                    <strong>Applicability Notes</strong>
+
+                    <div class="border rounded p-3 bg-light mt-2">
+
+                        {% if act.applicability_notes %}
+                            {{ act.applicability_notes|linebreaks }}
+                        {% else %}
+                            <span class="text-muted">
+                                No applicability notes available.
+                            </span>
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- RIGHT SECTION -->
+
+    <div class="col-md-4">
+
+        <!-- COMPLIANCE SUMMARY -->
+
+        <div class="ehs-card mb-4">
+
+            <div class="card-header">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-clipboard-check"></i>
+                    Compliance Summary
+
+                </h3>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="mb-3">
+
+                    <h4 class="text-primary">
+                        {{ compliances.count }}
+                    </h4>
+
+                    <small class="text-muted">
+                        Total Compliance Requirements
+                    </small>
+
+                </div>
+
+                <div class="mb-3">
+
+                    <h4 class="text-success">
+                        {{ compliances|length }}
+                    </h4>
+
+                    <small class="text-muted">
+                        Linked Compliance Items
+                    </small>
+
+                </div>
+
+                {% if request.user|has_perm:'MANAGE_LEGAL_COMPLIANCE_CONFIGURATION' %}
+
+                <a href="{% url 'legal_compliance:compliance_create' %}"
+                class="btn btn-primary btn-block">
+
+                    <i class="fas fa-plus"></i>
+                    Add Compliance
+
+                </a>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+
+        <!-- LINKED COMPLIANCES -->
+
+        <div class="ehs-card">
+
+            <div class="card-header">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-list"></i>
+                    Linked Compliances
+
+                </h3>
+
+            </div>
+
+            <div class="card-body">
+
+                {% if compliances %}
+
+                    {% for compliance in compliances %}
+
+                    <div class="border rounded p-3 mb-3">
+
+                        <strong>
+
+                            <a href="{% url 'legal_compliance:compliance_detail' compliance.pk %}">
+
+                                {{ compliance.title }}
+
+                            </a>
+
+                        </strong>
+
+                        <br>
+
+                        <small class="text-muted">
+
+                            {{ compliance.requirement_code }}
+
+                        </small>
+
+                        <br><br>
+
+                        <span class="badge badge-info">
+
+                            {{ compliance.get_frequency_display }}
+
+                        </span>
+
+                        <span class="badge badge-warning">
+
+                            {{ compliance.get_criticality_display }}
+
+                        </span>
+
+                    </div>
+
+                    {% endfor %}
+
+                {% else %}
+
+                <div class="text-center py-4">
+
+                    <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+
+                    <p class="text-muted">
+
+                        No compliance requirements linked yet.
+
+                    </p>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

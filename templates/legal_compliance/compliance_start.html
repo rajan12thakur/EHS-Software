@@ -1,0 +1,648 @@
+{% extends 'base/base.html' %}
+{% load custom_tags %}
+{% block title %}Fill Compliance{% endblock %}
+{% block page_title %}Compliance: {{ requirement.requirement_code }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
+<li class="breadcrumb-item"><a href="{% url 'legal_compliance:dashboard' %}">Inspections</a></li>
+<li class="breadcrumb-item"><a href="{% url 'legal_compliance:my_compliances' %}">My Inspections</a></li>
+<li class="breadcrumb-item active">{{ requirement.requirement_code }}</li>
+{% endblock %}
+{% block extra_css %}
+
+<style>
+
+.checklist-info-box {
+
+    background: #f8f9fa;
+
+    border: 1px solid #d6e9c6;
+
+    border-left: 5px solid #28a745;
+
+    border-radius: 6px;
+
+    padding: 12px 15px;
+
+    margin-top: 10px;
+}
+
+.checklist-icon {
+
+    width: 42px;
+    height: 42px;
+
+    border-radius: 50%;
+
+    background: #28a745;
+
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-right: 12px;
+
+    font-size: 18px;
+}
+
+.checklist-title {
+
+    font-weight: 600;
+
+    color: #155724;
+
+    font-size: 14px;
+}
+
+.checklist-subtitle {
+
+    font-size: 12px;
+
+    color: #6c757d;
+}
+
+<style>
+
+.both-info-box {
+
+    background: #f8f9fa;
+
+    border: 1px solid #cce5ff;
+
+    border-left: 5px solid #007bff;
+
+    border-radius: 6px;
+
+    padding: 12px 15px;
+
+    margin-top: 10px;
+}
+
+.both-icon {
+
+    width: 42px;
+    height: 42px;
+
+    border-radius: 50%;
+
+    background: #007bff;
+
+    color: white;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-right: 12px;
+
+    font-size: 18px;
+}
+
+.both-title {
+
+    font-weight: 600;
+
+    color: #004085;
+
+    font-size: 14px;
+}
+
+.both-subtitle {
+
+    font-size: 12px;
+
+    color: #6c757d;
+}
+
+</style>
+</style>
+
+{% endblock %}
+{% block content %}
+<form method="post" action="{% url 'legal_compliance:compliance_submit' requirement.id %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="card mb-3">
+
+        <div class="card-header"
+            style="background: linear-gradient(135deg, #1E90FF, #7CB342); color: white;">
+
+            <div class="row align-items-center">
+
+                <div class="col-md-8">
+
+                    <h4 class="mb-0">
+
+                        <i class="fas fa-gavel"></i>
+
+                        {{ requirement.title }}
+
+                    </h4>
+
+                </div>
+
+                <div class="col-md-4 text-right">
+
+                    <span class="badge badge-light"
+                        style="font-size: 1em;">
+
+                        {{ questions|length }} Questions
+
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <div class="col-md-3">
+
+                    <strong>
+
+                        <i class="fas fa-balance-scale"></i>
+
+                        Legal Act:
+
+                    </strong>
+
+                    <br>
+
+                    {{ requirement.legal_act.act_name }}
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <strong>
+
+                        <i class="fas fa-calendar-alt"></i>
+
+                        Scheduled Date:
+
+                    </strong>
+
+                    <br>
+
+                    {% if requirement.scheduled_date %}
+
+                        {{ requirement.scheduled_date|date:"d M Y" }}
+
+                    {% else %}
+
+                        -
+
+                    {% endif %}
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <strong>
+
+                        <i class="fas fa-clock"></i>
+
+                        Due Date:
+
+                    </strong>
+
+                    <br>
+
+                    <span class="text-danger">
+
+                        {% if requirement.due_date %}
+
+                            {{ requirement.due_date|date:"d M Y" }}
+
+                        {% else %}
+
+                            -
+
+                        {% endif %}
+
+                    </span>
+
+                </div>
+
+
+                <div class="col-md-3">
+
+                    <strong>
+
+                        <i class="fas fa-user"></i>
+
+                        Responsible Persons:
+
+                    </strong>
+
+                    <br>
+
+                    {% for user in requirement.responsible_person.all %}
+
+                        {{ user.get_full_name }}
+
+                        {% if not forloop.last %}
+                            ,
+                        {% endif %}
+
+                    {% endfor %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!--Reviwer Remark if Rejected -->
+    {% if reviewer_comments and requirement.status == 'REJECTED' %}
+
+    <div class="alert alert-danger mb-4">
+
+        <h5>
+
+            <i class="fas fa-exclamation-circle"></i>
+
+            Reviewer Remarks
+
+        </h5>
+
+        <hr>
+
+        {{ reviewer_comments }}
+
+    </div>
+
+    {% endif %}
+    
+    <!-- Questions by Category -->
+    <div class="card mb-3">
+        <div class="card-header" style="background: linear-gradient(135deg, var(--primary-blue), var(--primary-green)); color: white;">
+            <h5 class="mb-0" style="color: #1a1a1a; margin-bottom: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: 700; font-size: 1.1rem; letter-spacing: 0.5px;">
+                Compliance Questions
+                <span class="badge badge-light ml-2">{{ questions|length }} questions</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% for mapping in questions %}
+            <div class="question-block p-3 mb-3 border rounded {% if mapping.is_mandatory %}border-warning{% endif %}" 
+                 style="background: #f8f9fa;">
+                
+                <!-- Question Header -->
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="mb-0">
+                        <span class="badge badge-info mr-2">{{ mapping.question.question_code }}</span>
+                        {{ mapping.question.question_text }}
+                        {% if mapping.is_mandatory %}
+                        <span class="text-danger">*</span>
+                        {% endif %}
+                    </h6>
+                    <div>
+                        {% if mapping.question.is_critical %}
+                        <span class="badge badge-danger">Critical</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Guidance Notes -->
+                {% if mapping.question.guidance_notes %}
+                <p class="text-muted small mb-2">
+                    <i class="fas fa-lightbulb"></i> <strong>Guidance:</strong> {{ mapping.question.guidance_notes }}
+                </p>
+                {% endif %}
+                
+                {% if mapping.question.reference_standard %}
+                <p class="text-muted small mb-2">
+                    <i class="fas fa-book"></i> <strong>Reference:</strong> {{ mapping.question.reference_standard }}
+                </p>
+                {% endif %}
+                
+                {% if mapping.question.submission_type != 'DOCUMENT' %}
+                <!-- ANSWER INPUT BASED ON QUESTION TYPE -->
+
+                {% if mapping.question.question_type == 'YES_NO' %}
+
+                <div class="form-group mb-2">
+
+                    <label class="font-weight-bold">
+
+                        Answer:
+
+                    </label>
+
+                    <div class="btn-group btn-group-toggle d-block"
+                        data-toggle="buttons">
+
+                        <label class="btn btn-outline-success">
+
+                            <input type="radio"
+                                name="answer_{{ mapping.question.id }}"
+                                value="YES"
+                                {% with response=existing_responses|get_item:mapping.question.id %}
+                                    {% if response and response.answer == 'YES' %}
+                                    checked
+                                    {% endif %}
+                                {% endwith %}
+                                {% if mapping.is_mandatory %}
+                                required
+                                {% endif %}>
+                                
+                            <i class="fas fa-check-circle"></i>
+
+                            Yes
+
+                        </label>
+
+                        <label class="btn btn-outline-danger ml-2">
+
+                            <input type="radio"
+                                name="answer_{{ mapping.question.id }}"
+                                value="NO"
+                                {% with response=existing_responses|get_item:mapping.question.id %}
+                                    {% if response and response.answer == 'NO' %}
+                                    checked
+                                    {% endif %}
+                                {% endwith %}
+                                {% if mapping.is_mandatory %}
+                                required
+                                {% endif %}>
+
+                            <i class="fas fa-times-circle"></i>
+
+                            No
+
+                        </label>
+
+                        <label class="btn btn-outline-secondary ml-2">
+
+                            <input type="radio"
+                                name="answer_{{ mapping.question.id }}"
+                                value="NA"
+                                {% with response=existing_responses|get_item:mapping.question.id %}
+                                    {% if response and response.answer == 'NA' %}
+                                    checked
+                                    {% endif %}
+                                {% endwith %}>
+
+                            <i class="fas fa-minus-circle"></i>
+
+                            N/A
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+                {% elif mapping.question.question_type  == 'TEXT' %}
+
+                <div class="form-group mb-2">
+
+                    <label class="font-weight-bold">
+
+                        Answer:
+
+                    </label>
+
+                    {% with response=existing_responses|get_item:mapping.question.id %}
+
+                    <textarea name="answer_{{ mapping.question.id }}"
+                            class="form-control"
+                            rows="3">{% if response %}{{ response.answer }}{% endif %}</textarea>
+
+                    {% endwith %}
+                </div>
+
+                {% elif mapping.question.question_type  == 'NUMBER' %}
+
+                <div class="form-group mb-2">
+
+                    <label class="font-weight-bold">
+
+                        Answer:
+
+                    </label>
+
+                    <input type="number"
+                        step="any"
+                        name="answer_{{ mapping.question.id }}"
+                        class="form-control"
+                        {% if mapping.is_mandatory %}
+                        required
+                        {% endif %}>
+
+                </div>
+
+                {% elif mapping.question.question_type == 'DATE' %}
+                <div class="form-group mb-2">
+                    <label class="font-weight-bold">
+                        Answer:
+                    </label>
+                    <input type="date"
+                        name="answer_{{ mapping.question.id }}"
+                        class="form-control"
+                        {% if mapping.is_mandatory %}
+                        required
+                        {% endif %}>
+                </div>
+
+                {% endif %}
+                {% endif %}
+                <!-- ===================================== -->
+                <!-- SUBMISSION TYPE LOGIC -->
+                <!-- ===================================== -->
+                
+                {% if mapping.question.submission_type == 'CHECKLIST' %}
+
+                    <div class="checklist-info-box">
+
+                        <div class="d-flex align-items-center">
+
+                            <div class="checklist-icon">
+
+                                <i class="fas fa-clipboard-check"></i>
+
+                            </div>
+
+                            <div>
+
+                                <div class="checklist-title">
+
+                                    Checklist Verification Required
+
+                                </div>
+
+                                <div class="checklist-subtitle">
+
+                                    Please verify compliance and select the appropriate answer.
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                {% elif mapping.question.submission_type == 'DOCUMENT' %}
+
+                    <div class="form-group mb-2">
+
+                        <label class="font-weight-bold">
+
+                            <i class="fas fa-file-upload"></i>
+
+                            Upload Evidence
+
+                        </label>
+
+                        <input type="file"
+                            name="evidence_{{ mapping.question.id }}"
+                            class="form-control-file">
+
+                    </div>
+
+                {% elif mapping.question.submission_type == 'BOTH' %}
+
+                    <div class="checklist-info-box">
+
+                        <div class="d-flex align-items-center">
+
+                            <div class="checklist-icon">
+
+                                <i class="fas fa-clipboard-check"></i>
+
+                            </div>
+
+                            <div>
+
+                                <div class="checklist-title">
+
+                                    Checklist + Evidence Required
+
+                                </div>
+
+                                <div class="checklist-subtitle">
+
+                                    Please verify compliance and upload supporting evidence.
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-group mt-3">
+
+                        <label class="font-weight-bold">
+
+                            <i class="fas fa-file-upload text-primary"></i>
+
+                            Upload Evidence
+
+                        </label>
+
+                        <input type="file"
+                            name="evidence_{{ mapping.question.id }}"
+                            class="form-control-file border p-2 rounded bg-light">
+
+                    </div>
+
+
+                {% elif mapping.question.submission_type == 'AUTO' %}
+
+                    <div class="alert alert-info">
+
+                        <i class="fas fa-robot"></i>
+
+                        This compliance is auto-tracked by the system.
+
+                    </div>
+
+                {% endif %}
+                
+                {% if mapping.question.submission_type != 'AUTO' %}
+                <!-- Remarks -->
+                <div class="form-group mb-2 mt-2">
+                    <label class="font-weight-bold">Remarks</label>
+                    {% with response=existing_responses|get_item:mapping.question.id %}
+
+                    <textarea name="remarks_{{ mapping.question.id }}"
+                            class="form-control"
+                            rows="2">{% if response %}{{ response.remarks }}{% endif %}</textarea>
+
+                    {% endwith %}
+
+                </div>
+
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Submit Section -->
+    <div class="card">
+        <div class="card-body text-center">
+            <p class="text-muted mb-3">
+                Please ensure all mandatory questions are answered before submitting.
+            </p>
+            <!-- <button type="button" class="btn btn-info me-2" onclick="previewNoAnswers()">
+                    <i class="fas fa-eye"></i> Preview Non-Compliant Items
+            </button> -->
+            <button type="submit" class="btn btn-success btn-lg mr-2" onclick="return confirm('Submit this inspection? This action cannot be undone.')">
+                <i class="fas fa-check"></i> Submit Compliance
+            </button>
+            <a href="{% url 'legal_compliance:my_compliances' %}" class="btn btn-secondary btn-lg">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Auto-resize textareas
+    $('textarea').each(function() {
+        this.setAttribute('style', 'height:' + (this.scrollHeight) + 'px;overflow-y:hidden;');
+    }).on('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
+    
+    // Form validation
+    $('form').submit(function(e) {
+        var unanswered = [];
+        
+        // Check all mandatory radio button groups
+        $('input[type="radio"][required]').each(function() {
+            var name = $(this).attr('name');
+            if (!$('input[name="' + name + '"]:checked').length) {
+                unanswered.push(name);
+            }
+        });
+        
+        if (unanswered.length > 0) {
+            e.preventDefault();
+            alert('Please answer all mandatory questions before submitting!');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,328 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Overdue Compliance Dashboard
+{% endblock %}
+
+{% block page_title %}
+Overdue Compliance Dashboard
+{% endblock %}
+
+{% block content %}
+
+<!-- ===================================================== -->
+<!-- STATS -->
+<!-- ===================================================== -->
+
+<div class="row">
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-danger">
+
+            <div class="inner">
+
+                <h3>{{ stats.total_overdue }}</h3>
+
+                <p>Total Overdue</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-exclamation-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-dark">
+
+            <div class="inner">
+
+                <h3>{{ stats.critical_overdue }}</h3>
+
+                <p>Critical</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-fire"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-warning">
+
+            <div class="inner">
+
+                <h3>{{ stats.over_30_days }}</h3>
+
+                <p>30+ Days</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-calendar-times"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-secondary">
+
+            <div class="inner">
+
+                <h3>{{ stats.rejected }}</h3>
+
+                <p>Rejected</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-times-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-info">
+
+            <div class="inner">
+
+                <h3>{{ stats.pending_approval }}</h3>
+
+                <p>Pending Approval</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-user-clock"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- TABLE -->
+<!-- ===================================================== -->
+
+<div class="card">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+
+            <i class="fas fa-exclamation-triangle text-danger"></i>
+
+            Overdue Compliance List
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover">
+
+                <thead class="thead-light">
+
+                    <tr>
+
+                        <th>Compliance</th>
+
+                        <th>Legal Act</th>
+
+                        <th>Responsible Person</th>
+
+                        <th>Reviewer</th>
+
+                        <th>Due Date</th>
+
+                        <th>Delay</th>
+
+                        <th>Criticality</th>
+
+                        <th>Status</th>
+
+                        <th>Escalation</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for compliance in compliances %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ compliance.title }}
+
+                        </td>
+
+                        <td>
+
+                            {{ compliance.legal_act.short_name }}
+
+                        </td>
+
+                        <td>
+
+                            {% for user in compliance.responsible_person.all %}
+
+                                {{ user.get_full_name }}
+
+                                {% if not forloop.last %}, {% endif %}
+
+                            {% endfor %}
+
+                        </td>
+
+                        <td>
+
+                            {% for user in compliance.reviewer.all %}
+
+                                {{ user.get_full_name }}
+
+                                {% if not forloop.last %}, {% endif %}
+
+                            {% endfor %}
+
+                        </td>
+
+                        <td>
+
+                            {{ compliance.due_date|date:"d M Y" }}
+
+                        </td>
+
+                        <td>
+
+                            {% if compliance.delay_days >= 30 %}
+
+                                <span class="badge badge-danger">
+
+                                    {{ compliance.delay_days }} Days
+
+                                </span>
+
+                            {% elif compliance.delay_days >= 7 %}
+
+                                <span class="badge badge-warning">
+
+                                    {{ compliance.delay_days }} Days
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge badge-info">
+
+                                    {{ compliance.delay_days }} Days
+
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge
+
+                                {% if compliance.criticality == 'HIGH' %}
+                                    badge-danger
+
+                                {% elif compliance.criticality == 'MEDIUM' %}
+                                    badge-warning
+
+                                {% else %}
+                                    badge-info
+                                {% endif %}
+                            ">
+
+                                {{ compliance.get_criticality_display }}
+
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge badge-dark">
+
+                                {{ compliance.get_status_display }}
+
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            {{ compliance.escalation_level }}
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="9"
+                            class="text-center text-muted">
+
+                            No overdue compliances found.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

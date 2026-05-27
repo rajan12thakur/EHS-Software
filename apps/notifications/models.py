@@ -16,6 +16,7 @@ class NotificationMaster(models.Model):
         ('HAZARD', 'Hazard/Near Miss'),
         ('ENVIRONMENTAL', 'Environmental Data'),
         ('INSPECTION', 'Inspection Management'),
+        ('LEGAL_COMPLIANCE', 'Legal Compliance'),
     ]
     
     NOTIFICATION_EVENT_CHOICES = [
@@ -44,6 +45,11 @@ class NotificationMaster(models.Model):
         ('INSPECTION_OVERDUE', 'Inspection Overdue'),
         ('NOTIFY_INSPECTION', 'Inspection Assigned / Reminder'),
         ('INSPECTION_NONCOMPLIANCE_ASSIGNED', 'Non-Compliance Assigned'),
+
+        # Legal Compliance Module
+        ('COMPLIANCE_REMINDER', 'Compliance Reminder'),
+        ('COMPLIANCE_ESCALATION', 'Compliance Escalation'),
+
     ]
     
     REMINDER_TYPE_CHOICES = [

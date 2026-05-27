@@ -1,0 +1,389 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Compliance Audit Report
+{% endblock %}
+
+{% block page_title %}
+Compliance Audit Report
+{% endblock %}
+
+{% block breadcrumb %}
+
+<li class="breadcrumb-item">
+    <a href="{% url 'dashboards:home' %}">
+        Home
+    </a>
+</li>
+
+<li class="breadcrumb-item">
+    <a href="{% url 'legal_compliance:dashboard' %}">
+        Legal Compliance
+    </a>
+</li>
+
+<li class="breadcrumb-item active">
+    Audit Report
+</li>
+
+{% endblock %}
+
+
+{% block content %}
+
+<!-- KPI CARDS -->
+
+<div class="row">
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-info">
+
+            <div class="inner">
+
+                <h3>{{ total_schedules }}</h3>
+
+                <p>Total Schedules</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-calendar-check"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-success">
+
+            <div class="inner">
+
+                <h3>{{ approved_schedules }}</h3>
+
+                <p>Approved</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-check-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-danger">
+
+            <div class="inner">
+
+                <h3>{{ overdue_schedules }}</h3>
+
+                <p>Overdue</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-exclamation-triangle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-warning">
+
+            <div class="inner">
+
+                <h3>{{ rejected_schedules }}</h3>
+
+                <p>Rejected</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-times-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="row">
+
+    <!-- OVERDUE -->
+
+    <div class="col-md-6">
+
+        <div class="ehs-card">
+
+            <div class="card-header bg-danger text-white">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Recent Overdue Compliances
+
+                </h3>
+
+            </div>
+
+            <div class="card-body">
+
+                {% for schedule in recent_overdue %}
+
+                <div class="border-bottom mb-3 pb-2">
+
+                    <strong>
+
+                        {{ schedule.schedule_code }}
+
+                    </strong>
+
+                    <p class="mb-1">
+
+                        {{ schedule.compliance_requirement.title }}
+
+                    </p>
+
+                    <small class="text-danger">
+
+                        Due:
+                        {{ schedule.due_date|date:"d M Y" }}
+
+                    </small>
+
+                </div>
+
+                {% empty %}
+
+                <p class="text-muted">
+
+                    No overdue compliances.
+
+                </p>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- CRITICAL -->
+
+    <div class="col-md-6">
+
+        <div class="ehs-card">
+
+            <div class="card-header bg-warning">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-bolt"></i>
+                    Critical Compliance Items
+
+                </h3>
+
+            </div>
+
+            <div class="card-body">
+
+                {% for schedule in critical_schedules %}
+
+                <div class="border-bottom mb-3 pb-2">
+
+                    <strong>
+
+                        {{ schedule.schedule_code }}
+
+                    </strong>
+
+                    <p class="mb-1">
+
+                        {{ schedule.compliance_requirement.title }}
+
+                    </p>
+
+                    <small class="text-muted">
+
+                        Due:
+                        {{ schedule.due_date|date:"d M Y" }}
+
+                    </small>
+
+                </div>
+
+                {% empty %}
+
+                <p class="text-muted">
+
+                    No critical compliances.
+
+                </p>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- UPCOMING -->
+
+<div class="row mt-4">
+
+    <div class="col-md-12">
+
+        <div class="ehs-card">
+
+            <div class="card-header">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-clock"></i>
+                    Upcoming Compliance Activities
+
+                </h3>
+
+                <div class="mb-4 text-right">
+
+                    <a href="{% url 'legal_compliance:export_audit_excel' %}"
+                    class="btn btn-success">
+
+                        <i class="fas fa-file-excel"></i>
+                        Export Excel
+
+                    </a>
+                    <a href="{% url 'legal_compliance:export_audit_pdf' %}"
+                    class="btn btn-danger">
+
+                        <i class="fas fa-file-pdf"></i>
+                        Export PDF
+
+                    </a>
+
+                </div>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Schedule</th>
+                                <th>Compliance</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Assigned To</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for schedule in upcoming_schedules %}
+
+                            <tr>
+
+                                <td>
+                                    {{ schedule.schedule_code }}
+                                </td>
+
+                                <td>
+                                    {{ schedule.compliance_requirement.title }}
+                                </td>
+
+                                <td>
+                                    {{ schedule.due_date|date:"d M Y" }}
+                                </td>
+
+                                <td>
+
+                                    <span class="badge badge-info">
+
+                                        {{ schedule.status }}
+
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    {% if schedule.assigned_to %}
+
+                                        {{ schedule.assigned_to.get_full_name }}
+
+                                    {% else %}
+
+                                        -
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="5"
+                                    class="text-center text-muted">
+
+                                    No upcoming schedules.
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

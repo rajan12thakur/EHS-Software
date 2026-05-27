@@ -139,7 +139,26 @@ class User(AbstractUser):
         verbose_name="Can Access Environmental Data Module",
         help_text="User can access and manage environmental data"
     )
-    
+    # ============================================
+    # LEGAL COMPLIANCE (Only 3 modules)
+    # ============================================
+    can_access_legal_compliance_module = models.BooleanField(
+        default=False,
+        verbose_name="Can Access legal compliance Module",
+        help_text="User can access and manage legal compliance"
+    )
+
+    can_approve_legal_compliance = models.BooleanField(
+        default=False,
+        verbose_name="Can Access legal compliance Module",
+        help_text="User can access and manage legal compliance"
+    )
+
+    can_close_legal_compliance = models.BooleanField(
+        default=False,
+        verbose_name="Can Access legal compliance Module",
+        help_text="User can access and manage legal compliance"
+    )
     # ============================================
     # APPROVAL PERMISSIONS (Only 3 modules)
     # ============================================
@@ -259,6 +278,11 @@ class User(AbstractUser):
             'CLOSE_HAZARD': 'can_close_hazards',
             'CAN_CREATE_USERS':'can_create_users',
             'CAN_ACCESS_ORGANIZATION':'can_access_organization',
+
+            # Legal Compliance
+            'ACCESS_LEGAL_COMPLIANCE_MODULE': 'can_access_legal_compliance_module',
+            'APPROVE_LEGAL_COMPLIANCE': 'can_approve_legal_compliance',
+            'CLOSE_LEGAL_COMPLIANCE': 'can_close_legal_compliance',
         }
         
         self._reset_all_permissions()
@@ -287,6 +311,9 @@ class User(AbstractUser):
         self.can_close_hazards = False
         self.can_create_users=False
         self.can_access_organization=False
+        self.can_access_legal_compliance_module = False
+        self.can_approve_legal_compliance = False
+        self.can_close_legal_compliance = False
 
     def has_permission(self, code):
         """Check if user has a specific permission by code"""
@@ -389,6 +416,7 @@ class Permissions(models.Model):
             ('INSPECTION', 'Inspection Module'),
             ('REPORTS', 'Reports Module'),
             ('ENV_DATA', 'Environmental Data Module'),
+            ('LEGAL_COMPLIANCE', 'Legal Compliance Module'),
         ],
         null=True,
         blank=True,

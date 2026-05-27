@@ -36,7 +36,7 @@ urlpatterns = [
     path('permit/', include('apps.permit.urls')),
     path('chemicals/', include('apps.chemicals.urls')),
     path('audits/', include('apps.audits.urls')),
-
+    path('legal-compliance/', include('apps.legal_compliance.urls')),
 
     #path('observations/', include('apps.observations.urls')),
 

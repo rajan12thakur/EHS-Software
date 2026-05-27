@@ -191,6 +191,50 @@ class Command(BaseCommand):
              'AUDIT', 'CREATE', 6),
             ('MANAGE_AUDIT_CONFIGURATION', 'Manage Audit Configuration', 'Can manage audit configuration',
             'AUDIT', 'MANAGE', 7),
+
+            # === LEGAL COMPLIANCE MODULE ===
+
+            ('ACCESS_LEGAL_COMPLIANCE_MODULE', 'Access Legal Compliance Module', 'Can access legal compliance module',
+            'LEGAL_COMPLIANCE', 'MODULE_ACCESS', 0),
+
+            ('MANAGE_LEGAL_COMPLIANCE_CONFIGURATION', 'Manage Legal Compliance Configuration', 'Can manage legal compliance configuration',
+            'LEGAL_COMPLIANCE', 'MANAGE', 1),
+
+            ('VIEW_LEGAL_COMPLIANCE_DASHBOARD', 'View Legal Compliance Dashboard', 'Can view legal compliance dashboard',
+            'LEGAL_COMPLIANCE', 'VIEW', 2),
+
+            ('VIEW_LEGAL_COMPLIANCE_CALENDAR', 'View Legal Compliance Calendar', 'Can view legal compliance calendar',
+            'LEGAL_COMPLIANCE', 'VIEW', 3),
+
+            ('VIEW_LEGAL_FILINGS', 'View Legal Filings', 'Can view legal filings and returns',
+            'LEGAL_COMPLIANCE', 'VIEW', 4),
+
+            ('VIEW_LEGAL_NOTICES', 'View Legal Notices', 'Can view legal notices',
+            'LEGAL_COMPLIANCE', 'VIEW', 5),
+
+            ('VIEW_LEGAL_AUDITS', 'View Legal Audits', 'Can view legal audits',
+            'LEGAL_COMPLIANCE', 'VIEW', 6),
+
+            ('VIEW_LEGAL_REPORTS', 'View Legal Reports', 'Can view legal reports',
+            'LEGAL_COMPLIANCE', 'VIEW', 7),
+
+            ('CREATE_LEGAL_COMPLIANCE', 'Create Legal Compliance', 'Can create legal compliance requirements',
+            'LEGAL_COMPLIANCE', 'CREATE', 8),
+
+            ('EDIT_LEGAL_COMPLIANCE', 'Edit Legal Compliance', 'Can edit legal compliance requirements',
+            'LEGAL_COMPLIANCE', 'EDIT', 9),
+
+            ('VIEW_LEGAL_COMPLIANCE', 'View Legal Compliance', 'Can view legal compliance requirements',
+            'LEGAL_COMPLIANCE', 'VIEW', 10),
+
+            ('APPROVE_LEGAL_COMPLIANCE', 'Approve Legal Compliance', 'Can approve legal compliance submissions',
+            'LEGAL_COMPLIANCE', 'APPROVE', 11),
+
+            ('CLOSE_LEGAL_COMPLIANCE', 'Close Legal Compliance', 'Can close legal compliance items',
+            'LEGAL_COMPLIANCE', 'CLOSE', 12),
+
+            ('EXPORT_LEGAL_COMPLIANCE', 'Export Legal Compliance', 'Can export legal compliance reports',
+            'LEGAL_COMPLIANCE', 'EXPORT', 13),
         ]
 
         created = 0

@@ -1,0 +1,532 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Legal Compliance Dashboard
+{% endblock %}
+
+{% block page_title %}
+Legal Compliance Dashboard
+{% endblock %}
+
+{% block breadcrumb %}
+
+<li class="breadcrumb-item">
+    <a href="{% url 'dashboards:home' %}">
+        Home
+    </a>
+</li>
+
+<li class="breadcrumb-item active">
+    Legal Compliance
+</li>
+
+{% endblock %}
+
+
+{% block content %}
+
+<!-- KPI CARDS -->
+
+<div class="row">
+
+    <div class="col-lg-3 col-md-6">
+
+        <div class="small-box bg-info">
+
+            <div class="inner">
+
+                <h3>{{ total_acts }}</h3>
+
+                <p>Total Legal Acts</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-gavel"></i>
+
+            </div>
+
+            <a href="{% url 'legal_compliance:act_list' %}"
+               class="small-box-footer">
+
+                View Details
+                <i class="fas fa-arrow-circle-right"></i>
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-lg-3 col-md-6">
+
+        <div class="small-box bg-success">
+
+            <div class="inner">
+
+                <h3>{{ active_acts }}</h3>
+
+                <p>Active Legal Acts</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-balance-scale"></i>
+
+            </div>
+
+            <a href="{% url 'legal_compliance:act_list' %}"
+               class="small-box-footer">
+
+                View Details
+                <i class="fas fa-arrow-circle-right"></i>
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-lg-3 col-md-6">
+
+        <div class="small-box bg-warning">
+
+            <div class="inner">
+
+                <h3>{{ total_requirements }}</h3>
+
+                <p>Total Compliance Requirements</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-clipboard-check"></i>
+
+            </div>
+
+            <a href="{% url 'legal_compliance:compliance_list' %}"
+               class="small-box-footer">
+
+                View Details
+                <i class="fas fa-arrow-circle-right"></i>
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-lg-3 col-md-6">
+
+        <div class="small-box bg-danger">
+
+            <div class="inner">
+
+                <h3>{{ critical_requirements }}</h3>
+
+                <p>Critical Compliance Items</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-exclamation-triangle"></i>
+
+            </div>
+
+            <a href="{% url 'legal_compliance:compliance_list' %}"
+               class="small-box-footer">
+
+                View Details
+                <i class="fas fa-arrow-circle-right"></i>
+
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ACTION BUTTONS -->
+
+<div class="row mb-4">
+
+    <div class="col-md-12">
+
+        <div class="ehs-card">
+
+            <div class="card-body d-flex flex-wrap gap-2">
+
+                <a href="{% url 'legal_compliance:act_create' %}"
+                   class="btn btn-primary mr-2 mb-2">
+
+                    <i class="fas fa-plus"></i>
+                    Create Legal Act
+
+                </a>
+
+                <a href="{% url 'legal_compliance:compliance_create' %}"
+                   class="btn btn-success mr-2 mb-2">
+
+                    <i class="fas fa-plus"></i>
+                    Create Compliance
+
+                </a>
+
+                <a href="{% url 'legal_compliance:act_list' %}"
+                   class="btn btn-info mr-2 mb-2">
+
+                    <i class="fas fa-gavel"></i>
+                    View Legal Acts
+
+                </a>
+
+                <a href="{% url 'legal_compliance:compliance_list' %}"
+                   class="btn btn-warning mr-2 mb-2">
+
+                    <i class="fas fa-clipboard-check"></i>
+                    View Compliance Registry
+
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- MAIN CONTENT -->
+
+<div class="row">
+
+    <!-- RECENT LEGAL ACTS -->
+
+    <div class="col-md-6">
+
+        <div class="ehs-card">
+
+            <div class="card-header">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-gavel"></i>
+                    Recent Legal Acts
+
+                </h3>
+
+            </div>
+
+            <div class="card-body">
+
+                {% if recent_acts %}
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-hover">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Act Code</th>
+                                <th>Act Name</th>
+                                <th>Status</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for act in recent_acts %}
+
+                            <tr>
+
+                                <td>
+
+                                    <strong>
+                                        {{ act.act_code }}
+                                    </strong>
+
+                                </td>
+
+                                <td>
+
+                                    <a href="{% url 'legal_compliance:act_detail' act.pk %}">
+
+                                        {{ act.act_name }}
+
+                                    </a>
+
+                                </td>
+
+                                <td>
+
+                                    {% if act.is_active %}
+
+                                    <span class="badge badge-success">
+                                        Active
+                                    </span>
+
+                                    {% else %}
+
+                                    <span class="badge badge-danger">
+                                        Inactive
+                                    </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                {% else %}
+
+                <div class="text-center py-4">
+
+                    <i class="fas fa-gavel fa-3x text-muted mb-3"></i>
+
+                    <p class="text-muted">
+
+                        No legal acts found.
+
+                    </p>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- RECENT COMPLIANCES -->
+
+    <div class="col-md-6">
+
+        <div class="ehs-card">
+
+            <div class="card-header">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-clipboard-check"></i>
+                    Recent Compliance Requirements
+
+                </h3>
+
+            </div>
+
+            <div class="card-body">
+
+                {% if recent_requirements %}
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-hover">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Code</th>
+                                <th>Title</th>
+                                <th>Criticality</th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for compliance in recent_requirements %}
+
+                            <tr>
+
+                                <td>
+
+                                    <strong>
+                                        {{ compliance.requirement_code }}
+                                    </strong>
+
+                                </td>
+
+                                <td>
+
+                                    <a href="{% url 'legal_compliance:compliance_detail' compliance.pk %}">
+
+                                        {{ compliance.title }}
+
+                                    </a>
+
+                                </td>
+
+                                <td>
+
+                                    {% if compliance.criticality == 'CRITICAL' %}
+
+                                    <span class="badge badge-danger">
+
+                                        {{ compliance.get_criticality_display }}
+
+                                    </span>
+
+                                    {% elif compliance.criticality == 'HIGH' %}
+
+                                    <span class="badge badge-warning">
+
+                                        {{ compliance.get_criticality_display }}
+
+                                    </span>
+
+                                    {% else %}
+
+                                    <span class="badge badge-secondary">
+
+                                        {{ compliance.get_criticality_display }}
+
+                                    </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                {% else %}
+
+                <div class="text-center py-4">
+
+                    <i class="fas fa-clipboard-check fa-3x text-muted mb-3"></i>
+
+                    <p class="text-muted">
+
+                        No compliance requirements found.
+
+                    </p>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- GOVERNANCE INFORMATION -->
+
+<div class="row mt-4">
+
+    <div class="col-md-12">
+
+        <div class="ehs-card">
+
+            <div class="card-header">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-chart-line"></i>
+                    Governance Overview
+
+                </h3>
+
+            </div>
+
+            <div class="card-body">
+
+                <div class="row text-center">
+
+                    <div class="col-md-3">
+
+                        <h4 class="text-primary">
+                            {{ total_acts }}
+                        </h4>
+
+                        <p class="text-muted">
+                            Regulatory Acts
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-3">
+
+                        <h4 class="text-success">
+                            {{ total_requirements }}
+                        </h4>
+
+                        <p class="text-muted">
+                            Compliance Obligations
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-3">
+
+                        <h4 class="text-warning">
+                            {{ active_requirements }}
+                        </h4>
+
+                        <p class="text-muted">
+                            Active Requirements
+                        </p>
+
+                    </div>
+
+                    <div class="col-md-3">
+
+                        <h4 class="text-danger">
+                            {{ critical_requirements }}
+                        </h4>
+
+                        <p class="text-muted">
+                            Critical Obligations
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

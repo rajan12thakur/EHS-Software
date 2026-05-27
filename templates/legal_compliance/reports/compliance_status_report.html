@@ -1,0 +1,495 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Compliance Status Report
+{% endblock %}
+
+{% block page_title %}
+Compliance Status Report
+{% endblock %}
+
+{% block content %}
+
+<!-- ===================================================== -->
+<!-- FILTERS -->
+<!-- ===================================================== -->
+
+<div class="card mb-4">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+
+            <i class="fas fa-filter"></i>
+
+            Report Filters
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <form method="get">
+
+            <div class="row">
+
+                <div class="col-md-4 mb-3">
+
+                    <label>Status</label>
+
+                    <select name="status"
+                            class="form-control">
+
+                        <option value="">
+                            All Status
+                        </option>
+
+                        {% for value, label in status_choices %}
+
+                        <option value="{{ value }}"
+                            {% if request.GET.status == value %}
+                            selected
+                            {% endif %}>
+
+                            {{ label }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-md-4 mb-3">
+
+                    <label>Legal Act</label>
+
+                    <select name="legal_act"
+                            class="form-control">
+
+                        <option value="">
+                            All Legal Acts
+                        </option>
+
+                        {% for act in legal_acts %}
+
+                        <option value="{{ act.id }}"
+                            {% if request.GET.legal_act == act.id|stringformat:"s" %}
+                            selected
+                            {% endif %}>
+
+                            {{ act.act_name }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-md-4 mb-3">
+
+                    <label>Frequency</label>
+
+                    <select name="frequency"
+                            class="form-control">
+
+                        <option value="">
+                            All Frequencies
+                        </option>
+
+                        {% for value, label in frequency_choices %}
+
+                        <option value="{{ value }}"
+                            {% if request.GET.frequency == value %}
+                            selected
+                            {% endif %}>
+
+                            {{ label }}
+
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+            </div>
+
+
+            <button type="submit"
+                    class="btn btn-primary">
+
+                <i class="fas fa-search"></i>
+
+                Generate Report
+
+            </button>
+
+            <a href="{% url 'legal_compliance:export_status_excel' %}"
+                class="btn btn-success">
+
+                    <i class="fas fa-file-excel"></i>
+
+                    Export Excel
+
+                </a>
+
+            <a href="{% url 'legal_compliance:export_status_pdf' %}"
+                class="btn btn-danger">
+
+                    <i class="fas fa-file-pdf"></i>
+
+                    Export PDF
+
+                </a>
+
+            <a href="{% url 'legal_compliance:status_report' %}"
+               class="btn btn-secondary">
+
+                Reset
+
+            </a>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- STATS -->
+<!-- ===================================================== -->
+
+<div class="row">
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-info">
+
+            <div class="inner">
+
+                <h3>{{ stats.total }}</h3>
+
+                <p>Total</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-list"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-primary">
+
+            <div class="inner">
+
+                <h3>{{ stats.pending }}</h3>
+
+                <p>Pending</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-clock"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-warning">
+
+            <div class="inner">
+
+                <h3>{{ stats.in_progress }}</h3>
+
+                <p>In Progress</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-spinner"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-success">
+
+            <div class="inner">
+
+                <h3>{{ stats.completed }}</h3>
+
+                <p>Completed</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-check-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-danger">
+
+            <div class="inner">
+
+                <h3>{{ stats.overdue }}</h3>
+
+                <p>Overdue</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-exclamation-triangle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2 col-6 mb-3">
+
+        <div class="small-box bg-dark">
+
+            <div class="inner">
+
+                <h3>{{ stats.rejected }}</h3>
+
+                <p>Rejected</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-times-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- REPORT TABLE -->
+<!-- ===================================================== -->
+
+<div class="card">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+
+            <i class="fas fa-table"></i>
+
+            Compliance Status Report
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover">
+
+                <thead class="thead-light">
+
+                    <tr>
+
+                        <th>Compliance Code</th>
+
+                        <th>Compliance</th>
+
+                        <th>Legal Act</th>
+
+                        <th>Frequency</th>
+
+                        <th>Responsible Person</th>
+
+                        <th>Reviewer</th>
+
+                        <th>Due Date</th>
+
+                        <th>Status</th>
+
+                        <th>Submitted By</th>
+
+                        <th>Submitted At</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for submission in submissions %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ submission.requirement.requirement_code }}
+
+                        </td>
+
+                        <td>
+
+                            {{ submission.requirement.title }}
+
+                        </td>
+
+                        <td>
+
+                            {{ submission.requirement.legal_act.short_name }}
+
+                        </td>
+
+                        <td>
+
+                            {{ submission.requirement.get_frequency_display }}
+
+                        </td>
+
+                        <td>
+
+                            {% for user in submission.requirement.responsible_person.all %}
+
+                                {{ user.get_full_name }}
+
+                                {% if not forloop.last %}, {% endif %}
+
+                            {% endfor %}
+
+                        </td>
+
+                        <td>
+
+                            {% for user in submission.requirement.reviewer.all %}
+
+                                {{ user.get_full_name }}
+
+                                {% if not forloop.last %}, {% endif %}
+
+                            {% endfor %}
+
+                        </td>
+
+                        <td>
+
+                            {{ submission.requirement.due_date|date:"d M Y" }}
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge
+
+                                {% if submission.requirement.status == 'PENDING' %}
+                                    badge-primary
+
+                                {% elif submission.requirement.status == 'IN_PROGRESS' %}
+                                    badge-warning
+
+                                {% elif submission.requirement.status == 'SUBMITTED' %}
+                                    badge-info
+
+                                {% elif submission.requirement.status == 'COMPLETED' %}
+                                    badge-success
+
+                                {% elif submission.requirement.status == 'OVERDUE' %}
+                                    badge-danger
+
+                                {% elif submission.requirement.status == 'REJECTED' %}
+                                    badge-dark
+
+                                {% endif %}
+                            ">
+
+                                {{ submission.requirement.get_status_display }}
+
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            {{ submission.submitted_by.get_full_name }}
+
+                        </td>
+
+                        <td>
+
+                            {{ submission.submitted_at|date:"d M Y h:i A" }}
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="10"
+                            class="text-center text-muted">
+
+                            No compliance records found.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

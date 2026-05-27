@@ -1,0 +1,605 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Compliance Review
+{% endblock %}
+
+{% block page_title %}
+Compliance Review
+{% endblock %}
+
+{% block breadcrumb %}
+
+<li class="breadcrumb-item">
+    <a href="{% url 'dashboards:home' %}">
+        Home
+    </a>
+</li>
+
+<li class="breadcrumb-item">
+    <a href="{% url 'legal_compliance:dashboard' %}">
+        Legal Compliance
+    </a>
+</li>
+
+<li class="breadcrumb-item">
+    <a href="{% url 'legal_compliance:my_compliances' %}">
+        My Compliances
+    </a>
+</li>
+
+<li class="breadcrumb-item active">
+    Review
+</li>
+
+{% endblock %}
+
+
+{% block extra_css %}
+
+<style>
+
+    .response-card.border-success {
+        border-left: 4px solid #28a745 !important;
+    }
+
+    .response-card.border-danger {
+        border-left: 4px solid #dc3545 !important;
+    }
+
+    .response-card.border-secondary {
+        border-left: 4px solid #6c757d !important;
+    }
+
+</style>
+
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <div class="row">
+
+        <div class="col-12">
+
+            <!-- HEADER -->
+
+            <div class="card mb-4 shadow-sm">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center flex-wrap">
+
+                        <div>
+
+                            <h4 class="mb-1">
+
+                                Compliance Review
+
+                            </h4>
+
+                            <p class="text-muted mb-0">
+
+                                {{ submission.requirement.requirement_code }}
+
+                                -
+
+                                {{ submission.requirement.title }}
+
+                            </p>
+
+                        </div>
+
+                        <div class="text-end mt-2 mt-md-0">
+
+                            <span class="badge badge-success"
+                                  style="font-size: 1rem;">
+
+                                {{ submission.get_status_display }}
+
+                            </span>
+
+                            <br>
+
+                            <small class="text-muted">
+
+                                Submitted by:
+
+                                {{ submission.submitted_by.get_full_name }}
+
+                                <br>
+
+                                Date:
+
+                                {{ submission.submitted_at|date:"d M Y, h:i A" }}
+
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- STATS -->
+
+            <div class="row mb-4">
+
+                <div class="col-md-3 col-6 mb-3">
+
+                    <div class="card text-center h-100 shadow-sm">
+
+                        <div class="card-body">
+
+                            <h3 class="text-primary fw-bold">
+
+                                {{ total_questions }}
+
+                            </h3>
+
+                            <p class="mb-0 text-muted">
+
+                                Total Questions
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3 col-6 mb-3">
+
+                    <div class="card text-center h-100 shadow-sm">
+
+                        <div class="card-body">
+
+                            <h3 class="text-success fw-bold">
+
+                                {{ yes_count }}
+
+                            </h3>
+
+                            <p class="mb-0 text-muted">
+
+                                Complied
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3 col-6 mb-3">
+
+                    <div class="card text-center h-100 shadow-sm">
+
+                        <div class="card-body">
+
+                            <h3 class="text-danger fw-bold">
+
+                                {{ no_count }}
+
+                            </h3>
+
+                            <p class="mb-0 text-muted">
+
+                                Non-Complied
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-3 col-6 mb-3">
+
+                    <div class="card text-center h-100 shadow-sm">
+
+                        <div class="card-body">
+
+                            <h3 class="text-secondary fw-bold">
+
+                                {{ na_count }}
+
+                            </h3>
+
+                            <p class="mb-0 text-muted">
+
+                                Not Applicable
+
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- RESPONSE LIST -->
+
+            <div class="card shadow-sm">
+
+                <div class="card-header bg-light">
+
+                    <h5 class="mb-0">
+
+                        <i class="fas fa-list-ul text-primary"></i>
+
+                        Full Compliance Report
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    {% if responses %}
+
+                        {% for response in responses %}
+
+                        <div class="card mb-3 response-card border-
+
+                            {% if response.answer == 'YES' %}
+
+                                success
+
+                            {% elif response.answer == 'NO' %}
+
+                                danger
+
+                            {% else %}
+
+                                secondary
+
+                            {% endif %}
+                        ">
+
+                            <div class="card-body">
+
+                                <div class="row align-items-center">
+
+                                    <div class="col-md-8">
+
+                                        <p class="mb-2">
+
+                                            <strong class="text-primary">
+
+                                                {{ response.question.question_code }}
+
+                                                :
+
+                                            </strong>
+
+                                            {{ response.question.question_text }}
+
+                                            {% if response.question.is_critical %}
+
+                                            <span class="badge badge-danger ml-2">
+
+                                                Critical
+
+                                            </span>
+
+                                            {% endif %}
+
+                                        </p>
+
+
+                                        {% if response.remarks %}
+
+                                        <div class="alert alert-light py-2 mb-2 border-left border-info">
+
+                                            <strong>
+
+                                                Remarks:
+
+                                            </strong>
+
+                                            {{ response.remarks }}
+
+                                        </div>
+
+                                        {% endif %}
+
+
+                                        {% if response.question.reference_standard %}
+
+                                        <small class="text-muted d-block mt-2">
+
+                                            <i class="fas fa-book"></i>
+
+                                            Reference:
+
+                                            {{ response.question.reference_standard }}
+
+                                        </small>
+
+                                        {% endif %}
+
+                                    </div>
+
+
+                                    <div class="col-md-4 text-center text-md-end">
+
+                                        <span class="badge badge-
+                                            {% if response.answer == 'YES' %}
+
+                                                success
+
+                                            {% elif response.answer == 'NO' %}
+
+                                                danger
+
+                                            {% else %}
+
+                                                secondary
+
+                                            {% endif %}
+
+                                            p-2">
+
+                                            {{ response.get_answer_display }}
+
+                                        </span>
+
+
+                                        <!-- EVIDENCE -->
+
+                                        {% if response.evidence_file %}
+
+                                        <div class="mt-3">
+
+                                            <a href="{{ response.evidence_file.url }}"
+                                               target="_blank"
+                                               class="btn btn-sm btn-outline-primary">
+
+                                                <i class="fas fa-file"></i>
+
+                                                View Evidence
+
+                                            </a>
+
+                                        </div>
+
+                                        {% endif %}
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        {% endfor %}
+
+                    {% else %}
+
+                    <div class="alert alert-info">
+
+                        <i class="fas fa-info-circle"></i>
+
+                        No responses found.
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+
+            <!-- REVIEW ACTIONS -->
+
+            {% if request.user in submission.requirement.reviewer.all and submission.status == 'SUBMITTED' %}
+
+            <div class="card mt-4 shadow-sm">
+
+                <div class="card-body">
+
+                    <form method="post">
+
+                        {% csrf_token %}
+
+                        <div class="form-group">
+
+                            <label>
+
+                                Reviewer Comments
+
+                            </label>
+
+                            <textarea name="reviewer_comments"
+                                      class="form-control"
+                                      rows="3"></textarea>
+
+                        </div>
+
+                        <div class="text-center mt-3">
+
+                            <button type="submit"
+                                    name="action"
+                                    value="approve"
+                                    class="btn btn-success mr-2">
+
+                                <i class="fas fa-check"></i>
+
+                                Approve
+
+                            </button>
+
+                            <button type="submit"
+                                    name="action"
+                                    value="reject"
+                                    class="btn btn-danger">
+
+                                <i class="fas fa-times"></i>
+
+                                Reject
+
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
+            <!-- REVIEW RESULT -->
+
+            {% if submission.status == 'APPROVED' or submission.status == 'REJECTED' %}
+
+            <div class="card mt-4 shadow-sm">
+
+                <div class="card-header bg-light">
+
+                    <h5 class="mb-0">
+
+                        <i class="fas fa-user-check text-success"></i>
+
+                        Review Summary
+
+                    </h5>
+
+                </div>
+
+                <div class="card-body">
+
+                    <div class="row">
+
+                        <div class="col-md-4">
+
+                            <strong>
+
+                                Review Status
+
+                            </strong>
+
+                            <br>
+
+                            {% if submission.status == 'APPROVED' %}
+
+                                <span class="badge badge-success p-2">
+
+                                    Approved
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="badge badge-danger p-2">
+
+                                    Rejected
+
+                                </span>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <div class="col-md-4">
+
+                            <strong>
+
+                                Reviewed By
+
+                            </strong>
+
+                            <br>
+
+                            {{ submission.reviewed_by.get_full_name }}
+
+                        </div>
+
+
+                        <div class="col-md-4">
+
+                            <strong>
+
+                                Reviewed On
+
+                            </strong>
+
+                            <br>
+
+                            {{ submission.reviewed_at|date:"d M Y h:i A" }}
+
+                        </div>
+
+                    </div>
+
+
+                    {% if submission.reviewer_comments %}
+
+                    <div class="alert alert-light mt-3 mb-0 border-left border-primary">
+
+                        <strong>
+
+                            Reviewer Comments:
+
+                        </strong>
+
+                        <br>
+
+                        {{ submission.reviewer_comments }}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            {% endif %}
+
+
+            <!-- ACTIONS -->
+
+            <div class="card mt-4 shadow-sm">
+
+                <div class="card-body text-center">
+
+                    <a href="{% url 'legal_compliance:my_compliances' %}"
+                       class="btn btn-secondary">
+
+                        <i class="fas fa-arrow-left"></i>
+
+                        Back to My Compliances
+
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

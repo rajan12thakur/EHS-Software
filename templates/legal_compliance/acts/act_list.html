@@ -1,0 +1,279 @@
+{% extends 'base/base.html' %}
+{% load permission_tags %}
+{% block title %}
+Legal Acts
+{% endblock %}
+
+{% block page_title %}
+Legal Acts
+{% endblock %}
+
+{% block breadcrumb %}
+
+<li class="breadcrumb-item">
+    <a href="{% url 'dashboards:home' %}">
+        Home
+    </a>
+</li>
+
+<li class="breadcrumb-item">
+    <a href="{% url 'legal_compliance:dashboard' %}">
+        Legal Compliance
+    </a>
+</li>
+
+<li class="breadcrumb-item active">
+    Legal Acts
+</li>
+
+{% endblock %}
+
+
+{% block content %}
+
+<div class="row">
+
+    <div class="col-12">
+
+        <div class="ehs-card">
+
+            <!-- HEADER -->
+
+            <div class="card-header d-flex justify-content-between align-items-center">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-gavel"></i>
+                    Legal Acts Registry
+
+                </h3>
+
+                {% if request.user|has_perm:'MANAGE_LEGAL_COMPLIANCE_CONFIGURATION' %}
+
+                <a href="{% url 'legal_compliance:act_create' %}"
+                class="btn btn-primary">
+
+                    <i class="fas fa-plus"></i>
+                    Create Legal Act
+
+                </a>
+
+                {% endif %}
+
+            </div>
+
+            <!-- BODY -->
+
+            <div class="card-body">
+
+                {% if object_list %}
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-hover">
+
+                        <thead class="thead-light">
+
+                            <tr>
+
+                                <th width="12%">
+                                    Act Code
+                                </th>
+
+                                <th>
+                                    Act Name
+                                </th>
+
+                                <th width="15%">
+                                    Authority
+                                </th>
+
+                                <th width="10%">
+                                    Level
+                                </th>
+
+                                <th width="10%">
+                                    Category
+                                </th>
+
+                                <th width="10%">
+                                    Effective Date
+                                </th>
+
+                                <th width="8%">
+                                    Status
+                                </th>
+
+                                <th width="15%">
+                                    Actions
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            {% for act in object_list %}
+
+                            <tr>
+
+                                <td>
+                                    <strong>
+                                        {{ act.act_code }}
+                                    </strong>
+                                </td>
+
+                                <td>
+
+                                    <a href="{% url 'legal_compliance:act_detail' act.pk %}">
+
+                                        {{ act.act_name }}
+
+                                    </a>
+
+                                    {% if act.short_name %}
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ act.short_name }}
+                                    </small>
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+                                    {{ act.authority_name }}
+                                </td>
+
+                                <td>
+
+                                    <span class="badge badge-info">
+
+                                        {{ act.get_government_level_display }}
+
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    <span class="badge badge-secondary">
+
+                                        {{ act.get_category_display }}
+
+                                    </span>
+
+                                </td>
+
+                                <td>
+
+                                    {% if act.effective_date %}
+                                        {{ act.effective_date|date:"d M Y" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+
+                                    {% if act.is_active %}
+
+                                    <span class="badge badge-success">
+                                        Active
+                                    </span>
+
+                                    {% else %}
+
+                                    <span class="badge badge-danger">
+                                        Inactive
+                                    </span>
+
+                                    {% endif %}
+
+                                </td>
+
+                                <td>
+
+                                    <div class="btn-group">
+
+                                        <a href="{% url 'legal_compliance:act_detail' act.pk %}"
+                                           class="btn btn-sm btn-info">
+
+                                            <i class="fas fa-eye"></i>
+
+                                        </a>
+
+                                        {% if request.user|has_perm:'MANAGE_LEGAL_COMPLIANCE_CONFIGURATION' %}
+
+                                        <a href="{% url 'legal_compliance:act_edit' act.pk %}"
+                                        class="btn btn-sm btn-warning">
+
+                                            <i class="fas fa-edit"></i>
+
+                                        </a>
+
+                                        <a href="{% url 'legal_compliance:act_delete' act.pk %}"
+                                        class="btn btn-sm btn-danger">
+
+                                            <i class="fas fa-trash"></i>
+
+                                        </a>
+
+                                        {% endif %}
+
+                                    </div>
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                {% else %}
+
+                <div class="text-center py-5">
+
+                    <i class="fas fa-gavel fa-4x text-muted mb-4"></i>
+
+                    <h4>
+                        No Legal Acts Found
+                    </h4>
+
+                    <p class="text-muted">
+
+                        Start by creating your first legal act.
+
+                    </p>
+
+                    {% if request.user|has_perm:'MANAGE_LEGAL_COMPLIANCE_CONFIGURATION' %}
+
+                    <a href="{% url 'legal_compliance:act_create' %}"
+                    class="btn btn-primary">
+
+                        <i class="fas fa-plus"></i>
+                        Create Legal Act
+
+                    </a>
+
+                    {% endif %}
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

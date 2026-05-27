@@ -485,14 +485,13 @@
               </a>
             </li>
             {% endif %}
-            {% if request.user|has_perm:'CONDUCT_INSPECTION' %}
+            
             <li class="nav-item">
               <a href="{% url 'inspections:my_inspections' %}" class="nav-link {% if request.resolver_match.url_name == 'my_inspections' %}active{% endif %}">
                 <i class="nav-icon far fa-circle"></i>
                 <p>My Inspections</p>
               </a>
             </li>
-            {% endif %}
             {% if request.user|has_perm:'CREATE_INSPECTION' %}
             <li class="nav-item">
               <a href="{% url 'inspections:schedule_create' %}" class="nav-link {% if request.resolver_match.url_name == 'schedule_create' %}active{% endif %}">
@@ -555,7 +554,6 @@
               </a>
             </li>
             {% endif %}
-            {% if my_pending_actions_count > 0 %}
             <li class="nav-item">
               <a href="{% url 'hazards:my_action_items' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'my_action_items' %}active{% endif %}">
@@ -566,7 +564,6 @@
                   </p>
                 </a>
               </li>
-              {% endif %}
           </ul>
         </li>
 
@@ -604,7 +601,6 @@
               </a>
             </li>
             {% endif %}
-             {% if my_pending_incidents_actions_count > 0 %}
             <li class="nav-item">
               <a href="{% url 'accidents:my_action_items' %}"
                 class="nav-link {% if request.resolver_match.url_name == 'my_action_items' %}active{% endif %}">
@@ -612,7 +608,6 @@
                 <p>My Action Items</p>
               </a>
             </li>
-            {% endif %}
           </ul>
         </li>
 
@@ -633,7 +628,133 @@
         </li>
         {% endif %}
 
-        <!-- 11. MONTHLY ENVIRONMENTAL DATA -->
+        <!-- Legal Compliance Management -->
+        {% if request.user.can_access_legal_compliance_module %}
+        <li class="nav-item {% if 'legal-compliance' in request.path %}menu-open{% endif %}">
+
+            <a href="#" class="nav-link {% if 'legal-compliance' in request.path %}active{% endif %}">
+
+                <i class="nav-icon fas fa-gavel"></i>
+
+                <p>
+                    Legal Compliance Management
+                    <i class="right fas fa-angle-left"></i>
+                </p>
+
+            </a>
+
+            <ul class="nav nav-treeview">
+
+                <!-- Dashboard -->
+                <li class="nav-item">
+                    <a href="{% url 'legal_compliance:dashboard' %}"
+                    class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        <i class="far fa-circle nav-icon"></i>
+                        <p>Dashboard</p>
+                    </a>
+                </li>
+
+                <!-- Legal Acts -->
+                <li class="nav-item">
+                    <a href="{% url 'legal_compliance:act_list' %}"
+                    class="nav-link {% if request.resolver_match.url_name == 'act_list' %}active{% endif %}">
+                        <i class="far fa-circle nav-icon"></i>
+                        <p>Legal Acts</p>
+                    </a>
+                </li>
+
+                <!-- Compliance Requirements -->
+                <li class="nav-item">
+                    <a href="{% url 'legal_compliance:compliance_list' %}"
+                    class="nav-link {% if request.resolver_match.url_name == 'compliance_list' %}active{% endif %}">
+                        <i class="far fa-circle nav-icon"></i>
+                        <p>Compliance Requirements</p>
+                    </a>
+                </li>
+
+                <!-- Compliance Questions -->
+                <li class="nav-item">
+
+                    <a href="{% url 'legal_compliance:question_list' %}"
+                    class="nav-link
+                    {% if request.resolver_match.url_name == 'question_list' %}
+                            active
+                    {% endif %}">
+
+                        <i class="far fa-circle nav-icon"></i>
+
+                        <p>
+
+                            Compliance Questions
+
+                        </p>
+
+                    </a>
+
+                </li>
+
+
+                <!-- My Compliances -->
+                <li class="nav-item">
+                    <a href="{% url 'legal_compliance:my_compliances' %}"
+                    class="nav-link
+                    {% if request.resolver_match.url_name == 'my_compliances' %}
+                            active
+                    {% endif %}">
+                        <i class="far fa-circle nav-icon"></i>
+                        <p>
+                            My Compliances
+                        </p>
+                    </a>
+                </li>
+
+                <!-- Compliance Reports -->
+                <li class="nav-item">
+
+                    <a href="{% url 'legal_compliance:status_report' %}"
+                    class="nav-link
+                    {% if request.resolver_match.url_name == 'status_report' %}
+                            active
+                    {% endif %}">
+   
+                        <i class="far fa-chart-bar nav-icon"></i>
+
+                        <p>
+
+                            Compliance Reports
+
+                        </p>
+
+                    </a>
+
+                </li>
+
+
+                <!-- Overdue Dashboard -->
+                <li class="nav-item">
+
+                    <a href="{% url 'legal_compliance:overdue_dashboard' %}"
+                    class="nav-link
+                    {% if request.resolver_match.url_name == 'overdue_dashboard' %}
+                            active
+                    {% endif %}">
+
+                        <i class="fas fa-exclamation-triangle nav-icon text-danger"></i>
+
+                        <p>
+
+                            Overdue Dashboard
+
+                        </p>
+
+                    </a>
+
+                </li>
+            </ul>
+
+        </li>
+        {% endif %}
+        <!-- 12. MONTHLY ENVIRONMENTAL DATA -->
         {% if request.user.can_access_env_data_module %}
         <li class="nav-item {% if 'env-data' in request.path or 'data_collection' in request.path %}menu-open{% endif %}">
           <a href="#" class="nav-link {% if 'env-data' in request.path or 'data_collection' in request.path %}active{% endif %}">

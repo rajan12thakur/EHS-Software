@@ -1,0 +1,239 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Governance Score
+{% endblock %}
+
+{% block page_title %}
+Compliance Governance Score
+{% endblock %}
+
+{% block content %}
+
+<div class="row">
+
+    <!-- SCORE CARD -->
+
+    <div class="col-md-4">
+
+        <div class="small-box bg-info">
+
+            <div class="inner">
+
+                <h3>{{ governance_score }}%</h3>
+
+                <p>Governance Score</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-chart-line"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- RISK LEVEL -->
+
+    <div class="col-md-4">
+
+        {% if risk_level == 'LOW' %}
+
+        <div class="small-box bg-success">
+
+        {% elif risk_level == 'MEDIUM' %}
+
+        <div class="small-box bg-warning">
+
+        {% else %}
+
+        <div class="small-box bg-danger">
+
+        {% endif %}
+
+            <div class="inner">
+
+                <h3>{{ risk_level }}</h3>
+
+                <p>Risk Level</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-shield-alt"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- COMPLIANCE RATE -->
+
+    <div class="col-md-4">
+
+        <div class="small-box bg-primary">
+
+            <div class="inner">
+
+                <h3>{{ compliance_rate }}%</h3>
+
+                <p>Compliance Rate</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-check-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- KPI TABLE -->
+
+<div class="row">
+
+    <div class="col-md-12">
+
+        <div class="ehs-card">
+
+            <div class="card-header">
+
+                <h3 class="card-title">
+
+                    <i class="fas fa-chart-pie"></i>
+                    Governance KPI Summary
+
+                </h3>
+
+            </div>
+
+            <div class="card-body">
+
+                <table class="table table-bordered">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>KPI</th>
+                            <th>Value</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        <tr>
+
+                            <td>Total Schedules</td>
+                            <td>{{ total }}</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Approved</td>
+                            <td>{{ approved }}</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Overdue</td>
+                            <td>{{ overdue }}</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Rejected</td>
+                            <td>{{ rejected }}</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Pending</td>
+                            <td>{{ pending }}</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Compliance Rate</td>
+                            <td>{{ compliance_rate }}%</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Overdue Rate</td>
+                            <td>{{ overdue_rate }}%</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Rejection Rate</td>
+                            <td>{{ rejection_rate }}%</td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Governance Score</td>
+                            <td>
+
+                                <strong>
+
+                                    {{ governance_score }}%
+
+                                </strong>
+
+                            </td>
+
+                        </tr>
+
+                        <tr>
+
+                            <td>Risk Level</td>
+
+                            <td>
+
+                                <strong>
+
+                                    {{ risk_level }}
+
+                                </strong>
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
