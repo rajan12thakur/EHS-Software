@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     'apps.permit.apps.PermitConfig',
     'apps.chemicals.apps.ChemicalsConfig',
     'apps.audits.apps.AuditsConfig',
+    'apps.legal_compliance',
+    'apps.emergency.apps.EmergencyConfig',
 
     'django.contrib.admin',
     'django.contrib.auth',
@@ -234,4 +236,4 @@ REMINDER_DAYS_BEFORE_DUE = 1  # Send reminder 1 day before due date
 ESCALATION_INTERVAL_DAYS = 7  # Escalate every 7 days after overdue
 
 # Base site URL
-SITE_URL = "https://ehs360.everestind.com"
+SITE_URL = "http://127.0.0.1:8000/"
