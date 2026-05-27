@@ -5,9 +5,10 @@ from django.contrib.auth import get_user_model
 from django.contrib import messages
 from django.db.models import Count
 from django.utils import timezone
+from datetime import timedelta
 from django.urls import reverse_lazy
 from django.views.generic import (TemplateView, ListView, CreateView, UpdateView,DeleteView, DetailView,)
-from .models import (ComplianceQuestion, ComplianceRequirementQuestion,LegalAct,ComplianceRequirement,ComplianceSubmission,ComplianceResponse)
+from .models import (ComplianceQuestion, ComplianceRequirementQuestion,LegalAct,ComplianceRequirement,ComplianceSubmission,ComplianceResponse, ComplianceFinding)
 from .forms import (ComplianceQuestionFilterForm, ComplianceQuestionForm, LegalActForm, ComplianceRequirementForm, User, ComplianceRequirementForm )
 from django.shortcuts import (get_object_or_404,redirect, render)
 from django.contrib import messages
@@ -1507,11 +1508,36 @@ def compliance_review(request, submission_id):
 
             submission.reviewed_at = timezone.now()
 
-            submission.reviewer_comments = (
-                reviewer_comments
-            )
+            submission.reviewer_comments = (reviewer_comments)
 
             submission.save()
+
+            # ==========================================
+            # CREATE COMPLIANCE FINDING
+            # ==========================================
+
+            ComplianceFinding.objects.create(
+
+                requirement=submission.requirement,
+
+                submission=submission,
+
+                finding_description=(reviewer_comments),
+
+                violated_provision=(submission.requirement.legal_act.act_name),
+
+                corrective_action='',
+
+                responsible_person=(submission.submitted_by),
+
+                reviewer=request.user,
+
+                target_date=(timezone.now().date() + timedelta(days=7)),
+
+                status='OPEN',
+
+                created_by=request.user
+            )
 
             submission.requirement.status = (
                 'REJECTED'

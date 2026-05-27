@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import (LegalAct, ComplianceRequirement)
+from .models import (LegalAct, ComplianceRequirement, ComplianceFinding)
 
 
 class ComplianceRequirementInline(admin.TabularInline):
@@ -216,3 +216,37 @@ class ComplianceRequirementAdmin(admin.ModelAdmin):
     get_reviewers.short_description = (
         'Reviewers'
     )
+
+
+
+@admin.register(ComplianceFinding)
+class ComplianceFindingAdmin(admin.ModelAdmin):
+
+    list_display = [
+
+        'finding_reference',
+
+        'requirement',
+
+        'responsible_person',
+
+        'target_date',
+
+        'status',
+
+        'created_at'
+    ]
+
+    list_filter = [
+
+        'status',
+
+        'target_date'
+    ]
+
+    search_fields = [
+
+        'finding_reference',
+
+        'finding_description'
+    ]

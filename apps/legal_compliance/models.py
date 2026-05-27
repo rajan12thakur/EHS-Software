@@ -833,3 +833,106 @@ class ComplianceResponse(models.Model):
             self.is_non_compliant = True
 
         super().save(*args, **kwargs)
+
+
+
+# =====================================================
+# COMPLIANCE FINDINGS / CAPA
+# =====================================================
+
+class ComplianceFinding(models.Model):
+    STATUS_CHOICES = [
+        ('OPEN', 'Open'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('CLOSED', 'Closed'),
+    ]
+    finding_reference = models.CharField(
+        max_length=100,
+        unique=True,
+        blank=True
+    )
+    requirement = models.ForeignKey(
+        ComplianceRequirement,
+        on_delete=models.CASCADE,
+        related_name='findings'
+    )
+    submission = models.ForeignKey(
+        ComplianceSubmission,
+        on_delete=models.CASCADE,
+        related_name='findings',
+        null=True,
+        blank=True
+    )
+    finding_description = models.TextField()
+    violated_provision = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True
+    )
+    corrective_action = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    responsible_person = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='compliance_assigned_findings'
+    )
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='compliance_review_findings'
+    )
+    target_date = models.DateField(
+        null=True,
+        blank=True
+    )
+    closure_date = models.DateField(
+        null=True,
+        blank=True
+    )
+    evidence_file = models.FileField(
+        upload_to='compliance_findings/',
+        blank=True,
+        null=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='OPEN'
+    )
+    remarks = models.TextField(
+        blank=True,
+        null=True
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_findings'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+    class Meta:
+        db_table = 'compliance_findings'
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.finding_reference:
+            last_id = (
+                ComplianceFinding.objects.count() + 1
+            )
+            self.finding_reference = (
+                f'FND-{timezone.now().year}-{last_id:03d}'
+            )
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.finding_reference
