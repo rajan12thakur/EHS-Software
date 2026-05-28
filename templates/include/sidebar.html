@@ -762,103 +762,281 @@
         </li>
         {% endif %}
 
-        <!-- Legal Compliance Management -->
+        <!-- ===================================================== -->
+        <!-- LEGAL COMPLIANCE MANAGEMENT -->
+        <!-- ===================================================== -->
+
         {% if request.user.can_access_legal_compliance_module %}
+
         <li class="nav-item {% if 'legal-compliance' in request.path %}menu-open{% endif %}">
 
-            <a href="#" class="nav-link {% if 'legal-compliance' in request.path %}active{% endif %}">
+            <a href="#"
+            class="nav-link {% if 'legal-compliance' in request.path %}active{% endif %}">
 
                 <i class="nav-icon fas fa-gavel"></i>
 
                 <p>
+
                     Legal Compliance Management
+
                     <i class="right fas fa-angle-left"></i>
+
                 </p>
 
             </a>
 
             <ul class="nav nav-treeview">
 
-                <!-- Dashboard -->
-                <li class="nav-item">
-                    <a href="{% url 'legal_compliance:dashboard' %}"
-                    class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-                        <i class="far fa-circle nav-icon"></i>
-                        <p>Dashboard</p>
+                <!-- ===================================================== -->
+                <!-- DASHBOARDS -->
+                <!-- ===================================================== -->
+
+                <li class="nav-item {% if request.resolver_match.url_name in 'dashboard overdue_dashboard compliance_calendar_dashboard status_report' %}menu-open{% endif %}">
+
+                    <a href="#"
+                    class="nav-link {% if request.resolver_match.url_name in 'dashboard overdue_dashboard compliance_calendar_dashboard status_report' %}active{% endif %}">
+
+                        <i class="nav-icon fas fa-chart-line"></i>
+
+                        <p>
+
+                            Dashboards & Reports
+
+                            <i class="right fas fa-angle-left"></i>
+
+                        </p>
+
                     </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <!-- Main Dashboard -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:dashboard' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+
+                                <i class="fas fa-tachometer-alt nav-icon"></i>
+
+                                <p>Compliance Dashboard</p>
+
+                            </a>
+
+                        </li>
+
+                        <!-- Calendar Dashboard -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:compliance_calendar_dashboard' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'compliance_calendar_dashboard' %}active{% endif %}">
+
+                                <i class="fas fa-calendar-alt nav-icon"></i>
+
+                                <p>Compliance Calendar</p>
+
+                            </a>
+
+                        </li>
+
+                        <!-- Escalation Dashboard -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:overdue_dashboard' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'overdue_dashboard' %}active{% endif %}">
+
+                                <i class="fas fa-exclamation-triangle nav-icon text-danger"></i>
+
+                                <p>Escalation Dashboard</p>
+
+                            </a>
+
+                        </li>
+
+                        <!-- Reports -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:status_report' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'status_report' %}active{% endif %}">
+
+                                <i class="fas fa-chart-bar nav-icon"></i>
+
+                                <p>Compliance Reports</p>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
                 </li>
 
-                <!-- Legal Acts -->
-                <li class="nav-item">
-                    <a href="{% url 'legal_compliance:act_list' %}"
-                    class="nav-link {% if request.resolver_match.url_name == 'act_list' %}active{% endif %}">
-                        <i class="far fa-circle nav-icon"></i>
-                        <p>Legal Acts</p>
+                <!-- ===================================================== -->
+                <!-- CONFIGURATIONS -->
+                <!-- ===================================================== -->
+
+                <li class="nav-item {% if request.resolver_match.url_name in 'act_list act_create act_detail act_edit question_list question_create question_detail question_edit compliance_list compliance_create compliance_detail compliance_edit' %}menu-open{% endif %}">
+
+                    <a href="#"
+                    class="nav-link {% if request.resolver_match.url_name in 'act_list act_create act_detail act_edit question_list question_create question_detail question_edit compliance_list compliance_create compliance_detail compliance_edit' %}active{% endif %}">
+
+                        <i class="nav-icon fas fa-cogs"></i>
+
+                        <p>
+
+                            Configurations
+
+                            <i class="right fas fa-angle-left"></i>
+
+                        </p>
+
                     </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <!-- Legal Acts -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:act_list' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'act_list' %}active{% endif %}">
+
+                                <i class="fas fa-book nav-icon"></i>
+
+                                <p>Legal Acts</p>
+
+                            </a>
+
+                        </li>
+
+                        <!-- Compliance Questions -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:question_list' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'question_list' %}active{% endif %}">
+
+                                <i class="fas fa-question-circle nav-icon"></i>
+
+                                <p>Compliance Questions</p>
+
+                            </a>
+
+                        </li>
+
+                        <!-- Compliance Requirements -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:compliance_list' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'compliance_list' %}active{% endif %}">
+
+                                <i class="fas fa-clipboard-check nav-icon"></i>
+
+                                <p>Compliance Requirements</p>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
                 </li>
 
-                <!-- Compliance Requirements -->
-                <li class="nav-item">
-                    <a href="{% url 'legal_compliance:compliance_list' %}"
-                    class="nav-link {% if request.resolver_match.url_name == 'compliance_list' %}active{% endif %}">
-                        <i class="far fa-circle nav-icon"></i>
-                        <p>Compliance Requirements</p>
-                    </a>
-                </li>
-                <!-- Compliance Questions -->
-                <li class="nav-item">
-                    <a href="{% url 'legal_compliance:question_list' %}"
-                    class="nav-link
-                    {% if request.resolver_match.url_name == 'question_list' %}
-                            active
-                    {% endif %}">
-                        <i class="far fa-circle nav-icon"></i>
+                <!-- ===================================================== -->
+                <!-- OPERATIONS -->
+                <!-- ===================================================== -->
+
+                <li class="nav-item {% if request.resolver_match.url_name in 'my_compliances compliance_start compliance_submit compliance_review my_findings finding_detail my_regulatory_notices notice_detail notice_create notifications' %}menu-open{% endif %}">
+
+                    <a href="#"
+                    class="nav-link {% if request.resolver_match.url_name in 'my_compliances compliance_start compliance_submit compliance_review my_findings finding_detail my_regulatory_notices notice_detail notice_create notifications' %}active{% endif %}">
+
+                        <i class="nav-icon fas fa-tasks"></i>
+
                         <p>
-                            Compliance Questions
+
+                            Operations
+
+                            <i class="right fas fa-angle-left"></i>
+
                         </p>
+
                     </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <!-- My Compliances -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:my_compliances' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'my_compliances' %}active{% endif %}">
+
+                                <i class="fas fa-user-check nav-icon"></i>
+
+                                <p>My Compliances</p>
+
+                            </a>
+
+                        </li>
+
+                        <!-- CAPA Findings -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:my_findings' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'my_findings' %}active{% endif %}">
+
+                                <i class="fas fa-tools nav-icon"></i>
+
+                                <p>CAPA Findings</p>
+
+                            </a>
+
+                        </li>
+
+                        <!-- Regulatory Notices -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:my_regulatory_notices' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'my_regulatory_notices' %}active{% endif %}">
+
+                                <i class="fas fa-balance-scale nav-icon"></i>
+
+                                <p>Regulatory Notices</p>
+
+                            </a>
+
+                        </li>
+
+                        <!-- Notifications -->
+
+                        <li class="nav-item">
+
+                            <a href="{% url 'legal_compliance:notifications' %}"
+                            class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}">
+
+                                <i class="fas fa-bell nav-icon"></i>
+
+                                <p>Notifications</p>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
                 </li>
-                <!-- My Compliances -->
-                <li class="nav-item">
-                    <a href="{% url 'legal_compliance:my_compliances' %}"
-                    class="nav-link
-                    {% if request.resolver_match.url_name == 'my_compliances' %}
-                            active
-                    {% endif %}">
-                        <i class="far fa-circle nav-icon"></i>
-                        <p>
-                            My Compliances
-                        </p>
-                    </a>
-                </li>
-                <!-- Compliance Reports -->
-                <li class="nav-item">
-                    <a href="{% url 'legal_compliance:status_report' %}"
-                    class="nav-link
-                    {% if request.resolver_match.url_name == 'status_report' %}
-                            active
-                    {% endif %}">
-                        <i class="far fa-chart-bar nav-icon"></i>
-                        <p>
-                            Compliance Reports
-                        </p>
-                    </a>
-                </li>
-                <!-- Overdue Dashboard -->
-                <li class="nav-item">
-                    <a href="{% url 'legal_compliance:overdue_dashboard' %}"
-                    class="nav-link
-                    {% if request.resolver_match.url_name == 'overdue_dashboard' %}
-                            active
-                    {% endif %}">
-                        <i class="fas fa-exclamation-triangle nav-icon text-danger"></i>
-                        <p>
-                            Overdue Dashboard
-                        </p>
-                    </a>
-                </li>
+
             </ul>
+
         </li>
+
         {% endif %}
 
         {% if request.user.can_access_env_data_module %}
