@@ -1168,8 +1168,8 @@
                     </ul>
                 </li>
                 {% endif %}
-                <li class="nav-item {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}menu-open{% endif %}">
-                    <a href="#" class="nav-link {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}active{% endif %}">
+                <li class="nav-item {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' or request.resolver_match.url_name == 'evacuation_plan' %}menu-open{% endif %}">
+                    <a href="#" class="nav-link {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' or request.resolver_match.url_name == 'evacuation_plan' %}active{% endif %}">
                         <i class="nav-icon fas fa-exclamation-triangle"></i>
                         <p>
                             Emergency Report
@@ -1184,6 +1184,13 @@
                                 <p>SOS Control Panel</p>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:evacuation_plan' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'evacuation_plan' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Evacuation Plan</p>
+                            </a>
+                        </li>
                         {% if request.user|has_perm:'CREATE_EMERGENCY_REPORT' %}
                         <li class="nav-item">
                             <a href="{% url 'emergency:report_create' %}" class="nav-link {% if request.resolver_match.url_name == 'report_create' %}active{% endif %}">
@@ -1192,14 +1199,12 @@
                             </a>
                         </li>
                         {% endif %}
-                        {% if request.user|has_perm:'VIEW_EMERGENCY_REPORT' %}
                         <li class="nav-item">
                             <a href="{% url 'emergency:report_list' %}" class="nav-link {% if request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' %}active{% endif %}">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>All Emergency Reports</p>
                             </a>
                         </li>
-                        {% endif %}
                         <li class="nav-item">
                           <a href="{% url 'emergency:my_action_items' %}" class="nav-link {% if request.resolver_match.url_name == 'my_action_items' or request.resolver_match.url_name == 'action_item_complete' %}active{% endif %}">
                             <i class="far fa-circle nav-icon"></i>
