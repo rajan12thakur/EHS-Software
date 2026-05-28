@@ -339,11 +339,17 @@
       <div class="evac-filter-row">
         <div>
           <label class="evac-label">Select Plant</label>
-          <select name="plant" class="form-control evac-control" onchange="this.form.submit()">
-            <option value="">-- Select Plant --</option>
-            {% for plant in plants %}
-            <option value="{{ plant.id }}" {% if selected_plant == plant.id|stringformat:"s" %}selected{% endif %}>{{ plant.name }}</option>
-            {% endfor %}
+          <select id="plantSelect" name="plant" class="form-control evac-control">
+              <option value="">-- Select Plant --</option>
+              {% for plant in plants %}
+              <option 
+                  value="{{ plant.id }}"
+                  data-image="{% if forloop.counter|divisibleby:2 %}{% static 'images/emergency1.jpeg' %}{% else %}{% static 'images/emergency.png' %}{% endif %}"
+                  {% if selected_plant == plant.id|stringformat:"s" %}selected{% endif %}
+              >
+                  {{ plant.name }}
+              </option>
+              {% endfor %}
           </select>
         </div>
         <div>
@@ -380,15 +386,15 @@
           </h3>
           <p class="evac-subtitle">Interactive-style evacuation board with marked exits, fire points, hazards, and assembly route guidance.</p>
         </div>
-        <span class="status-pill"><span class="status-dot"></span> Primary Route Active</span>
       </div>
 
       <div class="evac-plan-board">
-        <img
-          src="{% static 'images/emergency.png' %}"
-          alt="{% if selected_plant_obj %}{{ selected_plant_obj.name }} evacuation plan{% else %}Plant evacuation plan{% endif %}"
-          class="evac-plan-image"
-        >
+          <img
+              id="evacuationImage"
+              src="{% static 'images/emergency.png' %}"
+              alt="{% if selected_plant_obj %}{{ selected_plant_obj.name }} evacuation plan{% else %}Plant evacuation plan{% endif %}"
+              class="evac-plan-image"
+          >
       </div>
 
       <div class="evac-info-grid">
@@ -503,4 +509,31 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    const plantSelect = document.getElementById("plantSelect");
+    const evacuationImage = document.getElementById("evacuationImage");
+
+    function updateImage() {
+        const selectedOption = plantSelect.options[plantSelect.selectedIndex];
+        const imagePath = selectedOption.getAttribute("data-image");
+
+        if (imagePath) {
+            evacuationImage.src = imagePath;
+        }
+    }
+
+    plantSelect.addEventListener("change", function () {
+        updateImage();
+
+        // submit form after image change
+        this.form.submit();
+    });
+
+    // set image on page load
+    updateImage();
+});
+</script>
 {% endblock %}
