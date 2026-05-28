@@ -1,0 +1,275 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Finding Detail
+{% endblock %}
+
+{% block page_title %}
+Finding Detail / CAPA
+{% endblock %}
+
+{% block content %}
+
+<div class="card mb-4">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+
+            {{ finding.finding_reference }}
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+            <div class="col-md-6 mb-3">
+
+                <label class="font-weight-bold">
+
+                    Compliance
+
+                </label>
+
+                <p>
+
+                    {{ finding.requirement.title }}
+
+                </p>
+
+            </div>
+
+
+            <div class="col-md-6 mb-3">
+
+                <label class="font-weight-bold">
+
+                    Reviewer
+
+                </label>
+
+                <p>
+
+                    {{ finding.reviewer.get_full_name }}
+
+                </p>
+
+            </div>
+
+
+            <div class="col-md-12 mb-3">
+
+                <label class="font-weight-bold">
+
+                    Finding Description
+
+                </label>
+
+                <div class="alert alert-danger">
+
+                    {{ finding.finding_description }}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================================================= -->
+<!-- RESPONSIBLE PERSON ACTION -->
+<!-- ================================================= -->
+
+{% if request.user == finding.responsible_person %}
+
+<div class="card mb-4">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+
+            Corrective Action
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <form method="post"
+              enctype="multipart/form-data">
+
+            {% csrf_token %}
+
+            <input type="hidden"
+                   name="action"
+                   value="submit_action">
+
+            <div class="form-group">
+
+                <label>
+
+                    Corrective Action
+
+                </label>
+
+                <textarea name="corrective_action"
+                          class="form-control"
+                          rows="4"
+                          required>{{ finding.corrective_action }}</textarea>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+
+                    Remarks
+
+                </label>
+
+                <textarea name="remarks"
+                          class="form-control"
+                          rows="3">{{ finding.remarks }}</textarea>
+
+            </div>
+
+
+            <div class="form-group">
+
+                <label>
+
+                    Upload Evidence
+
+                </label>
+
+                <input type="file"
+                       name="evidence_file"
+                       class="form-control-file">
+
+            </div>
+
+
+            <button type="submit"
+                    class="btn btn-primary">
+
+                <i class="fas fa-save"></i>
+
+                Submit Corrective Action
+
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+
+<!-- ================================================= -->
+<!-- REVIEWER ACTION -->
+<!-- ================================================= -->
+
+{% if request.user == finding.reviewer %}
+
+<div class="card">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+
+            Reviewer Action
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        {% if finding.corrective_action %}
+
+        <div class="mb-3">
+
+            <label class="font-weight-bold">
+
+                Corrective Action
+
+            </label>
+
+            <div class="alert alert-info">
+
+                {{ finding.corrective_action }}
+
+            </div>
+
+        </div>
+
+        {% endif %}
+
+
+        {% if finding.evidence_file %}
+
+        <a href="{{ finding.evidence_file.url }}"
+           target="_blank"
+           class="btn btn-outline-primary mb-3">
+
+            <i class="fas fa-paperclip"></i>
+
+            View Evidence
+
+        </a>
+
+        {% endif %}
+
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            {% if finding.status != 'CLOSED' %}
+
+            <button type="submit"
+                    name="action"
+                    value="close_finding"
+                    class="btn btn-success">
+
+                <i class="fas fa-check-circle"></i>
+
+                Close Finding
+
+            </button>
+
+            {% else %}
+
+            <button type="submit"
+                    name="action"
+                    value="reopen_finding"
+                    class="btn btn-danger">
+
+                <i class="fas fa-undo"></i>
+
+                Reopen Finding
+
+            </button>
+
+            {% endif %}
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+{% endblock %}

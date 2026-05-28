@@ -1,0 +1,92 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Notifications
+{% endblock %}
+
+{% block page_title %}
+Notifications
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+
+            <i class="fas fa-bell"></i>
+
+            Notifications
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        {% if notifications %}
+
+            <div class="list-group">
+
+                {% for notification in notifications %}
+
+                <a href="{{ notification.redirect_url|default:'#' }}"
+                   class="list-group-item list-group-item-action">
+
+                    <div class="d-flex w-100 justify-content-between">
+
+                        <h6 class="mb-1">
+
+                            {{ notification.title }}
+
+                        </h6>
+
+                        <small>
+
+                            {{ notification.created_at|timesince }} ago
+
+                        </small>
+
+                    </div>
+
+                    <p class="mb-1">
+
+                        {{ notification.message }}
+
+                    </p>
+
+                    <small>
+
+                        {{ notification.get_notification_type_display }}
+
+                    </small>
+
+                </a>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="text-center py-5">
+
+                <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+
+                <p class="text-muted">
+
+                    No notifications available.
+
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

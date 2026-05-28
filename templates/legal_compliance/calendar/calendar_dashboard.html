@@ -1,0 +1,384 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Compliance Calendar
+{% endblock %}
+
+{% block page_title %}
+Compliance Calendar Dashboard
+{% endblock %}
+
+{% block content %}
+
+<!-- ================================================= -->
+<!-- STATS -->
+<!-- ================================================= -->
+
+<div class="row mb-3">
+
+    <div class="col-md-2">
+
+        <div class="small-box bg-info">
+
+            <div class="inner">
+
+                <h3>{{ stats.total }}</h3>
+
+                <p>Total</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-calendar"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="small-box bg-warning">
+
+            <div class="inner">
+
+                <h3>{{ stats.pending }}</h3>
+
+                <p>Pending</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-clock"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="small-box bg-success">
+
+            <div class="inner">
+
+                <h3>{{ stats.completed }}</h3>
+
+                <p>Completed</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-check-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="small-box bg-danger">
+
+            <div class="inner">
+
+                <h3>{{ stats.overdue }}</h3>
+
+                <p>Overdue</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-exclamation-triangle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-2">
+
+        <div class="small-box bg-primary">
+
+            <div class="inner">
+
+                <h3>{{ stats.upcoming }}</h3>
+
+                <p>Upcoming</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-bell"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================================================= -->
+<!-- TODAY -->
+<!-- ================================================= -->
+
+<div class="card mb-4">
+
+    <div class="card-header bg-primary">
+
+        <h5 class="mb-0 text-white">
+
+            <i class="fas fa-calendar-day"></i>
+
+            Today's Compliances
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        {% if todays_compliances %}
+
+            <ul class="list-group">
+
+                {% for compliance in todays_compliances %}
+
+                <li class="list-group-item">
+
+                    <strong>
+
+                        {{ compliance.requirement.title }}
+
+                    </strong>
+
+                    <span class="badge badge-warning float-right">
+
+                        Due Today
+
+                    </span>
+
+                </li>
+
+                {% endfor %}
+
+            </ul>
+
+        {% else %}
+
+            <p class="text-muted mb-0">
+
+                No compliances due today.
+
+            </p>
+
+        {% endif %}
+
+    </div>
+
+</div>
+
+
+<!-- ================================================= -->
+<!-- UPCOMING -->
+<!-- ================================================= -->
+
+<div class="card mb-4">
+
+    <div class="card-header bg-info">
+
+        <h5 class="mb-0 text-white">
+
+            <i class="fas fa-clock"></i>
+
+            Upcoming Compliances
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Compliance</th>
+
+                        <th>Due Date</th>
+
+                        <th>Status</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for compliance in upcoming_compliances %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ compliance.requirement.title }}
+
+                        </td>
+
+                        <td>
+
+                            {{ compliance.due_date|date:"d M Y" }}
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge badge-primary">
+
+                                {{ compliance.get_status_display }}
+
+                            </span>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="3"
+                            class="text-center text-muted">
+
+                            No upcoming compliances.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ================================================= -->
+<!-- OVERDUE -->
+<!-- ================================================= -->
+
+<div class="card">
+
+    <div class="card-header bg-danger">
+
+        <h5 class="mb-0 text-white">
+
+            <i class="fas fa-exclamation-circle"></i>
+
+            Overdue Compliances
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Compliance</th>
+
+                        <th>Due Date</th>
+
+                        <th>Status</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for compliance in overdue_compliances %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ compliance.requirement.title }}
+
+                        </td>
+
+                        <td>
+
+                            {{ compliance.due_date|date:"d M Y" }}
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge badge-danger">
+
+                                Overdue
+
+                            </span>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="3"
+                            class="text-center text-muted">
+
+                            No overdue compliances.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

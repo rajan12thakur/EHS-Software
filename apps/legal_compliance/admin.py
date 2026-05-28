@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import (LegalAct, ComplianceRequirement, ComplianceFinding)
+from .models import (ComplianceNotification, LegalAct, ComplianceRequirement, ComplianceFinding, RegulatoryNotice)
 
 
 class ComplianceRequirementInline(admin.TabularInline):
@@ -249,4 +249,72 @@ class ComplianceFindingAdmin(admin.ModelAdmin):
         'finding_reference',
 
         'finding_description'
+    ]
+
+
+@admin.register(RegulatoryNotice)
+class RegulatoryNoticeAdmin(admin.ModelAdmin):
+
+    list_display = [
+
+        'notice_reference',
+
+        'authority_name',
+
+        'notice_title',
+
+        'response_due_date',
+
+        'priority',
+
+        'status',
+    ]
+
+    list_filter = [
+
+        'priority',
+
+        'status',
+
+        'authority_name',
+    ]
+
+    search_fields = [
+
+        'notice_reference',
+
+        'notice_title',
+
+        'authority_name',
+    ]
+
+
+@admin.register(ComplianceNotification)
+class ComplianceNotificationAdmin(admin.ModelAdmin):
+
+    list_display = [
+
+        'user',
+
+        'notification_type',
+
+        'title',
+
+        'is_read',
+
+        'created_at'
+    ]
+
+    list_filter = [
+
+        'notification_type',
+
+        'is_read'
+    ]
+
+    search_fields = [
+
+        'title',
+
+        'message'
     ]

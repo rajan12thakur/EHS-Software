@@ -1,0 +1,275 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+Create Regulatory Notice
+{% endblock %}
+
+{% block page_title %}
+Create Regulatory Notice
+{% endblock %}
+
+{% block content %}
+
+<div class="card">
+
+    <div class="card-header d-flex justify-content-between align-items-center">
+
+        <h5 class="mb-0">
+
+            <i class="fas fa-balance-scale"></i>
+
+            Regulatory Notice Form
+
+        </h5>
+
+        <a href="{% url 'legal_compliance:my_regulatory_notices' %}"
+            class="btn btn-sm btn-outline-primary">
+
+                <i class="fas fa-list"></i>
+
+                View Notices
+
+            </a>
+
+    </div>
+
+    <form method="post"
+          enctype="multipart/form-data">
+
+        {% csrf_token %}
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <!-- Legal Act -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Legal Act
+
+                    </label>
+
+                    {{ form.legal_act }}
+
+                </div>
+
+
+                <!-- Authority -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Authority Name
+
+                    </label>
+
+                    {{ form.authority_name }}
+
+                </div>
+
+
+                <!-- Notice Title -->
+
+                <div class="col-md-12 mb-3">
+
+                    <label>
+
+                        Notice Title
+
+                    </label>
+
+                    {{ form.notice_title }}
+
+                </div>
+
+
+                <!-- Description -->
+
+                <div class="col-md-12 mb-3">
+
+                    <label>
+
+                        Notice Description
+
+                    </label>
+
+                    {{ form.notice_description }}
+
+                </div>
+
+
+                <!-- Notice Date -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Notice Date
+
+                    </label>
+
+                    {{ form.notice_date }}
+
+                </div>
+
+
+                <!-- Due Date -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Response Due Date
+
+                    </label>
+
+                    {{ form.response_due_date }}
+
+                </div>
+
+
+                <!-- Priority -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Priority
+
+                    </label>
+
+                    {{ form.priority }}
+
+                </div>
+
+
+                <!-- Plant -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Plant
+
+                    </label>
+
+                    {{ form.plant }}
+
+                </div>
+
+
+                <!-- Department -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Department
+
+                    </label>
+
+                    {{ form.department }}
+
+                </div>
+
+
+                <!-- Responsible -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Responsible Person
+
+                    </label>
+
+                    {{ form.responsible_person }}
+
+                </div>
+
+
+                <!-- Reviewer -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Reviewer
+
+                    </label>
+
+                    {{ form.reviewer }}
+
+                </div>
+
+
+                <!-- Upload -->
+
+                <div class="col-md-6 mb-3">
+
+                    <label>
+
+                        Upload Notice File
+
+                    </label>
+
+                    {{ form.notice_file }}
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="card-footer d-flex justify-content-between">
+
+            <!-- LEFT BUTTONS -->
+
+            <div>
+
+                <a href="{% url 'legal_compliance:my_regulatory_notices' %}"
+                class="btn btn-secondary">
+
+                    <i class="fas fa-arrow-left"></i>
+
+                    Back
+
+                </a>
+
+            </div>
+
+            <!-- RIGHT BUTTONS -->
+
+            <div>
+
+                <button type="reset"
+                        class="btn btn-warning mr-2">
+
+                    <i class="fas fa-undo"></i>
+
+                    Reset
+
+                </button>
+
+                <button type="submit"
+                        class="btn btn-primary">
+
+                    <i class="fas fa-save"></i>
+
+                    Create Notice
+
+                </button>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

@@ -1,7 +1,7 @@
 from django import forms
 
 from .models import (
-    ComplianceQuestion, LegalAct, ComplianceRequirement,)
+    ComplianceQuestion, LegalAct, ComplianceRequirement, RegulatoryNotice)
 
 from apps.organizations.models import (Plant, Department)
 
@@ -426,3 +426,81 @@ class ComplianceQuestionForm(forms.ModelForm):
 
             .order_by('name')
         )
+
+
+
+# =====================================================
+# REGULATORY NOTICE FORM
+# =====================================================
+
+class RegulatoryNoticeForm(forms.ModelForm):
+
+    class Meta:
+
+        model = RegulatoryNotice
+
+        fields = [
+
+            'legal_act',
+
+            'authority_name',
+
+            'notice_title',
+
+            'notice_description',
+
+            'notice_date',
+
+            'response_due_date',
+
+            'priority',
+
+            'plant',
+
+            'department',
+
+            'responsible_person',
+
+            'reviewer',
+
+            'notice_file'
+        ]
+
+        widgets = {
+
+            'notice_date': forms.DateInput(
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control'
+                }
+            ),
+
+            'response_due_date': forms.DateInput(
+                attrs={
+                    'type': 'date',
+                    'class': 'form-control'
+                }
+            ),
+
+            'notice_description': forms.Textarea(
+                attrs={
+                    'rows': 4,
+                    'class': 'form-control'
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        for field in self.fields.values():
+
+            if not isinstance(
+                field.widget,
+                forms.FileInput
+            ):
+
+                field.widget.attrs.update({
+                    'class': 'form-control'
+                })

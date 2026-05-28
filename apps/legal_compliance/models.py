@@ -844,6 +844,7 @@ class ComplianceFinding(models.Model):
     STATUS_CHOICES = [
         ('OPEN', 'Open'),
         ('IN_PROGRESS', 'In Progress'),
+        ('OVERDUE', 'Overdue'),
         ('CLOSED', 'Closed'),
     ]
     finding_reference = models.CharField(
@@ -936,3 +937,305 @@ class ComplianceFinding(models.Model):
 
     def __str__(self):
         return self.finding_reference
+    
+
+
+# =====================================================
+# REGULATORY NOTICE MANAGEMENT
+# =====================================================
+
+class RegulatoryNotice(models.Model):
+
+    NOTICE_STATUS_CHOICES = [
+
+        ('OPEN', 'Open'),
+
+        ('UNDER_REVIEW', 'Under Review'),
+
+        ('REPLY_SUBMITTED', 'Reply Submitted'),
+
+        ('CLOSED', 'Closed'),
+
+        ('ESCALATED', 'Escalated'),
+    ]
+
+    PRIORITY_CHOICES = [
+
+        ('LOW', 'Low'),
+
+        ('MEDIUM', 'Medium'),
+
+        ('HIGH', 'High'),
+
+        ('CRITICAL', 'Critical'),
+    ]
+
+    notice_reference = models.CharField(
+        max_length=100,
+        unique=True,
+        blank=True
+    )
+
+    legal_act = models.ForeignKey(
+        LegalAct,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='regulatory_notices'
+    )
+
+    authority_name = models.CharField(
+        max_length=255
+    )
+
+    notice_title = models.CharField(
+        max_length=255
+    )
+
+    notice_description = models.TextField()
+
+    notice_date = models.DateField()
+
+    response_due_date = models.DateField()
+
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default='MEDIUM'
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=NOTICE_STATUS_CHOICES,
+        default='OPEN'
+    )
+
+    plant = models.ForeignKey(
+        Plant,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    responsible_person = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='assigned_regulatory_notices'
+    )
+
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='review_regulatory_notices'
+    )
+
+    notice_file = models.FileField(
+        upload_to='regulatory_notices/',
+        blank=True,
+        null=True
+    )
+
+    reply_file = models.FileField(
+        upload_to='regulatory_notice_replies/',
+        blank=True,
+        null=True
+    )
+
+    closure_remarks = models.TextField(
+        blank=True,
+        null=True
+    )
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_regulatory_notices'
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+
+        ordering = ['-created_at']
+
+        db_table = 'regulatory_notices'
+
+    def save(self, *args, **kwargs):
+
+        if not self.notice_reference:
+
+            year = timezone.now().year
+
+            last_id = (
+                RegulatoryNotice.objects.count() + 1
+            )
+
+            self.notice_reference = (
+                f'NOT-{year}-{last_id:03d}'
+            )
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+
+        return self.notice_reference
+    
+
+
+# =====================================================
+# COMPLIANCE INSTANCE
+# =====================================================
+
+class ComplianceInstance(models.Model):
+
+    STATUS_CHOICES = [
+
+        ('PENDING', 'Pending'),
+
+        ('IN_PROGRESS', 'In Progress'),
+
+        ('SUBMITTED', 'Submitted'),
+
+        ('COMPLETED', 'Completed'),
+
+        ('OVERDUE', 'Overdue'),
+
+        ('REJECTED', 'Rejected'),
+    ]
+
+    requirement = models.ForeignKey(
+
+        ComplianceRequirement,
+
+        on_delete=models.CASCADE,
+
+        related_name='instances'
+    )
+
+    scheduled_date = models.DateField()
+
+    due_date = models.DateField()
+
+    status = models.CharField(
+
+        max_length=20,
+
+        choices=STATUS_CHOICES,
+
+        default='PENDING'
+    )
+
+    assigned_on = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+
+        ordering = ['-scheduled_date']
+
+        db_table = 'compliance_instances'
+
+    def __str__(self):
+
+        return (
+
+            f"{self.requirement.title} - "
+            f"{self.scheduled_date}"
+        )
+    
+
+
+# =====================================================
+# NOTIFICATION CENTER
+# =====================================================
+
+class ComplianceNotification(models.Model):
+
+    NOTIFICATION_TYPES = [
+
+        ('COMPLIANCE', 'Compliance'),
+
+        ('CAPA', 'CAPA'),
+
+        ('NOTICE', 'Notice'),
+
+        ('REMINDER', 'Reminder'),
+
+        ('ESCALATION', 'Escalation'),
+    ]
+
+    user = models.ForeignKey(
+
+        settings.AUTH_USER_MODEL,
+
+        on_delete=models.CASCADE,
+
+        related_name='compliance_notifications'
+    )
+
+    notification_type = models.CharField(
+
+        max_length=30,
+
+        choices=NOTIFICATION_TYPES
+    )
+
+    title = models.CharField(
+        max_length=255
+    )
+
+    message = models.TextField()
+
+    is_read = models.BooleanField(
+        default=False
+    )
+
+    redirect_url = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+
+        ordering = ['-created_at']
+
+        db_table = 'compliance_notifications'
+
+    def __str__(self):
+
+        return self.title

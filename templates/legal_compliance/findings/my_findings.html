@@ -1,0 +1,271 @@
+{% extends 'base/base.html' %}
+
+{% block title %}
+My Findings
+{% endblock %}
+
+{% block page_title %}
+My Findings / CAPA
+{% endblock %}
+
+{% block content %}
+
+<div class="row mb-3">
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-info">
+
+            <div class="inner">
+
+                <h3>{{ stats.total }}</h3>
+
+                <p>Total Findings</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-clipboard-list"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-danger">
+
+            <div class="inner">
+
+                <h3>{{ stats.open }}</h3>
+
+                <p>Open</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-exclamation-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-warning">
+
+            <div class="inner">
+
+                <h3>{{ stats.in_progress }}</h3>
+
+                <p>In Progress</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-spinner"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-success">
+
+            <div class="inner">
+
+                <h3>{{ stats.closed }}</h3>
+
+                <p>Closed</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-check-circle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-3">
+
+        <div class="small-box bg-danger">
+
+            <div class="inner">
+
+                <h3>{{ stats.overdue }}</h3>
+
+                <p>Overdue</p>
+
+            </div>
+
+            <div class="icon">
+
+                <i class="fas fa-exclamation-triangle"></i>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<div class="card">
+
+    <div class="card-header">
+
+        <h5 class="mb-0">
+
+            <i class="fas fa-clipboard-check"></i>
+
+            Assigned Findings
+
+        </h5>
+
+    </div>
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table class="table table-bordered table-hover">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Reference</th>
+
+                        <th>Compliance</th>
+
+                        <th>Finding</th>
+
+                        <th>Reviewer</th>
+
+                        <th>Target Date</th>
+
+                        <th>Status</th>
+
+                        <th>Actions</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for finding in findings %}
+
+                    <tr>
+
+                        <td>
+
+                            {{ finding.finding_reference }}
+
+                        </td>
+
+                        <td>
+
+                            {{ finding.requirement.title }}
+
+                        </td>
+
+                        <td>
+
+                            {{ finding.finding_description }}
+
+                        </td>
+
+                        <td>
+
+                            {{ finding.reviewer.get_full_name }}
+
+                        </td>
+
+                        <td>
+
+                            {{ finding.target_date|date:"d M Y" }}
+
+                        </td>
+
+                        <td>
+
+                            <span class="badge
+
+                                {% if finding.status == 'OPEN' %}
+                                    badge-danger
+
+                                {% elif finding.status == 'IN_PROGRESS' %}
+                                    badge-warning
+
+                                {% elif finding.status == 'CLOSED' %}
+                                    badge-success
+
+                                {% elif finding.status == 'OVERDUE' %}
+                                    badge-danger
+
+                                {% endif %}
+                            ">
+
+                                {{ finding.get_status_display }}
+
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <a href="{% url 'legal_compliance:finding_detail' finding.id %}"
+                            class="btn btn-sm btn-info">
+
+                                <i class="fas fa-eye"></i>
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% empty %}
+
+                    <tr>
+
+                        <td colspan="6"
+                            class="text-center text-muted">
+
+                            No findings assigned.
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

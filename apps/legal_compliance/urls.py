@@ -51,7 +51,7 @@ urlpatterns = [
     # # =====================================================
     # # COMPLIANCE Calendar Dashboard
     # # =====================================================
-    # path('calendar-dashboard/',views.ComplianceCalendarDashboardView.as_view(),name='calendar_dashboard'),
+    path('compliance-calendar/',views.compliance_calendar_dashboard,name='compliance_calendar_dashboard'),
 
     # =====================================================
     # COMPLIANCE Audit Report
@@ -72,4 +72,18 @@ urlpatterns = [
     # =====================================================
     path('ajax/get-users-by-plants/',views.get_users_by_plants,name='get_users_by_plants'),
     path('ajax/get-reviewers/',views.get_reviewers,name='get_reviewers'),
+
+    # =====================================================
+    # CAPA
+    # =====================================================
+    path('my-findings/',views.my_findings,name='my_findings'),
+    path('findings/<int:pk>/',views.finding_detail,name='finding_detail'),
+    path('my-notices/',views.my_regulatory_notices,name='my_regulatory_notices'),
+    path('notices/<int:pk>/',views.notice_detail,name='notice_detail'),
+    path('notices/create/',views.RegulatoryNoticeCreateView.as_view(),name='notice_create'),
+
+    # =====================================================
+    # Notifications System 
+    # =====================================================
+    path('notifications/',views.notifications,name='notifications'),
 ]

@@ -8,7 +8,9 @@ from django.utils import timezone
 from datetime import timedelta
 from django.urls import reverse_lazy
 from django.views.generic import (TemplateView, ListView, CreateView, UpdateView,DeleteView, DetailView,)
-from .models import (ComplianceQuestion, ComplianceRequirementQuestion,LegalAct,ComplianceRequirement,ComplianceSubmission,ComplianceResponse, ComplianceFinding)
+from django.views.generic import CreateView
+from .utils import create_notification
+from .models import (ComplianceInstance, ComplianceNotification, ComplianceQuestion, ComplianceRequirementQuestion,LegalAct,ComplianceRequirement,ComplianceSubmission,ComplianceResponse, ComplianceFinding, RegulatoryNotice)
 from .forms import (ComplianceQuestionFilterForm, ComplianceQuestionForm, LegalActForm, ComplianceRequirementForm, User, ComplianceRequirementForm )
 from django.shortcuts import (get_object_or_404,redirect, render)
 from django.contrib import messages
@@ -29,7 +31,10 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import landscape, A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus.flowables import PageBreak
-
+from calendar import monthrange
+from django.urls import reverse_lazy
+from django.contrib.messages.views import SuccessMessageMixin
+from .forms import RegulatoryNoticeForm
 # =========================================================
 # DASHBOARD
 # =========================================================
@@ -1528,7 +1533,9 @@ def compliance_review(request, submission_id):
 
                 corrective_action='',
 
-                responsible_person=(submission.submitted_by),
+                responsible_person=(
+                    submission.requirement.responsible_person.first()
+                ),
 
                 reviewer=request.user,
 
@@ -1537,6 +1544,25 @@ def compliance_review(request, submission_id):
                 status='OPEN',
 
                 created_by=request.user
+            )
+
+            create_notification(
+
+                user=submission.submitted_by,
+
+                notification_type='CAPA',
+
+                title='Compliance Rejected',
+
+                message=(
+                    f'Your compliance '
+                    f'"{submission.requirement.title}" '
+                    f'has been rejected.'
+                ),
+
+                redirect_url=(
+                    f'/legal-compliance/my-findings/'
+                )
             )
 
             submission.requirement.status = (
@@ -2247,3 +2273,701 @@ class OverdueComplianceDashboardView(
         context['compliances'] = compliances
 
         return context
+
+
+
+# =====================================================
+# MY FINDINGS / CAPA
+# =====================================================
+
+@login_required
+def my_findings(request):
+
+    findings = (ComplianceFinding.objects.filter(
+            Q(responsible_person=request.user) | Q(reviewer=request.user))
+        .select_related(
+            'requirement',
+            'submission',
+            'reviewer',
+            'responsible_person'
+        ).distinct()
+        .order_by('-created_at')
+    )
+
+    # ==========================================
+    # STATS
+    # ==========================================
+
+    stats = {
+
+        'total': findings.count(),
+
+        'open': findings.filter(
+            status='OPEN'
+        ).count(),
+
+        'in_progress': findings.filter(
+            status='IN_PROGRESS'
+        ).count(),
+
+        'closed': findings.filter(
+            status='CLOSED'
+        ).count(),
+
+        'overdue': findings.filter(
+            status='OVERDUE'
+        ).count(),
+    }
+
+    # ==========================================
+    # AUTO OVERDUE CHECK
+    # ==========================================
+
+    today = timezone.now().date()
+
+    for finding in findings:
+
+        if (
+
+            finding.target_date
+
+            and
+
+            finding.target_date < today
+
+            and
+
+            finding.status != 'CLOSED'
+        ):
+
+            finding.status = 'OVERDUE'
+
+            finding.save()
+
+    context = {
+
+        'findings': findings,
+
+        'stats': stats,
+                
+    }
+
+    return render(
+
+        request,
+
+        'legal_compliance/findings/my_findings.html',
+
+        context
+    )
+
+
+
+# =====================================================
+# FINDING DETAIL / CAPA WORKFLOW
+# =====================================================
+
+@login_required
+def finding_detail(request, pk):
+
+    finding = get_object_or_404(
+
+        ComplianceFinding.objects.select_related(
+
+            'requirement',
+
+            'submission',
+
+            'responsible_person',
+
+            'reviewer'
+        ),
+
+        pk=pk
+    )
+
+    # ==========================================
+    # ACCESS CONTROL
+    # ==========================================
+
+    if (
+
+        request.user != finding.responsible_person
+
+        and
+
+        request.user != finding.reviewer
+    ):
+
+        messages.error(
+            request,
+            'Unauthorized access.'
+        )
+
+        return redirect(
+            'legal_compliance:my_findings'
+        )
+
+    # ==========================================
+    # UPDATE CAPA
+    # ==========================================
+
+    if request.method == 'POST':
+
+        action = request.POST.get(
+            'action'
+        )
+
+        # ======================================
+        # RESPONSIBLE PERSON UPDATE
+        # ======================================
+
+        if action == 'submit_action':
+
+            finding.corrective_action = request.POST.get(
+                'corrective_action'
+            )
+
+            finding.remarks = request.POST.get(
+                'remarks'
+            )
+
+            if request.FILES.get('evidence_file'):
+
+                finding.evidence_file = request.FILES.get(
+                    'evidence_file'
+                )
+
+            finding.status = 'IN_PROGRESS'
+
+            finding.save()
+
+            messages.success(
+                request,
+                'Corrective action submitted successfully.'
+            )
+
+        # ======================================
+        # REVIEWER CLOSE
+        # ======================================
+
+        elif action == 'close_finding':
+
+            finding.status = 'CLOSED'
+
+            finding.closure_date = (
+                timezone.now().date()
+            )
+
+            finding.save()
+
+            messages.success(
+                request,
+                'Finding closed successfully.'
+            )
+
+        # ======================================
+        # REVIEWER REOPEN
+        # ======================================
+
+        elif action == 'reopen_finding':
+
+            finding.status = 'OPEN'
+
+            finding.closure_date = None
+
+            finding.save()
+
+            messages.warning(
+                request,
+                'Finding reopened.'
+            )
+
+        return redirect(
+            'legal_compliance:finding_detail',
+            pk=finding.id
+        )
+
+    context = {
+
+        'finding': finding
+    }
+
+    return render(
+
+        request,
+
+        'legal_compliance/findings/finding_detail.html',
+
+        context
+    )
+
+
+# =====================================================
+# MY REGULATORY NOTICES
+# =====================================================
+
+@login_required
+def my_regulatory_notices(request):
+
+    notices = (
+
+        RegulatoryNotice.objects
+
+        .filter(
+
+            Q(responsible_person=request.user)
+
+            |
+
+            Q(reviewer=request.user)
+        )
+
+        .select_related(
+            'legal_act',
+            'plant',
+            'department',
+            'responsible_person',
+            'reviewer'
+        )
+
+        .distinct()
+
+        .order_by('-created_at')
+    )
+
+    # ==========================================
+    # AUTO OVERDUE CHECK
+    # ==========================================
+
+    today = timezone.now().date()
+
+    for notice in notices:
+
+        if (
+
+            notice.response_due_date < today
+
+            and
+
+            notice.status != 'CLOSED'
+        ):
+
+            notice.status = 'ESCALATED'
+
+            notice.save()
+
+    # ==========================================
+    # STATS
+    # ==========================================
+
+    stats = {
+
+        'total': notices.count(),
+
+        'open': notices.filter(
+            status='OPEN'
+        ).count(),
+
+        'under_review': notices.filter(
+            status='UNDER_REVIEW'
+        ).count(),
+
+        'reply_submitted': notices.filter(
+            status='REPLY_SUBMITTED'
+        ).count(),
+
+        'closed': notices.filter(
+            status='CLOSED'
+        ).count(),
+
+        'escalated': notices.filter(
+            status='ESCALATED'
+        ).count(),
+    }
+
+    context = {
+
+        'notices': notices,
+
+        'stats': stats
+    }
+
+    return render(
+
+        request,
+
+        'legal_compliance/notices/my_notices.html',
+
+        context
+    )
+
+
+
+# =====================================================
+# NOTICE DETAIL / REPLY WORKFLOW
+# =====================================================
+
+@login_required
+def notice_detail(request, pk):
+
+    notice = get_object_or_404(
+
+        RegulatoryNotice.objects.select_related(
+
+            'legal_act',
+
+            'responsible_person',
+
+            'reviewer',
+
+            'plant',
+
+            'department'
+        ),
+
+        pk=pk
+    )
+
+    # ==========================================
+    # ACCESS CONTROL
+    # ==========================================
+
+    if (
+
+        request.user != notice.responsible_person
+
+        and
+
+        request.user != notice.reviewer
+    ):
+
+        messages.error(
+            request,
+            'Unauthorized access.'
+        )
+
+        return redirect(
+            'legal_compliance:my_regulatory_notices'
+        )
+
+    # ==========================================
+    # NOTICE ACTIONS
+    # ==========================================
+
+    if request.method == 'POST':
+
+        action = request.POST.get(
+            'action'
+        )
+
+        # ======================================
+        # RESPONSIBLE PERSON SUBMIT REPLY
+        # ======================================
+
+        if action == 'submit_reply':
+
+            notice.closure_remarks = request.POST.get(
+                'closure_remarks'
+            )
+
+            if request.FILES.get('reply_file'):
+
+                notice.reply_file = request.FILES.get(
+                    'reply_file'
+                )
+
+            notice.status = 'REPLY_SUBMITTED'
+
+            notice.save()
+
+            messages.success(
+                request,
+                'Reply submitted successfully.'
+            )
+
+        # ======================================
+        # REVIEWER CLOSE NOTICE
+        # ======================================
+
+        elif action == 'close_notice':
+
+            notice.status = 'CLOSED'
+
+            notice.save()
+
+            messages.success(
+                request,
+                'Notice closed successfully.'
+            )
+
+        # ======================================
+        # REVIEWER REOPEN NOTICE
+        # ======================================
+
+        elif action == 'reopen_notice':
+
+            notice.status = 'UNDER_REVIEW'
+
+            notice.save()
+
+            messages.warning(
+                request,
+                'Notice reopened.'
+            )
+
+        return redirect(
+            'legal_compliance:notice_detail',
+            pk=notice.id
+        )
+
+    context = {
+
+        'notice': notice
+    }
+
+    return render(
+
+        request,
+
+        'legal_compliance/notices/notice_detail.html',
+
+        context
+    )
+
+
+
+
+# =====================================================
+# COMPLIANCE CALENDAR DASHBOARD
+# =====================================================
+
+@login_required
+def compliance_calendar_dashboard(request):
+
+    today = timezone.now().date()
+
+    current_month = today.month
+
+    current_year = today.year
+
+    # ==========================================
+    # CURRENT MONTH INSTANCES
+    # ==========================================
+
+    compliance_instances = (
+
+        ComplianceInstance.objects
+
+        .filter(
+
+            scheduled_date__month=current_month,
+
+            scheduled_date__year=current_year
+        )
+
+        .select_related(
+            'requirement',
+            'requirement__legal_act'
+        )
+
+        .order_by('due_date')
+    )
+
+    # ==========================================
+    # OVERDUE
+    # ==========================================
+
+    overdue_compliances = (
+
+        compliance_instances
+
+        .filter(
+            due_date__lt=today
+        )
+
+        .exclude(
+            status='COMPLETED'
+        )
+    )
+
+    # ==========================================
+    # UPCOMING 7 DAYS
+    # ==========================================
+
+    upcoming_compliances = (
+
+        compliance_instances
+
+        .filter(
+            due_date__gte=today,
+            due_date__lte=today + timedelta(days=7)
+        )
+    )
+
+    # ==========================================
+    # TODAY'S COMPLIANCES
+    # ==========================================
+
+    todays_compliances = (
+
+        compliance_instances
+
+        .filter(
+            due_date=today
+        )
+    )
+
+    # ==========================================
+    # STATS
+    # ==========================================
+
+    stats = {
+
+        'total': compliance_instances.count(),
+
+        'pending': compliance_instances.filter(
+            status='PENDING'
+        ).count(),
+
+        'completed': compliance_instances.filter(
+            status='COMPLETED'
+        ).count(),
+
+        'overdue': overdue_compliances.count(),
+
+        'upcoming': upcoming_compliances.count(),
+    }
+
+    context = {
+
+        'compliance_instances': compliance_instances,
+
+        'overdue_compliances': overdue_compliances,
+
+        'upcoming_compliances': upcoming_compliances,
+
+        'todays_compliances': todays_compliances,
+
+        'stats': stats,
+
+        'today': today
+    }
+
+    return render(
+
+        request,
+
+        'legal_compliance/calendar/calendar_dashboard.html',
+
+        context
+    )
+
+
+
+# =====================================================
+# NOTIFICATIONS
+# =====================================================
+
+@login_required
+def notifications(request):
+
+    notifications = (
+
+        ComplianceNotification.objects
+
+        .filter(
+            user=request.user
+        )
+
+        .order_by('-created_at')
+    )
+
+    # ==========================================
+    # MARK AS READ
+    # ==========================================
+
+    notifications.update(
+        is_read=True
+    )
+
+    context = {
+
+        'notifications': notifications
+    }
+
+    return render(
+
+        request,
+
+        'legal_compliance/notifications.html',
+
+        context
+    )
+
+
+
+# =====================================================
+# CREATE REGULATORY NOTICE
+# =====================================================
+
+class RegulatoryNoticeCreateView(
+
+    LoginRequiredMixin,
+
+    SuccessMessageMixin,
+
+    CreateView
+):
+
+    model = RegulatoryNotice
+
+    form_class = RegulatoryNoticeForm
+
+    template_name = (
+        'legal_compliance/notices/notice_form.html'
+    )
+
+    success_url = reverse_lazy(
+        'legal_compliance:my_regulatory_notices'
+    )
+
+    success_message = (
+        'Regulatory Notice created successfully.'
+    )
+
+    def form_valid(self, form):
+
+        form.instance.created_by = (
+            self.request.user
+        )
+
+        response = super().form_valid(form)
+
+        # ==========================================
+        # CREATE NOTIFICATIONS
+        # ==========================================
+
+        if form.instance.responsible_person:
+
+            create_notification(
+
+                user=form.instance.responsible_person,
+
+                notification_type='NOTICE',
+
+                title='New Regulatory Notice Assigned',
+
+                message=(
+
+                    f'Notice '
+                    f'"{form.instance.notice_title}" '
+                    f'has been assigned to you.'
+                ),
+
+                redirect_url=(
+                    '/legal-compliance/my-notices/'
+                )
+            )
+
+        return response
