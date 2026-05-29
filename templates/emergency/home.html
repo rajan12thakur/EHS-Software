@@ -1,27 +1,774 @@
 {% extends 'base/base.html' %}
 
-{% block title %}Emergency Response Management{% endblock %}
-{% block page_title %}Emergency Response Management{% endblock %}
+{% block title %}Emergency Command Dashboard{% endblock %}
+{% block page_title %}Emergency Command Dashboard{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
-<li class="breadcrumb-item active">Emergency Response Management</li>
+<li class="breadcrumb-item active">Emergency Command Dashboard</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .command-shell {
+    display: grid;
+    gap: 0.9rem;
+    color: #111827;
+  }
+
+  .command-alert {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 0.85rem;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    border-radius: 8px;
+    background: #ef4444;
+    color: #fff;
+    box-shadow: 0 12px 30px rgba(239, 68, 68, 0.18);
+  }
+
+  .alert-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+  }
+
+  .incident-label {
+    margin: 0;
+    font-size: 0.66rem;
+    font-weight: 900;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .incident-label span {
+    margin-left: 0.8rem;
+    opacity: 0.9;
+  }
+
+  .incident-title {
+    margin: 0.25rem 0 0;
+    font-size: 1rem;
+    font-weight: 900;
+  }
+
+  .command-alert .btn {
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 800;
+  }
+
+  .command-alert .btn-outline-light {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.65);
+  }
+
+  .command-heading {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .command-heading h2 {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 900;
+  }
+
+  .command-heading p {
+    margin: 0.15rem 0 0;
+    color: #64748b;
+    font-size: 0.84rem;
+  }
+
+  .clock-panel {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .clock-label {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.62rem;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+
+  .clock-value {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 900;
+  }
+
+  .new-incident-btn {
+    border: 0;
+    border-radius: 7px;
+    background: #06b6d4;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 900;
+    padding: 0.55rem 0.9rem;
+  }
+
+  .action-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
+  .action-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    align-items: center;
+    min-height: 72px;
+    padding: 0.75rem;
+    border: 1px solid #dce8f3;
+    border-left: 4px solid #22d3ee;
+    border-radius: 8px;
+    background: #fff;
+    color: #111827;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  }
+
+  .action-card:hover {
+    color: #111827;
+    text-decoration: none;
+    transform: translateY(-1px);
+  }
+
+  .action-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #06b6d4;
+    background: #ecfeff;
+  }
+
+  .action-title {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 900;
+  }
+
+  .action-copy {
+    margin: 0.15rem 0 0;
+    color: #64748b;
+    font-size: 0.7rem;
+  }
+
+  .command-main {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(320px, 0.95fr);
+    gap: 0.9rem;
+  }
+
+  .command-card {
+    border: 1px solid #dce4ee;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+  }
+
+  .command-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 0.9rem 0;
+  }
+
+  .command-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.95rem;
+    font-weight: 900;
+  }
+
+  .status-pills {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 900;
+  }
+
+  .pill-clear {
+    color: #15803d;
+    background: #dcfce7;
+  }
+
+  .pill-active {
+    color: #dc2626;
+    background: #fee2e2;
+  }
+
+  .tactical-map {
+    position: relative;
+    height: 515px;
+    margin: 0.75rem;
+    overflow: hidden;
+    border: 3px solid #8b5cf6;
+    border-radius: 6px;
+    background:
+      radial-gradient(circle at 62% 46%, rgba(255,255,255,0.28), transparent 21%),
+      linear-gradient(135deg, rgba(15, 23, 42, 0.25), rgba(22, 101, 52, 0.1)),
+      #5b755f;
+  }
+
+  .site-platform {
+    position: absolute;
+    left: 11%;
+    top: 15%;
+    width: 72%;
+    height: 62%;
+    transform: rotate(-17deg);
+    border-radius: 16px;
+    background: #d8dee7;
+    border: 10px solid #f8fafc;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.34);
+  }
+
+  .site-road {
+    position: absolute;
+    border-radius: 999px;
+    background: #7c8794;
+    border: 5px solid #f8fafc;
+  }
+
+  .road-one {
+    left: 10%;
+    right: 10%;
+    top: 45%;
+    height: 34px;
+  }
+
+  .road-two {
+    left: 45%;
+    top: 8%;
+    bottom: 9%;
+    width: 34px;
+  }
+
+  .site-building,
+  .site-tank {
+    position: absolute;
+    background: #e9eef5;
+    border: 3px solid #aeb8c5;
+    box-shadow: inset 0 8px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  .site-building {
+    border-radius: 6px;
+  }
+
+  .building-a {
+    left: 11%;
+    top: 13%;
+    width: 30%;
+    height: 22%;
+  }
+
+  .building-b {
+    right: 9%;
+    top: 13%;
+    width: 31%;
+    height: 22%;
+  }
+
+  .building-c {
+    left: 40%;
+    bottom: 12%;
+    width: 25%;
+    height: 20%;
+  }
+
+  .site-tank {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+  }
+
+  .tank-a {
+    left: 13%;
+    bottom: 14%;
+  }
+
+  .tank-b {
+    left: 25%;
+    bottom: 8%;
+  }
+
+  .tank-c {
+    right: 20%;
+    bottom: 16%;
+  }
+
+  .incident-marker {
+    position: absolute;
+    left: 49%;
+    top: 24%;
+    color: #ef4444;
+    font-size: 2rem;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+
+  .muster-marker {
+    position: absolute;
+    right: 21%;
+    bottom: 26%;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 6px;
+    color: #fff;
+    background: #0891b2;
+    border: 2px solid #22d3ee;
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .map-zoom {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    display: grid;
+    width: 34px;
+    overflow: hidden;
+    border-radius: 5px;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
+  }
+
+  .map-zoom span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    background: #fff;
+    color: #0f172a;
+    font-weight: 900;
+  }
+
+  .map-zoom span + span {
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .incident-list {
+    display: grid;
+    padding: 0.2rem 0;
+  }
+
+  .incident-item {
+    display: block;
+    padding: 0.85rem 0.9rem;
+    color: #111827;
+    border-top: 1px solid #e5e7eb;
+  }
+
+  .incident-item:hover {
+    color: #111827;
+    text-decoration: none;
+    background: #f8fafc;
+  }
+
+  .incident-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.4rem;
+    color: #334155;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+
+  .severity-chip {
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 900;
+  }
+
+  .severity-critical {
+    background: #ef4444;
+  }
+
+  .severity-high {
+    background: #64748b;
+  }
+
+  .severity-medium {
+    background: #3b82f6;
+  }
+
+  .severity-low {
+    background: #22c55e;
+  }
+
+  .incident-name {
+    margin: 0;
+    color: #111827;
+    font-size: 0.82rem;
+    font-weight: 900;
+  }
+
+  .incident-detail-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+    color: #64748b;
+    font-size: 0.68rem;
+  }
+
+  .command-footer-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1.1fr 1.1fr 1fr;
+    gap: 0.9rem;
+  }
+
+  .mini-card {
+    padding: 0.85rem;
+  }
+
+  .mini-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .mini-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 0.82rem;
+    font-weight: 900;
+  }
+
+  .health-row {
+    display: grid;
+    gap: 0.35rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .health-label {
+    display: flex;
+    justify-content: space-between;
+    color: #334155;
+    font-size: 0.76rem;
+    font-weight: 800;
+  }
+
+  .progress {
+    height: 7px;
+    border-radius: 999px;
+    background: #e2e8f0;
+  }
+
+  .progress-bar {
+    border-radius: 999px;
+  }
+
+  .data-link {
+    color: #0891b2;
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .schedule-list,
+  .log-list {
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .schedule-item {
+    padding: 0.55rem 0.65rem;
+    border-radius: 6px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+  }
+
+  .schedule-date {
+    margin: 0;
+    color: #06b6d4;
+    font-size: 0.66rem;
+    font-weight: 900;
+  }
+
+  .schedule-title {
+    margin: 0.15rem 0 0;
+    color: #111827;
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+
+  .log-item {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 0.55rem;
+    align-items: start;
+    color: #334155;
+    font-size: 0.72rem;
+  }
+
+  .log-time {
+    color: #64748b;
+    font-weight: 900;
+  }
+
+  .responder-stack {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+  }
+
+  .responder-avatar {
+    width: 34px;
+    height: 34px;
+    margin-right: -8px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: #06b6d4;
+    border: 2px solid #fff;
+    font-size: 0.72rem;
+    font-weight: 900;
+  }
+
+  .response-time {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0.7rem 0;
+    color: #64748b;
+    font-size: 0.72rem;
+  }
+
+  .response-time strong {
+    color: #111827;
+  }
+
+  @media (max-width: 1199px) {
+    .action-grid,
+    .command-footer-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .command-main {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .command-alert,
+    .command-heading,
+    .action-grid,
+    .command-footer-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .clock-panel {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .tactical-map {
+      height: 360px;
+    }
+  }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="row">
-  <div class="col-12">
-    <div class="card shadow-sm border-0">
-      <div class="card-body text-center py-5">
-        <h4 class="mb-3">Emergency Response Management</h4>
-        <p class="text-muted mb-4">Manage emergency drill topics, schedule sessions, and track all created sessions.</p>
-        <a href="{% url 'emergency:evacuation_plan' %}" class="btn btn-info mr-2">Evacuation Plan</a>
-        <a href="{% url 'emergency:sos_control_panel' %}" class="btn btn-danger mr-2">SOS Control Panel</a>
-        <a href="{% url 'emergency:session_list' %}" class="btn btn-primary mr-2">All Sessions</a>
-        <a href="{% url 'emergency:session_create' %}" class="btn btn-outline-primary mr-2">Schedule Session</a>
-        <a href="{% url 'emergency:topic_list' %}" class="btn btn-outline-secondary">Manage Topics</a>
+<div class="command-shell">
+  <section class="command-alert">
+    <span class="alert-badge"><i class="fas fa-shield-alt"></i></span>
+    <div>
+      <p class="incident-label">Critical Incident <span>{{ command_alert_ref }}</span></p>
+      <h2 class="incident-title">{{ command_alert_title }}</h2>
+    </div>
+    <a href="{% url 'emergency:sos_control_panel' %}" class="btn btn-sm btn-light text-danger">Declare Major Response</a>
+  </section>
+
+  <section class="command-heading">
+    <div>
+      <h2>Emergency Command Dashboard</h2>
+      <p>Real-time operational overview for {{ command_site }}.</p>
+    </div>
+    <div class="clock-panel">
+      <div>
+        <p class="clock-label">System Clock</p>
+        <p class="clock-value">{{ command_clock|date:"H:i:s" }} UTC</p>
+      </div>
+      <a href="{% url 'emergency:report_create' %}" class="new-incident-btn">
+        <i class="fas fa-plus-circle mr-1"></i> New Incident Report
+      </a>
+    </div>
+  </section>
+
+  <section class="action-grid">
+    {% for action in command_actions %}
+    <a href="{% url action.url_name %}" class="action-card">
+      <span class="action-icon"><i class="{{ action.icon }}"></i></span>
+      <span>
+        <span class="action-title">{{ action.label }}</span>
+        <span class="action-copy">{{ action.description }}</span>
+      </span>
+    </a>
+    {% endfor %}
+  </section>
+
+  <section class="command-main">
+    <div class="command-card">
+      <div class="command-card-header">
+        <h3 class="command-card-title"><i class="fas fa-map-marked-alt text-info"></i>Site Tactical Map</h3>
+        <div class="status-pills">
+          <span class="status-pill pill-clear">Muster Points: CLEAR</span>
+          <span class="status-pill pill-active">Incidents: {{ command_active_incident_count }} Active</span>
+        </div>
+      </div>
+      <div class="tactical-map">
+        <div class="site-platform">
+          <span class="site-road road-one"></span>
+          <span class="site-road road-two"></span>
+          <span class="site-building building-a"></span>
+          <span class="site-building building-b"></span>
+          <span class="site-building building-c"></span>
+          <span class="site-tank tank-a"></span>
+          <span class="site-tank tank-b"></span>
+          <span class="site-tank tank-c"></span>
+          <i class="fas fa-exclamation-triangle incident-marker"></i>
+          <span class="muster-marker"><i class="fas fa-users"></i> MUSTER POINT C</span>
+        </div>
+        <span class="map-zoom"><span>+</span><span>-</span></span>
       </div>
     </div>
-  </div>
+
+    <div class="command-card">
+      <div class="command-card-header">
+        <h3 class="command-card-title">Active Incidents</h3>
+        <a href="{% url 'emergency:report_list' %}" class="data-link">View All</a>
+      </div>
+      <div class="incident-list">
+        {% for incident in command_active_incidents %}
+        <a href="{{ incident.url|default:'#' }}" class="incident-item">
+          <div class="incident-meta">
+            <span>{{ incident.number }}</span>
+            <span class="severity-chip severity-{{ incident.badge }}">{{ incident.severity }}</span>
+          </div>
+          <p class="incident-name">{{ incident.title }}</p>
+          <div class="incident-detail-row">
+            <span><i class="fas fa-location-arrow mr-1"></i>{{ incident.status }}</span>
+            <span><i class="fas fa-clock mr-1"></i>{{ incident.eta }}</span>
+            <span><i class="fas fa-user mr-1"></i>{{ incident.location }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="command-footer-grid">
+    <div class="command-card mini-card">
+      <div class="mini-head">
+        <h3 class="mini-title">Resources Health</h3>
+        <i class="fas fa-cog text-muted"></i>
+      </div>
+      <div class="health-row">
+        <div class="health-label"><span>Fire Assets</span><strong>{{ command_resource_fire }}</strong></div>
+        <div class="progress"><div class="progress-bar bg-success" style="width: 98%"></div></div>
+      </div>
+      <div class="health-row">
+        <div class="health-label"><span>Medical PPE</span><strong>{{ command_resource_medical }}</strong></div>
+        <div class="progress"><div class="progress-bar bg-warning" style="width: 84%"></div></div>
+      </div>
+      <a href="#" class="data-link">Inventory Manager <i class="fas fa-external-link-alt ml-1"></i></a>
+    </div>
+
+    <div class="command-card mini-card">
+      <div class="mini-head">
+        <h3 class="mini-title">Upcoming Drills</h3>
+        <i class="far fa-calendar text-muted"></i>
+      </div>
+      <div class="schedule-list">
+        {% for drill in command_upcoming_drills %}
+        <a href="{{ drill.url|default:'#' }}" class="schedule-item">
+          <p class="schedule-date">{{ drill.date }}</p>
+          <p class="schedule-title">{{ drill.title }}</p>
+        </a>
+        {% endfor %}
+      </div>
+      <a href="{% url 'emergency:session_list' %}" class="data-link mt-2 d-inline-block">Full Schedule <i class="fas fa-external-link-alt ml-1"></i></a>
+    </div>
+
+    <div class="command-card mini-card">
+      <div class="mini-head">
+        <h3 class="mini-title">System Audit Logs</h3>
+        <span class="text-muted small">INC-001</span>
+      </div>
+      <div class="log-list">
+        {% for log in command_system_logs %}
+        <a href="{{ log.url|default:'#' }}" class="log-item">
+          <span class="log-time">{{ log.time }}</span>
+          <span>{{ log.message }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      <a href="{% url 'emergency:report_list' %}" class="data-link mt-2 d-inline-block">View Detailed Log <i class="fas fa-external-link-alt ml-1"></i></a>
+    </div>
+
+    <div class="command-card mini-card">
+      <div class="mini-head">
+        <h3 class="mini-title">Ready Responders</h3>
+        <i class="far fa-check-circle text-muted"></i>
+      </div>
+      <div class="responder-stack">
+        {% if command_ready_responders %}
+          {% for responder in command_ready_responders %}
+          <span class="responder-avatar" title="{{ responder.get_full_name|default:responder.username }}">
+            {{ responder.first_name|default:responder.username|slice:":1"|upper }}{{ responder.last_name|slice:":1"|upper }}
+          </span>
+          {% endfor %}
+        {% else %}
+          <span class="responder-avatar">SC</span>
+          <span class="responder-avatar" style="background:#8b5cf6;">MV</span>
+          <span class="responder-avatar" style="background:#22c55e;">DR</span>
+          <span class="responder-avatar" style="background:#f97316;">EG</span>
+        {% endif %}
+      </div>
+      <div class="response-time">
+        <span><i class="fas fa-stopwatch mr-1"></i>Average Response Time:</span>
+        <strong>{{ command_average_response }}</strong>
+      </div>
+      <a href="{% url 'emergency:contact_directory' %}" class="btn btn-sm btn-outline-secondary btn-block">Open Contacts</a>
+    </div>
+  </section>
 </div>
 {% endblock %}
