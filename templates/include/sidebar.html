@@ -1408,6 +1408,37 @@
             </ul>
         </li>
         {% endif %}
+        <li class="nav-item {% if 'PPE' in request.path %}menu-open{% endif %}">
+            <a href="#" class="nav-link {% if 'PPE' in request.path %}active{% endif %}">
+                <i class="nav-icon fas fa-user-shield"></i>
+                <p>
+                    PPE Management
+                    <i class="right fas fa-angle-left"></i>
+                </p>
+            </a>
+            <ul class="nav nav-treeview">
+                {% if request.user.is_admin_user or request.user.is_superuser %}
+                <li class="nav-item {% if request.resolver_match.url_name == 'topic_list' or request.resolver_match.url_name == 'question_list' %}menu-open{% endif %}">
+                  <a href="#" class="nav-link {% if 'PPE' in request.path and request.resolver_match.url_name in 'category_list question_list template_list' %}active{% endif %}">
+                      <i class="nav-icon fas fa-cogs"></i>
+                        <p>
+                            Configurations
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="{% url 'PPE:category_list' %}" class="nav-link {% if request.resolver_match.url_name == 'category_list' %}active{% endif %}">
+                          <i class="nav-icon far fa-dot-circle"></i>
+                          <p>Categories</p>
+                        </a>
+                      </li>
+                    </ul>
+                </li>
+                {% endif %}
+              </ul>
+          </li>
+              
         <li class="nav-item">
           <a href="#" class="nav-link">
             <i class="nav-icon fa-solid fa-person-digging"></i>
