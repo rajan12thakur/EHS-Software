@@ -7,6 +7,7 @@ app_name = "emergency"
 urlpatterns = [
     path("", views.EmergencyHomeView.as_view(), name="home"),
     path("evacuation-plan/", views.EmergencyEvacuationPlanView.as_view(), name="evacuation_plan"),
+    path("muster-point/", views.EmergencyMusterPointView.as_view(), name="muster_point"),
     path("sos/", views.EmergencySOSControlPanelView.as_view(), name="sos_control_panel"),
     path("reports/", views.EmergencyReportListView.as_view(), name="report_list"),
     path("reports/create/", views.EmergencyReportCreateView.as_view(), name="report_create"),

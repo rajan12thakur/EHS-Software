@@ -1,12 +1,12 @@
 {% extends 'base/base.html' %}
 {% load static %}
 
-{% block title %}Evacuation Plan{% endblock %}
-{% block page_title %}Evacuation Plan{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
-<li class="breadcrumb-item active">Evacuation Plan</li>
+<li class="breadcrumb-item active">{{ page_title }}</li>
 {% endblock %}
 
 {% block extra_css %}
@@ -364,7 +364,7 @@
         </div>
         <div>
           <label class="evac-label">&nbsp;</label>
-          <a href="{% url 'emergency:evacuation_plan' %}" class="btn btn-outline-secondary btn-block evac-control d-inline-flex align-items-center justify-content-center">
+          <a href="{% url page_url_name %}" class="btn btn-outline-secondary btn-block evac-control d-inline-flex align-items-center justify-content-center">
             Reset
           </a>
         </div>
@@ -376,15 +376,15 @@
     <div class="evac-card">
       <div class="evac-card-header">
         <div>
-          <span class="evac-eyebrow"><i class="fas fa-location-arrow"></i> Visual Evacuation Plan</span>
+          <span class="evac-eyebrow"><i class="fas fa-location-arrow"></i> {{ visual_board_label }}</span>
           <h3 class="evac-title">
             {% if selected_plant_obj %}
-              {{ selected_plant_obj.name }} Evacuation Layout
+              {{ selected_plant_obj.name }} {{ layout_suffix }}
             {% else %}
-              Plant Evacuation Layout
+              {{ default_layout_title }}
             {% endif %}
           </h3>
-          <p class="evac-subtitle">Interactive-style evacuation board with marked exits, fire points, hazards, and assembly route guidance.</p>
+          <p class="evac-subtitle">{{ layout_subtitle }}</p>
         </div>
       </div>
 
@@ -392,7 +392,7 @@
           <img
               id="evacuationImage"
               src="{% static 'images/emergency.png' %}"
-              alt="{% if selected_plant_obj %}{{ selected_plant_obj.name }} evacuation plan{% else %}Plant evacuation plan{% endif %}"
+              alt="{% if selected_plant_obj %}{{ selected_plant_obj.name }} {{ image_alt_label }}{% else %}Plant {{ image_alt_label }}{% endif %}"
               class="evac-plan-image"
           >
       </div>

@@ -231,8 +231,202 @@ class EmergencyHomeView(EmergencyAccessMixin, TemplateView):
             return redirect("dashboards:home")
         return super().dispatch(request, *args, **kwargs)
 
+    def _get_primary_site(self):
+        report = self.get_report_queryset().exclude(status="CLOSED").first()
+        if report and report.plant_id:
+            return report.plant
+
+        user = self.request.user
+        if user.is_superuser or user.is_admin_user:
+            return Plant.objects.filter(is_active=True).order_by("name").first()
+
+        assigned_plant = user.assigned_plants.filter(is_active=True).order_by("name").first()
+        if assigned_plant:
+            return assigned_plant
+
+        if user.plant_id and user.plant.is_active:
+            return user.plant
+
+        return None
+
+    def _get_active_incidents(self):
+        reports = list(self.get_report_queryset().exclude(status="CLOSED")[:4])
+        if not reports:
+            return [
+                {
+                    "number": "INC-2024-081",
+                    "title": "Fire/Explosion",
+                    "severity": "Critical",
+                    "status": "In Progress",
+                    "location": "Sarah Chen",
+                    "eta": "ETA 25 min",
+                    "badge": "critical",
+                },
+                {
+                    "number": "INC-2024-052",
+                    "title": "Chemical Spill",
+                    "severity": "Critical",
+                    "status": "Dispatched",
+                    "location": "Michael Vera",
+                    "eta": "ETA 12 min",
+                    "badge": "critical",
+                },
+                {
+                    "number": "INC-2024-079",
+                    "title": "Medical Emergency",
+                    "severity": "Medium",
+                    "status": "Containment",
+                    "location": "David Ross",
+                    "eta": "ETA Arrived",
+                    "badge": "medium",
+                },
+                {
+                    "number": "INC-2024-078",
+                    "title": "Gas Leak",
+                    "severity": "High",
+                    "status": "Investigation",
+                    "location": "Elena G.",
+                    "eta": "ETA On Scene",
+                    "badge": "high",
+                },
+            ], False
+
+        incidents = []
+        for report in reports:
+            incidents.append(
+                {
+                    "number": report.report_number,
+                    "title": report.emergency_title or report.get_emergency_type_display(),
+                    "severity": report.get_severity_level_display(),
+                    "status": report.get_status_display(),
+                    "location": report.location.name if report.location_id else "Location pending",
+                    "eta": "ETA On Scene" if report.response_team_members.exists() else "ETA Pending",
+                    "badge": report.severity_level,
+                    "url": reverse("emergency:report_detail", args=[report.pk]),
+                }
+            )
+        return incidents, True
+
+    def _get_upcoming_drills(self):
+        sessions = list(
+            self.get_session_queryset()
+            .filter(status__in=["SCHEDULED", "ONGOING"], scheduled_date__gte=timezone.localdate())
+            .order_by("scheduled_date", "scheduled_time")[:3]
+        )
+        if not sessions:
+            return [
+                {"date": "TOMORROW 09:00", "title": "Full Site Evacuation Drill"},
+                {"date": "FRI, AUG 23", "title": "Chemical Leak Response"},
+            ], False
+
+        drills = []
+        for session in sessions:
+            drills.append(
+                {
+                    "date": f"{session.scheduled_date:%d %b} {session.scheduled_time:%H:%M}",
+                    "title": session.topic.name if session.topic_id else session.get_drill_type_display(),
+                    "url": reverse("emergency:session_detail", args=[session.pk]),
+                }
+            )
+        return drills, True
+
+    def _get_system_logs(self):
+        reports = list(self.get_report_queryset().order_by("-updated_at")[:3])
+        if not reports:
+            return [
+                {"time": "14:12", "message": "All Rivers acknowledged INC-001"},
+                {"time": "14:05", "message": "ALERT: Parameter alarm Sector G"},
+                {"time": "13:58", "message": "Resource R-212 assigned"},
+            ], False
+
+        logs = []
+        for report in reports:
+            logs.append(
+                {
+                    "time": timezone.localtime(report.updated_at).strftime("%H:%M"),
+                    "message": f"{report.report_number} updated to {report.get_status_display()}",
+                    "url": reverse("emergency:report_detail", args=[report.pk]),
+                }
+            )
+        return logs, True
+
+    def _get_ready_responders(self, site):
+        if not site:
+            return []
+
+        return list(
+            User.objects.select_related("department", "role")
+            .filter(is_active=True, is_active_employee=True, role__name="SAFETY MANAGER")
+            .filter(Q(plant=site) | Q(assigned_plants=site))
+            .distinct()
+            .order_by("first_name", "last_name", "username")[:5]
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        active_incidents, has_incidents = self._get_active_incidents()
+        upcoming_drills, has_drills = self._get_upcoming_drills()
+        system_logs, has_logs = self._get_system_logs()
+        site = self._get_primary_site()
+        responders = self._get_ready_responders(site)
+        active_count = self.get_report_queryset().exclude(status="CLOSED").count() if has_incidents else 2
+
+        context.update(
+            {
+                "command_site": site.name if site else "Site A-12",
+                "command_clock": timezone.localtime(timezone.now()),
+                "command_alert_ref": active_incidents[0]["number"] if active_incidents else "REF: MAJ-402",
+                "command_alert_title": active_incidents[0]["title"] if active_incidents else "Chemical Spill - Warehouse Sector B - Main Logistics Hub",
+                "command_active_incidents": active_incidents,
+                "command_upcoming_drills": upcoming_drills,
+                "command_system_logs": system_logs,
+                "command_ready_responders": responders,
+                "command_active_incident_count": active_count,
+                "command_resource_fire": "98% Ready",
+                "command_resource_medical": "84% Low",
+                "command_average_response": "4.2m",
+                "command_actions": [
+                    {
+                        "label": "Send Mass Alert",
+                        "description": "Broadcast via SMS/Email",
+                        "icon": "fas fa-bullhorn",
+                        "url_name": "emergency:sos_control_panel",
+                    },
+                    {
+                        "label": "Initiate Safety Drill",
+                        "description": "Start evacuation exercise",
+                        "icon": "fas fa-play-circle",
+                        "url_name": "emergency:session_create",
+                    },
+                    {
+                        "label": "Contact Response Team",
+                        "description": "Open direct comms line",
+                        "icon": "fas fa-phone-volume",
+                        "url_name": "emergency:contact_directory",
+                    },
+                    {
+                        "label": "Muster Points Status",
+                        "description": "View assembly counts",
+                        "icon": "fas fa-map-marker-alt",
+                        "url_name": "emergency:muster_point",
+                    },
+                ],
+                "has_command_incidents": has_incidents,
+                "has_command_drills": has_drills,
+                "has_command_logs": has_logs,
+            }
+        )
+        return context
+
 class EmergencyEvacuationPlanView(EmergencyAccessMixin, TemplateView):
     template_name = "emergency/evacuation_plan.html"
+    page_url_name = "emergency:evacuation_plan"
+    page_title = "Evacuation Plan"
+    visual_board_label = "Visual Evacuation Plan"
+    layout_suffix = "Evacuation Layout"
+    default_layout_title = "Plant Evacuation Layout"
+    layout_subtitle = "Interactive-style evacuation board with marked exits, fire points, hazards, and assembly route guidance."
+    image_alt_label = "evacuation plan"
 
     def dispatch(self, request, *args, **kwargs):
         if not self.can_access_emergency_module():
@@ -288,6 +482,129 @@ class EmergencyEvacuationPlanView(EmergencyAccessMixin, TemplateView):
                 "selected_plant": selected_plant_id,
                 "selected_plant_obj": selected_plant,
                 "safety_managers": safety_managers,
+                "page_url_name": self.page_url_name,
+                "page_title": self.page_title,
+                "visual_board_label": self.visual_board_label,
+                "layout_suffix": self.layout_suffix,
+                "default_layout_title": self.default_layout_title,
+                "layout_subtitle": self.layout_subtitle,
+                "image_alt_label": self.image_alt_label,
+            }
+        )
+        return context
+
+
+class EmergencyMusterPointView(EmergencyEvacuationPlanView):
+    template_name = "emergency/muster_point.html"
+    page_url_name = "emergency:muster_point"
+    page_title = "Muster Point"
+    visual_board_label = "Visual Muster Point Plan"
+    layout_suffix = "Muster Point Layout"
+    default_layout_title = "Plant Muster Point Layout"
+    layout_subtitle = "Interactive-style muster point board with marked exits, fire points, hazards, and assembly route guidance."
+    image_alt_label = "muster point plan"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "last_updated": timezone.localtime(timezone.now()),
+                "muster_stats": [
+                    {
+                        "label": "Total Headcount",
+                        "value": "256",
+                        "meta": "Employees",
+                        "icon": "fas fa-users",
+                        "tone": "green",
+                    },
+                    {
+                        "label": "Present at Muster Point",
+                        "value": "243",
+                        "meta": "95.3%",
+                        "icon": "far fa-check-circle",
+                        "tone": "success",
+                    },
+                    {
+                        "label": "Not Accounted For",
+                        "value": "13",
+                        "meta": "5.1%",
+                        "icon": "fas fa-user-clock",
+                        "tone": "warning",
+                    },
+                    {
+                        "label": "Visitors",
+                        "value": "0",
+                        "meta": "Present",
+                        "icon": "fas fa-id-card",
+                        "tone": "blue",
+                    },
+                ],
+                "muster_zones": [
+                    {"name": "Zone A", "area": "Main Gate Area", "count": "87 / 92", "percent": "94.6%"},
+                    {"name": "Zone B", "area": "North Parking Area", "count": "78 / 82", "percent": "95.1%"},
+                    {"name": "Zone C", "area": "South Assembly Area", "count": "78 / 82", "percent": "95.1%"},
+                ],
+                "muster_alerts": [
+                    {
+                        "title": "13 people not accounted for",
+                        "message": "Please initiate headcount verification.",
+                        "time": "10:21 AM",
+                        "icon": "fas fa-exclamation-circle",
+                        "tone": "danger",
+                    },
+                    {
+                        "title": "High winds detected",
+                        "message": "Proceed to designated muster points and remain clear of structures.",
+                        "time": "10:15 AM",
+                        "icon": "fas fa-exclamation-triangle",
+                        "tone": "warning",
+                    },
+                    {
+                        "title": "Fire drill in progress",
+                        "message": "This is a scheduled drill. Please follow warden instructions.",
+                        "time": "10:00 AM",
+                        "icon": "fas fa-info-circle",
+                        "tone": "info",
+                    },
+                ],
+                "quick_actions": [
+                    {
+                        "label": "Activate Alarm",
+                        "icon": "fas fa-bell",
+                        "url_name": "emergency:sos_control_panel",
+                        "tone": "danger",
+                    },
+                    {
+                        "label": "Roll Call Headcount",
+                        "icon": "fas fa-users",
+                        "url_name": "emergency:muster_point",
+                        "tone": "success",
+                    },
+                    {
+                        "label": "Report Missing Person",
+                        "icon": "fas fa-search",
+                        "url_name": "emergency:report_create",
+                        "tone": "blue",
+                    },
+                    {
+                        "label": "Evacuation Log",
+                        "icon": "fas fa-clipboard-list",
+                        "url_name": "emergency:evacuation_plan",
+                        "tone": "purple",
+                    },
+                    {
+                        "label": "End Emergency",
+                        "icon": "fas fa-shield-alt",
+                        "url_name": "emergency:report_list",
+                        "tone": "orange",
+                    },
+                ],
+                "default_emergency_contacts": [
+                    {"name": "Site Emergency Coordinator", "phone": "+1 234 567 8901", "icon": "fas fa-user", "tone": "success"},
+                    {"name": "Security Control Room", "phone": "+1 234 567 8902", "icon": "fas fa-shield-alt", "tone": "blue"},
+                    {"name": "Medical Team", "phone": "+1 234 567 8903", "icon": "fas fa-plus", "tone": "danger"},
+                    {"name": "Fire Department", "phone": "+1 234 567 8904", "icon": "fas fa-fire", "tone": "orange"},
+                ],
             }
         )
         return context
