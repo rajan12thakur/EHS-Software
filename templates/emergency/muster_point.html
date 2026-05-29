@@ -1,0 +1,761 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Muster Point{% endblock %}
+{% block page_title %}Muster Point{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'emergency:home' %}">Emergency Response Management</a></li>
+<li class="breadcrumb-item active">Muster Point</li>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .muster-shell {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .muster-card,
+  .muster-status,
+  .muster-stat {
+    background: #fff;
+    border: 1px solid #dde6ef;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  }
+
+  .muster-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    background: #f3fbf7;
+    border-color: #bfe7d0;
+  }
+
+  .muster-status-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .status-shield {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: #16a34a;
+    font-size: 1.4rem;
+  }
+
+  .status-title {
+    margin: 0;
+    color: #111827;
+    font-size: 1.05rem;
+    font-weight: 800;
+  }
+
+  .status-copy {
+    margin: 0.15rem 0 0;
+    color: #334155;
+    font-size: 0.9rem;
+  }
+
+  .status-updated {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #334155;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .muster-stat {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-height: 120px;
+    padding: 1.2rem;
+  }
+
+  .stat-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 64px;
+    font-size: 1.7rem;
+  }
+
+  .tone-green,
+  .tone-success {
+    color: #16a34a;
+    background: #dcfce7;
+  }
+
+  .tone-warning {
+    color: #f59e0b;
+    background: #fef3c7;
+  }
+
+  .tone-blue {
+    color: #1976d2;
+    background: #e3f2fd;
+  }
+
+  .tone-danger {
+    color: #dc2626;
+    background: #fee2e2;
+  }
+
+  .tone-purple {
+    color: #6d28d9;
+    background: #ede9fe;
+  }
+
+  .tone-orange {
+    color: #f97316;
+    background: #ffedd5;
+  }
+
+  .stat-label {
+    margin: 0;
+    color: #111827;
+    font-size: 0.9rem;
+    font-weight: 800;
+  }
+
+  .stat-value {
+    margin: 0.35rem 0 0;
+    color: #020617;
+    font-size: 1.95rem;
+    line-height: 1;
+    font-weight: 900;
+  }
+
+  .stat-meta {
+    margin: 0.35rem 0 0;
+    color: #16a34a;
+    font-size: 0.86rem;
+    font-weight: 800;
+  }
+
+  .muster-dashboard {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.95fr);
+    gap: 1rem;
+  }
+
+  .muster-bottom {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.95fr);
+    gap: 1rem;
+  }
+
+  .muster-card {
+    padding: 1rem;
+  }
+
+  .muster-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .muster-card-title h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin: 0;
+    color: #111827;
+    font-size: 1.05rem;
+    font-weight: 900;
+  }
+
+  .muster-card-title a {
+    color: #166534;
+    font-size: 0.86rem;
+    font-weight: 800;
+  }
+
+  .overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.85fr);
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .muster-map {
+    position: relative;
+    min-height: 270px;
+    overflow: hidden;
+    border-radius: 8px;
+    border: 1px solid #dbe7d6;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.7)),
+      repeating-linear-gradient(90deg, #dff0dc 0 34px, #eef7eb 34px 68px);
+  }
+
+  .map-road,
+  .map-block,
+  .map-lawn {
+    position: absolute;
+    border-radius: 6px;
+  }
+
+  .map-road {
+    background: #d8dee6;
+    border: 4px solid #f8fafc;
+  }
+
+  .road-main {
+    left: 10%;
+    right: 8%;
+    top: 43%;
+    height: 42px;
+    transform: rotate(22deg);
+  }
+
+  .road-vertical {
+    left: 36%;
+    top: 8%;
+    bottom: 8%;
+    width: 42px;
+  }
+
+  .road-loop {
+    right: 6%;
+    top: 47%;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: transparent;
+    border: 18px solid #d8dee6;
+  }
+
+  .map-block {
+    background: #f8fafc;
+    border: 2px solid #ccd6df;
+  }
+
+  .block-one {
+    left: 36%;
+    top: 12%;
+    width: 18%;
+    height: 26%;
+  }
+
+  .block-two {
+    left: 57%;
+    top: 10%;
+    width: 18%;
+    height: 37%;
+  }
+
+  .block-three {
+    left: 48%;
+    bottom: 13%;
+    width: 29%;
+    height: 19%;
+  }
+
+  .map-lawn {
+    width: 12px;
+    height: 12px;
+    background: #9bd18e;
+    box-shadow:
+      24px 8px 0 #a7d99d,
+      52px 2px 0 #9bd18e,
+      86px 14px 0 #b7e3ad,
+      124px 2px 0 #9bd18e,
+      170px 14px 0 #a7d99d,
+      220px 5px 0 #9bd18e,
+      265px 18px 0 #a7d99d,
+      310px 8px 0 #b7e3ad;
+  }
+
+  .lawn-top {
+    left: 6%;
+    top: 8%;
+  }
+
+  .lawn-bottom {
+    left: 7%;
+    bottom: 13%;
+  }
+
+  .helipad {
+    position: absolute;
+    right: 11%;
+    top: 53%;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #8fbf87;
+    border: 2px solid #b7d8ae;
+    background: rgba(255, 255, 255, 0.7);
+    font-weight: 900;
+  }
+
+  .muster-pin {
+    position: absolute;
+    display: grid;
+    gap: 0.25rem;
+    justify-items: center;
+  }
+
+  .muster-pin i {
+    width: 44px;
+    height: 44px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: #16a34a;
+    box-shadow: 0 10px 20px rgba(22, 163, 74, 0.25);
+  }
+
+  .muster-pin i:before {
+    transform: rotate(45deg);
+  }
+
+  .muster-pin span {
+    padding: 0.25rem 0.55rem;
+    border-radius: 4px;
+    color: #111827;
+    background: #fff;
+    border: 1px solid #d7e2dc;
+    font-weight: 800;
+    font-size: 0.8rem;
+  }
+
+  .pin-a {
+    left: 14%;
+    top: 23%;
+  }
+
+  .pin-b {
+    right: 13%;
+    top: 16%;
+  }
+
+  .pin-c {
+    right: 22%;
+    bottom: 10%;
+  }
+
+  .zone-list {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .zone-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 72px;
+    padding: 0.85rem;
+    border: 1px solid #dce5ec;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .zone-name {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin: 0;
+    color: #111827;
+    font-size: 0.9rem;
+    font-weight: 900;
+  }
+
+  .zone-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #16a34a;
+  }
+
+  .zone-area,
+  .zone-percent {
+    margin: 0.2rem 0 0;
+    font-size: 0.78rem;
+  }
+
+  .zone-area {
+    color: #334155;
+  }
+
+  .zone-count {
+    color: #111827;
+    font-size: 0.95rem;
+    font-weight: 900;
+    text-align: right;
+  }
+
+  .zone-percent {
+    color: #16a34a;
+    font-weight: 800;
+  }
+
+  .zone-button {
+    justify-self: end;
+    min-width: 170px;
+    margin-top: 0.4rem;
+    color: #166534;
+    border-color: #d4e6d8;
+    background: #fff;
+    font-weight: 800;
+  }
+
+  .alert-list,
+  .contact-list {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .alert-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.8rem;
+    align-items: start;
+    min-height: 72px;
+    padding: 0.85rem;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+  }
+
+  .alert-item.danger {
+    background: #fff1f2;
+    border-color: #fecdd3;
+  }
+
+  .alert-item.warning {
+    background: #fffbeb;
+    border-color: #fde68a;
+  }
+
+  .alert-item.info {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+  }
+
+  .alert-icon {
+    margin-top: 0.1rem;
+    font-size: 1rem;
+  }
+
+  .alert-title {
+    margin: 0;
+    color: #111827;
+    font-size: 0.9rem;
+    font-weight: 900;
+  }
+
+  .alert-copy,
+  .alert-time {
+    margin: 0.2rem 0 0;
+    color: #1f2937;
+    font-size: 0.82rem;
+  }
+
+  .alert-time {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(95px, 1fr));
+    gap: 1.35rem;
+  }
+
+  .quick-action {
+    min-height: 110px;
+    padding: 0.8rem;
+    border: 1px solid #dbe5ef;
+    border-radius: 8px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 0.5rem;
+    text-align: center;
+    color: #111827;
+    background: #fff;
+    font-size: 0.86rem;
+    font-weight: 800;
+  }
+
+  .quick-action:hover {
+    color: #111827;
+    text-decoration: none;
+    transform: translateY(-1px);
+  }
+
+  .quick-action i {
+    font-size: 2rem;
+  }
+
+  .quick-note {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 1rem 0 0;
+    color: #475569;
+    font-size: 0.82rem;
+  }
+
+  .contact-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 0.8rem;
+    align-items: center;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    min-height: 52px;
+  }
+
+  .contact-row i {
+    font-size: 1.05rem;
+  }
+
+  .contact-name {
+    margin: 0;
+    color: #111827;
+    font-size: 0.86rem;
+    font-weight: 900;
+  }
+
+  .contact-meta {
+    margin: 0.12rem 0 0;
+    color: #64748b;
+    font-size: 0.76rem;
+  }
+
+  .contact-phone {
+    color: #111827;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .call-button {
+    width: 36px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #15803d;
+    border: 1px solid #bfe7d0;
+    background: #fff;
+  }
+
+  @media (max-width: 1199px) {
+    .metric-grid,
+    .quick-actions {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .muster-dashboard,
+    .muster-bottom,
+    .overview-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 767px) {
+    .muster-status,
+    .muster-stat,
+    .contact-row {
+      align-items: flex-start;
+    }
+
+    .muster-status {
+      flex-direction: column;
+    }
+
+    .metric-grid,
+    .quick-actions {
+      grid-template-columns: 1fr;
+    }
+
+    .contact-row {
+      grid-template-columns: auto 1fr;
+    }
+
+    .contact-phone,
+    .call-button {
+      grid-column: 2;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="muster-shell">
+  <section class="muster-status">
+    <div class="muster-status-main">
+      <span class="status-shield"><i class="fas fa-check"></i></span>
+      <div>
+        <h2 class="status-title">All Clear</h2>
+        <p class="status-copy">There is no active emergency at this time.</p>
+      </div>
+    </div>
+    <div class="status-updated">
+      <span>Last updated: {{ last_updated|date:"h:i A, d M Y" }}</span>
+      <i class="fas fa-sync-alt"></i>
+    </div>
+  </section>
+
+  <section class="metric-grid">
+    {% for stat in muster_stats %}
+    <article class="muster-stat">
+      <span class="stat-icon tone-{{ stat.tone }}"><i class="{{ stat.icon }}"></i></span>
+      <div>
+        <p class="stat-label">{{ stat.label }}</p>
+        <p class="stat-value">{{ stat.value }}</p>
+        <p class="stat-meta">{{ stat.meta }}</p>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+
+  <section class="muster-dashboard">
+    <div class="muster-card">
+      <div class="muster-card-title">
+        <h3><i class="fas fa-map-marker-alt text-success"></i>Muster Point Overview</h3>
+      </div>
+      <div class="overview-grid">
+        <div class="muster-map" aria-label="Muster point map">
+          <span class="map-lawn lawn-top"></span>
+          <span class="map-lawn lawn-bottom"></span>
+          <span class="map-road road-main"></span>
+          <span class="map-road road-vertical"></span>
+          <span class="map-road road-loop"></span>
+          <span class="map-block block-one"></span>
+          <span class="map-block block-two"></span>
+          <span class="map-block block-three"></span>
+          <span class="helipad">H</span>
+          <span class="muster-pin pin-a"><i class="fas fa-users"></i><span>Zone A</span></span>
+          <span class="muster-pin pin-b"><i class="fas fa-users"></i><span>Zone B</span></span>
+          <span class="muster-pin pin-c"><i class="fas fa-users"></i><span>Zone C</span></span>
+        </div>
+
+        <div class="zone-list">
+          {% for zone in muster_zones %}
+          <div class="zone-item">
+            <div>
+              <p class="zone-name"><span class="zone-dot"></span>{{ zone.name }}</p>
+              <p class="zone-area">{{ zone.area }}</p>
+            </div>
+            <div>
+              <div class="zone-count">{{ zone.count }}</div>
+              <p class="zone-percent">{{ zone.percent }}</p>
+            </div>
+          </div>
+          {% endfor %}
+          <a href="{% url 'emergency:muster_point' %}" class="btn zone-button">
+            View Zone Details <i class="fas fa-arrow-right ml-3"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="muster-card">
+      <div class="muster-card-title">
+        <h3><i class="fas fa-exclamation-triangle text-danger"></i>Active Alerts</h3>
+        <a href="{% url 'emergency:report_list' %}">View All</a>
+      </div>
+      <div class="alert-list">
+        {% for alert in muster_alerts %}
+        <div class="alert-item {{ alert.tone }}">
+          <i class="alert-icon {{ alert.icon }} text-{{ alert.tone }}"></i>
+          <div>
+            <p class="alert-title">{{ alert.title }}</p>
+            <p class="alert-copy">{{ alert.message }}</p>
+          </div>
+          <p class="alert-time">{{ alert.time }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <section class="muster-bottom">
+    <div class="muster-card">
+      <div class="muster-card-title">
+        <h3><i class="fas fa-bolt text-success"></i>Quick Actions</h3>
+      </div>
+      <div class="quick-actions">
+        {% for action in quick_actions %}
+        <a href="{% url action.url_name %}" class="quick-action tone-{{ action.tone }}">
+          <i class="{{ action.icon }}"></i>
+          <span>{{ action.label }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      <p class="quick-note"><i class="fas fa-info-circle"></i>Use these actions only in case of an emergency.</p>
+    </div>
+
+    <div class="muster-card">
+      <div class="muster-card-title">
+        <h3><i class="fas fa-phone-alt text-success"></i>Emergency Contacts</h3>
+      </div>
+      <div class="contact-list">
+        {% if safety_managers %}
+          {% for manager in safety_managers|slice:":4" %}
+          <div class="contact-row">
+            <i class="fas fa-user-shield text-success"></i>
+            <div>
+              <p class="contact-name">{{ manager.get_full_name|default:manager.username }}</p>
+              <p class="contact-meta">{{ manager.job_title|default:"Site Emergency Coordinator" }}</p>
+            </div>
+            <span class="contact-phone">{{ manager.phone|default:"Phone not available" }}</span>
+            {% if manager.phone %}
+            <a href="tel:{{ manager.phone }}" class="call-button" title="Call {{ manager.get_full_name|default:manager.username }}">
+              <i class="fas fa-phone-alt"></i>
+            </a>
+            {% else %}
+            <span class="call-button" title="Phone not available"><i class="fas fa-phone-alt"></i></span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          {% for contact in default_emergency_contacts %}
+          <div class="contact-row">
+            <i class="{{ contact.icon }} text-{{ contact.tone }}"></i>
+            <p class="contact-name">{{ contact.name }}</p>
+            <span class="contact-phone">{{ contact.phone }}</span>
+            <a href="tel:{{ contact.phone }}" class="call-button" title="Call {{ contact.name }}">
+              <i class="fas fa-phone-alt"></i>
+            </a>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

@@ -1346,8 +1346,8 @@
                     </ul>
                 </li>
                 {% endif %}
-                <li class="nav-item {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' or request.resolver_match.url_name == 'evacuation_plan' %}menu-open{% endif %}">
-                    <a href="#" class="nav-link {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' or request.resolver_match.url_name == 'evacuation_plan' %}active{% endif %}">
+                <li class="nav-item {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' or request.resolver_match.url_name == 'evacuation_plan' or request.resolver_match.url_name == 'muster_point' or request.resolver_match.url_name == 'home' %}menu-open{% endif %}">
+                    <a href="#" class="nav-link {% if request.resolver_match.url_name == 'report_create' or request.resolver_match.url_name == 'report_list' or request.resolver_match.url_name == 'report_detail' or request.resolver_match.url_name == 'evacuation_plan' or request.resolver_match.url_name == 'muster_point' or request.resolver_match.url_name == 'home' %}active{% endif %}">
                         <i class="nav-icon fas fa-exclamation-triangle"></i>
                         <p>
                             Emergency Report
@@ -1355,6 +1355,13 @@
                         </p>
                     </a>
                     <ul class="nav nav-treeview">
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:home' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Dashboard</p>
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a href="{% url 'emergency:sos_control_panel' %}"
                               class="nav-link {% if request.resolver_match.url_name == 'sos_control_panel' %}active{% endif %}">
@@ -1367,6 +1374,13 @@
                               class="nav-link {% if request.resolver_match.url_name == 'evacuation_plan' %}active{% endif %}">
                                 <i class="far fa-circle nav-icon text-info"></i>
                                 <p>Evacuation Plan</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{% url 'emergency:muster_point' %}"
+                              class="nav-link {% if request.resolver_match.url_name == 'muster_point' %}active{% endif %}">
+                                <i class="far fa-circle nav-icon text-success"></i>
+                                <p>Muster Point</p>
                             </a>
                         </li>
                         {% if request.user|has_perm:'CREATE_EMERGENCY_REPORT' %}
