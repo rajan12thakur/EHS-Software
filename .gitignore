@@ -39,6 +39,9 @@ target/
 TEST*.xml
 
 # =========================
+# Media Files and uploaded files during testing
+media/
+# =========================
 # OS generated files
 # =========================
 .DS_Store
