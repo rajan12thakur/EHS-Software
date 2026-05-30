@@ -1,15 +1,15 @@
 from urllib import request
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import ListView, CreateView, UpdateView, DetailView, TemplateView
+from django.views.generic import DeleteView, ListView, CreateView, UpdateView, DetailView, TemplateView
 from django.urls import reverse, reverse_lazy
 from django.contrib import messages
-from django.shortcuts import get_object_or_404, redirect
-from django.db.models import Q
+from django.shortcuts import get_object_or_404, redirect, render
+from django.db.models import Q, Value
 from django.http import JsonResponse
 from django.utils import timezone
 from apps.organizations.models import *
-from .models import Hazard, HazardPhoto, HazardActionItem
+from .models import Hazard, HazardPhoto, HazardVideo, HazardActionItem
 from django.utils.safestring import mark_safe  # ADD THIS IMPORT
 
 from django.contrib.auth import get_user_model
@@ -20,20 +20,48 @@ from django.http import HttpResponse
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from .utils import generate_hazard_pdf
 from django.views import View
-from apps.common.image_utils import compress_image
+from apps.common.image_utils import compress_image, compress_video
 
 import json
 from django.db.models import Count
+from django.db.models.functions import Coalesce
 from django.db.models.functions import TruncMonth
 from .forms import HazardForm
 from apps.notifications.services import NotificationService
 
 # Make sure all models are imported
 from apps.organizations.models import Plant, Zone, Location, SubLocation
-
-
+from dateutil.relativedelta import relativedelta
+import colorsys
 
 User = get_user_model()
+
+
+HAZARD_STATUS_FILTER_CHOICES = list(Hazard.STATUS_CHOICES) + [
+    ('OVERDUE', 'Overdue'),
+    ('CLOSED_LATE', 'Closed Late'),
+]
+
+
+def filter_hazards_by_status(queryset, selected_status):
+    """Apply computed hazard status filters without changing the model schema."""
+    if not selected_status:
+        return queryset
+
+    today = timezone.now().date()
+
+    if selected_status == 'open':
+        return queryset.exclude(status__in=['RESOLVED', 'CLOSED'])
+    if selected_status == 'OVERDUE':
+        return queryset.filter(action_deadline__lt=today).exclude(status__in=['RESOLVED', 'CLOSED'])
+    if selected_status == 'LATE_CLOSED':
+        late_closed_ids = [
+            hazard.pk for hazard in queryset.prefetch_related('action_items')
+            if hazard.is_late_closed
+        ]
+        return queryset.filter(pk__in=late_closed_ids)
+
+    return queryset.filter(status=selected_status)
 
 
 class HazardDashboardView(LoginRequiredMixin, TemplateView):
@@ -108,6 +136,8 @@ class HazardListView(LoginRequiredMixin, ListView):
         status = self.request.GET.get('status', '')
         date_from = self.request.GET.get('date_from', '')
         date_to = self.request.GET.get('date_to', '')
+        assigned_by = self.request.GET.get('assigned_by', '')
+        assigned_to = self.request.GET.get('assigned_to', '')
 
         # Apply filters
         if search:
@@ -119,8 +149,14 @@ class HazardListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(hazard_type=hazard_type)
         if risk_level:
             queryset = queryset.filter(severity=risk_level)
-        if status:
-            queryset = queryset.filter(status=status)
+        queryset = filter_hazards_by_status(queryset, status)
+        if assigned_by:
+            queryset = queryset.filter(reported_by_id=assigned_by)
+
+        if assigned_to:
+            selected_user = User.objects.filter(id=assigned_to).first()
+            if selected_user:
+                queryset = queryset.filter(action_items__responsible_emails__icontains=selected_user.email).distinct()
         
         if date_from:
             queryset = queryset.filter(incident_datetime__date__gte=date_from)
@@ -131,17 +167,74 @@ class HazardListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        reported_users = User.objects.filter(hazards_reported__isnull=False)
+
+        assigned_users = User.objects.filter(hazards_assigned__isnull=False)
+
+        context['assigned_by_users'] = User.objects.filter(
+            hazards_reported__isnull=False,
+            is_active=True,
+            is_superuser=False,
+            is_active_employee=True
+        ).distinct().order_by('first_name', 'last_name')
+
+
+        from apps.hazards.models import HazardActionItem
+        selected_assigned_by = self.request.GET.get('assigned_by', '')
+        selected_assigned_to = self.request.GET.get('assigned_to', '')
+        action_items_queryset = HazardActionItem.objects.exclude(responsible_emails='')
+
+        if selected_assigned_by:
+            action_items_queryset = action_items_queryset.filter(
+                hazard__reported_by_id=selected_assigned_by
+            )
+
+        assigned_emails = []
+
+        for action in action_items_queryset:
+            emails = [
+                email.strip()
+                for email in action.responsible_emails.split(',')
+                if email.strip()
+            ]
+            assigned_emails.extend(emails)
+
+        context['assigned_to_users'] = User.objects.filter(
+            email__in=assigned_emails,
+            is_active=True,
+            is_superuser=False,
+            is_active_employee=True
+        ).distinct().order_by('first_name', 'last_name')
+
+        if selected_assigned_to:
+            valid_user_exists = context['assigned_to_users'].filter(
+                id=selected_assigned_to
+            ).exists()
+
+            if not valid_user_exists:
+                selected_assigned_to = ''
+
+        context['assigned_to_users'] = User.objects.filter(
+            email__in=assigned_emails,
+            is_active=True,
+            is_superuser=False,
+            is_active_employee=True
+        ).distinct().order_by('first_name', 'last_name')
         
+        print("context['assigned_by_users']",context['assigned_by_users'])
+        print("context['assigned_to_users']",context['assigned_to_users'])
         # Add choices for dropdown filters
         context['hazard_types'] = Hazard.HAZARD_TYPE_CHOICES
         context['risk_levels'] = Hazard.SEVERITY_CHOICES
-        context['status_choices'] = Hazard.STATUS_CHOICES
+        context['status_choices'] = HAZARD_STATUS_FILTER_CHOICES
 
         # Retain filter values in the form after submission
         context['search_query'] = self.request.GET.get('search', '')
         context['selected_hazard_type'] = self.request.GET.get('hazard_type', '')
         context['selected_risk_level'] = self.request.GET.get('risk_level', '')
         context['selected_status'] = self.request.GET.get('status', '')
+        context['selected_assigned_by'] = self.request.GET.get('assigned_by', '')
+        context['selected_assigned_to'] = selected_assigned_to
 
         return context
 class HazardCreateView(LoginRequiredMixin, CreateView):
@@ -182,6 +275,7 @@ class HazardCreateView(LoginRequiredMixin, CreateView):
         print(f"\n{'='*80}")
         print(f"🔄 Processing {hazard_count} hazard(s)")
         print(f"{'='*80}\n")
+        print("FILES:", request.FILES)
         
         for hazard_index in range(hazard_count):
             print(f"\n--- Processing Hazard #{hazard_index + 1} ---")
@@ -330,11 +424,12 @@ class HazardCreateView(LoginRequiredMixin, CreateView):
             photos_uploaded = 0
             photo_count = int(request.POST.get(f'{prefix}photo_count', 1))
             
-            for i in range(photo_count + 5):
+            for i in range(photo_count):
                 photo_key = f'{prefix}photo_{i}'
-                if photo_key in request.FILES:
+                photo = request.FILES.get(photo_key)
+
+                if photo:
                     try:
-                        photo = request.FILES[photo_key]
                         compressed_photo = compress_image(photo)
                         HazardPhoto.objects.create(
                             hazard=hazard,
@@ -344,7 +439,19 @@ class HazardCreateView(LoginRequiredMixin, CreateView):
                         )
                         photos_uploaded += 1
                     except Exception as e:
-                        print(f"  Photo error: {e}")
+                        print(f"Photo error: {e}")
+
+            for video in request.FILES.getlist(f'{prefix}videos'):
+                try:
+                    compressed_video = compress_video(video)
+                    HazardVideo.objects.create(
+                        hazard=hazard,
+                        video=compressed_video,
+                        video_type='evidence',
+                        uploaded_by=user
+                    )
+                except Exception as e:
+                    print(f"Video error: {e}")
             
             photos_uploaded_total += photos_uploaded
             created_hazards.append(hazard)
@@ -414,6 +521,7 @@ class HazardDetailView(LoginRequiredMixin, DetailView):
             'behalf_person_dept'
         ).prefetch_related(
             'photos', 
+            'videos',
             'action_items'  # ✅ FIXED: Just prefetch action_items (no responsible_person)
         )
 
@@ -428,6 +536,7 @@ class HazardDetailView(LoginRequiredMixin, DetailView):
         hazard = self.get_object()
         context['action_items'] = hazard.action_items.all()
         context['photos'] = hazard.photos.all()
+        context['videos'] = hazard.videos.all()
         context['cancel_url'] = (self.request.GET.get('next') or self.request.META.get('HTTP_REFERER') or '/')
         
         return context
@@ -458,7 +567,8 @@ class HazardUpdateView(LoginRequiredMixin, UpdateView):
         
         # Get departments for behalf dropdown
         context['departments'] = Department.objects.filter(is_active=True).order_by('name')
-        
+        context['photos'] = hazard.photos.all()
+        context['videos'] = hazard.videos.all()
         return context
 
     def form_valid(self, form):
@@ -524,6 +634,19 @@ class HazardUpdateView(LoginRequiredMixin, UpdateView):
                 photo_index += 1
             else:
                 break
+
+        for video in self.request.FILES.getlist('videos'):
+            try:
+                compressed_video = compress_video(video)
+                HazardVideo.objects.create(
+                    hazard=hazard,
+                    video=compressed_video,
+                    video_type='evidence',
+                    uploaded_by=user
+                )
+                print("Added new video")
+            except Exception as e:
+                print(f"Error uploading video: {e}")
         
         # Success message
         messages.success(
@@ -546,7 +669,25 @@ class HazardUpdateView(LoginRequiredMixin, UpdateView):
             print(f"  {field}: {errors}")
         return super().form_invalid(form)
 
+class HazardDeleteView(LoginRequiredMixin, View):
 
+    def get(self, request, pk):
+        hazard = get_object_or_404(Hazard, pk=pk)
+
+        return render(
+            request,
+            'hazards/hazard_confirm_delete.html',
+            {'hazard': hazard}
+        )
+
+    def post(self, request, pk):
+        hazard = get_object_or_404(Hazard, pk=pk)
+
+        hazard.delete()
+
+        messages.success(request, "Hazard deleted successfully.")
+
+        return redirect('hazards:hazard_list')
                  
 class HazardActionItemCreateView(LoginRequiredMixin, CreateView):
     """
@@ -972,6 +1113,7 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
         selected_severity = self.request.GET.get('severity', '')
         selected_status = self.request.GET.get('status', '')
         selected_overdue = self.request.GET.get('overdue', '')
+        selected_closed = self.request.GET.get('closed', '')
         selected_category = self.request.GET.get('category', '')    # <-- NEW
         selected_department = self.request.GET.get('department', '') # <-- NEW
 
@@ -988,13 +1130,23 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
             user_plants = Plant.objects.none()
 
         # 3. Calculate top-level stats BEFORE applying any filters.
-        context['total_hazards'] = base_hazards.count()
-        context['closed_hazards_count'] = base_hazards.filter(status__in=['RESOLVED', 'CLOSED']).count()
-        context['overdue_hazards_count'] = base_hazards.filter(action_deadline__lt=today).exclude(status__in=['RESOLVED', 'CLOSED']).count()
-        this_month_total = base_hazards.filter(incident_datetime__year=today.year, incident_datetime__month=today.month).count()
+        # context['total_hazards'] = base_hazards.count()
+        # context['closed_hazards_count'] = base_hazards.filter(status__in=['RESOLVED', 'CLOSED']).count()
+        # context['overdue_hazards_count'] = base_hazards.filter(action_deadline__lt=today).exclude(status__in=['RESOLVED', 'CLOSED']).count()
+        # this_month_total = base_hazards.filter(incident_datetime__year=today.year, incident_datetime__month=today.month).count()
+
 
         # 4. Apply filters to a new queryset for charts and lists.
         filtered_hazards = base_hazards
+        if selected_month:
+            try:
+                year, month = map(int, selected_month.split('-'))
+                filtered_hazards = filtered_hazards.filter(
+                    incident_datetime__year=year,
+                    incident_datetime__month=month
+                )
+            except (ValueError, TypeError):
+                pass
         if selected_plant:
             filtered_hazards = filtered_hazards.filter(plant_id=selected_plant)
         if selected_zone:
@@ -1008,20 +1160,16 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
         if selected_category: # <-- NEW
             filtered_hazards = filtered_hazards.filter(hazard_category=selected_category)
         if selected_department: # <-- NEW
-            # NOTE: Yeh filter maanta hai ki aapke Hazard model mein 'department' naam ki ek ForeignKey hai.
-            # Agar aapka structure alag hai (jaise behalf_person_dept), to aapko is line ko adjust karna hoga.
-            # Example: .filter(Q(department_id=selected_department) | Q(behalf_person_dept_id=selected_department))
-            filtered_hazards = filtered_hazards.filter(department_id=selected_department)
+            filtered_hazards = filtered_hazards.filter(reported_by__department_id=selected_department)
             
-        if selected_status:
-            if selected_status == 'open':
-                filtered_hazards = filtered_hazards.exclude(status__in=['RESOLVED', 'CLOSED'])
-            else:
-                filtered_hazards = filtered_hazards.filter(status=selected_status)
+        filtered_hazards = filter_hazards_by_status(filtered_hazards, selected_status)
                 
         if selected_overdue == 'true':
             filtered_hazards = filtered_hazards.filter(action_deadline__lt=today).exclude(status__in=['RESOLVED', 'CLOSED'])
         
+        if selected_closed == 'true':
+            filtered_hazards = filtered_hazards.filter(status__in=['RESOLVED', 'CLOSED']
+                                                       )
         if selected_month:
             try:
                 year, month = map(int, selected_month.split('-'))
@@ -1029,8 +1177,35 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
             except (ValueError, TypeError):
                 pass
         
-        context['this_month_hazards'] = filtered_hazards.count() if selected_month else this_month_total
-        context['current_month_value'] = today.strftime('%Y-%m')
+        # context['this_month_hazards'] = filtered_hazards.count() if selected_month else this_month_total
+        # context['current_month_value'] = today.strftime('%Y-%m')
+        context['current_month_value'] = selected_month if selected_month else today.strftime('%Y-%m')
+
+        # Dashboard cards should respect active filters
+
+        if today.month >= 4:  # Apr-Dec
+            fy_start = datetime.date(today.year, 4, 1)
+            fy_end = datetime.date(today.year + 1, 3, 31)
+        else:  # Jan-Mar
+            fy_start = datetime.date(today.year - 1, 4, 1)
+            fy_end = datetime.date(today.year, 3, 31)
+
+        context['total_hazards'] = base_hazards.filter(
+            incident_datetime__date__gte=fy_start,
+            incident_datetime__date__lte=fy_end
+        ).count()
+
+        context['closed_hazards_count'] = filtered_hazards.filter(
+            status__in=['RESOLVED', 'CLOSED']
+        ).count()
+
+        context['overdue_hazards_count'] = filtered_hazards.filter(
+            action_deadline__lt=today
+        ).exclude(
+            status__in=['RESOLVED', 'CLOSED']
+        ).count()
+
+        context['this_month_hazards'] = filtered_hazards.count()
 
         # 5. Prepare filter dropdown options
         context['plants'] = user_plants
@@ -1071,6 +1246,7 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
 
         context['all_departments'] = Department.objects.filter(is_active=True).order_by('name') # <-- NEW
         context['all_categories'] = Hazard.HAZARD_CATEGORIES # <-- NEW
+        context['status_choices'] = HAZARD_STATUS_FILTER_CHOICES
 
         # Pass selected filter values and names back to the template
         context.update({
@@ -1081,6 +1257,7 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
             'selected_category': selected_category, # <-- NEW
             'selected_department': selected_department, # <-- NEW
             'selected_overdue': selected_overdue,
+            'selected_closed': selected_closed,
         })
         try:
             if selected_plant: context['selected_plant_name'] = Plant.objects.get(id=selected_plant).name
@@ -1089,6 +1266,7 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
             if selected_sublocation: context['selected_sublocation_name'] = SubLocation.objects.get(id=selected_sublocation).name
             if selected_department: context['selected_department_name'] = Department.objects.get(id=selected_department).name # <-- NEW
             if selected_category: context['selected_category_name'] = dict(Hazard.HAZARD_CATEGORIES).get(selected_category) # <-- NEW
+            if selected_status: context['selected_status_label'] = dict(HAZARD_STATUS_FILTER_CHOICES).get(selected_status, selected_status.replace('_', ' ').title())
             if selected_month:
                 year, month = map(int, selected_month.split('-'))
                 context['selected_month_label'] = datetime.date(year, month, 1).strftime('%B %Y')
@@ -1096,7 +1274,31 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
              pass
         context['has_active_filters'] = any(context.get(key) for key in ['selected_plant', 'selected_zone', 'selected_location', 'selected_sublocation', 'selected_month', 'selected_severity', 'selected_status', 'selected_category', 'selected_department', 'selected_overdue'])
         # 6. Prepare data for lists and charts using the FILTERED queryset
-        context['recent_hazards'] = filtered_hazards.select_related('plant', 'location').order_by('-incident_datetime')[:10]
+        # context['recent_hazards'] = filtered_hazards.select_related('plant', 'location').order_by('-incident_datetime')[:10]
+
+        from django.core.paginator import Paginator
+
+        hazards_qs = filtered_hazards.select_related(
+            'plant', 'location', 'reported_by', 'reported_by__department'
+        ).prefetch_related(
+            'action_items'
+        ).order_by('-incident_datetime')
+
+        paginator = Paginator(hazards_qs, 10)  # 10 per page
+        page_number = self.request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context['page_obj'] = page_obj
+        context['is_paginated'] = page_obj.has_other_pages()
+        context['recent_hazards'] = page_obj.object_list
+
+        from urllib.parse import urlencode
+
+        querydict = self.request.GET.copy()
+        querydict.pop('page', None)
+
+        context['querystring'] = urlencode(querydict)
+        context['current_filters'] = querydict.urlencode()
 
         # --- PIE CHART DATA ---
         top_categories_query = filtered_hazards.values('hazard_category').annotate(count=Count('hazard_category')).order_by('-count')[:3]
@@ -1134,31 +1336,148 @@ class HazardDashboardViews(LoginRequiredMixin, TemplateView):
         context['severity_data'] = json.dumps([severity_dict.get(val, 0) for val in severity_values])
 
         # Status Distribution ...
-        status_distribution = filtered_hazards.values('status').annotate(count=Count('id')).order_by('-count')
+        status_counts = {}
         status_labels, status_keys, status_data = [], [], []
-        status_choices_dict = dict(Hazard.STATUS_CHOICES)
-        for item in status_distribution:
-            status_labels.append(status_choices_dict.get(item['status'], item['status']))
-            status_keys.append(item['status'])
-            status_data.append(item['count'])
+        status_choices_dict = dict(HAZARD_STATUS_FILTER_CHOICES)
+        for hazard in filtered_hazards.prefetch_related('action_items'):
+            status_counts[hazard.effective_status] = status_counts.get(hazard.effective_status, 0) + 1
+
+        for status_key, count in sorted(status_counts.items(), key=lambda item: item[1], reverse=True):
+            status_labels.append(status_choices_dict.get(status_key, status_key.replace('_', ' ').title()))
+            status_keys.append(status_key)
+            status_data.append(count)
         context['status_labels'] = json.dumps(status_labels)
         context['status_keys'] = json.dumps(status_keys)
         context['status_data'] = json.dumps(status_data)
         
-        department_distribution = filtered_hazards.filter(
-            behalf_person_dept__isnull=False  # Filter out hazards with no department
-        ).values(
-            'behalf_person_dept__name'        # Group by the name of the related department
-        ).annotate(
-            count=Count('id')
-        ).order_by('-count')
+        department_distribution = list(
+            filtered_hazards.annotate(
+                reporter_department_name=Coalesce(
+                    'reported_by__department__name',
+                    Value('Unassigned')
+                )
+            ).values(
+                'reported_by__department_id',
+                'reporter_department_name'
+            ).annotate(
+                total=Count('id'),
+                closed_count=Count('id', filter=Q(status__in=['RESOLVED', 'CLOSED'])),
+                overdue_count=Count(
+                    'id',
+                    filter=Q(action_deadline__lt=today) & ~Q(status__in=['RESOLVED', 'CLOSED'])
+                ),
+                critical_count=Count('id', filter=Q(severity='critical'))
+            ).order_by('-total', 'reporter_department_name')
+        )
 
-        department_labels = [item['behalf_person_dept__name'] for item in department_distribution]
-        department_data = [item['count'] for item in department_distribution]
-        
+        for item in department_distribution:
+            item['name'] = item['reporter_department_name']
+            item['open_count'] = item['total'] - item['closed_count']
+
+        department_ids = [item['reported_by__department_id'] for item in department_distribution]
+        department_labels = [item['name'] for item in department_distribution]
+        department_total_data = [item['total'] for item in department_distribution]
+        department_open_data = [item['open_count'] for item in department_distribution]
+        department_closed_data = [item['closed_count'] for item in department_distribution]
+        department_overdue_data = [item['overdue_count'] for item in department_distribution]
+
+        top_department = department_distribution[0] if department_distribution else None
+
+        context['department_ids'] = json.dumps(department_ids)
         context['department_labels'] = json.dumps(department_labels)
-        context['department_data'] = json.dumps(department_data)
-        context['department_chart_data'] = department_distribution.exists()
+        context['department_total_data'] = json.dumps(department_total_data)
+        context['department_open_data'] = json.dumps(department_open_data)
+        context['department_closed_data'] = json.dumps(department_closed_data)
+        context['department_overdue_data'] = json.dumps(department_overdue_data)
+        context['department_chart_data'] = bool(department_distribution)
+        context['department_breakdown'] = department_distribution[:6]
+        context['department_summary'] = {
+            'departments_covered': len(department_distribution),
+            'top_department_name': top_department['name'] if top_department else 'N/A',
+            'top_department_total': top_department['total'] if top_department else 0,
+            'top_department_open': top_department['open_count'] if top_department else 0,
+        }
+
+        # =====================================
+        # Plant Wise Hazard Status Tracker
+        # =====================================
+        plant_summary_map = {}
+        hazard_status_qs = filtered_hazards.select_related('plant').prefetch_related('action_items')
+
+        for hazard in hazard_status_qs:
+            plant_obj = hazard.plant
+            plant_key = plant_obj.id if plant_obj else 'unassigned'
+            plant_name = plant_obj.name if plant_obj else 'Unassigned'
+
+            if plant_key not in plant_summary_map:
+                plant_summary_map[plant_key] = {
+                    'plant_id': plant_obj.id if plant_obj else '',
+                    'plant_name': plant_name,
+                    'closed_count': 0,
+                    'pending_count': 0,
+                    'in_progress_count': 0,
+                    'cancelled_count': 0,
+                    'overdue_count': 0,
+                    'late_close_count': 0,
+                    'total': 0,
+                }
+
+            row = plant_summary_map[plant_key]
+            row['total'] += 1
+
+            effective_status = hazard.effective_status
+            if effective_status == 'CLOSED_LATE':
+                row['late_close_count'] += 1
+            elif effective_status == 'OVERDUE':
+                row['overdue_count'] += 1
+            elif effective_status in ['RESOLVED', 'CLOSED']:
+                row['closed_count'] += 1
+            elif effective_status == 'IN_PROGRESS':
+                row['in_progress_count'] += 1
+            elif effective_status == 'REJECTED':
+                row['cancelled_count'] += 1
+            else:
+                row['pending_count'] += 1
+
+        plant_summary = sorted(
+            plant_summary_map.values(),
+            key=lambda item: (-item['total'], item['plant_name'])
+        )
+
+        top_plant = plant_summary[0] if plant_summary else None
+        plant_status_rows = []
+        for item in plant_summary:
+            total_count = item['total'] or 0
+            closed_percent = round((item['closed_count'] / total_count) * 100) if total_count else 0
+            plant_status_rows.append({
+                'plant_id': item['plant_id'],
+                'plant_name': item['plant_name'],
+                'closed_count': item['closed_count'],
+                'pending_count': item['pending_count'],
+                'in_progress_count': item['in_progress_count'],
+                'cancelled_count': item['cancelled_count'],
+                'overdue_count': item['overdue_count'],
+                'late_close_count': item['late_close_count'],
+                'total': total_count,
+                'closed_percent': closed_percent,
+            })
+
+        context['plant_chart_labels'] = json.dumps([item['plant_name'] for item in plant_summary])
+        context['plant_chart_ids'] = json.dumps([item['plant_id'] for item in plant_summary])
+        context['plant_closed_data'] = json.dumps([item['closed_count'] for item in plant_summary])
+        context['plant_pending_data'] = json.dumps([item['pending_count'] for item in plant_summary])
+        context['plant_in_progress_data'] = json.dumps([item['in_progress_count'] for item in plant_summary])
+        context['plant_cancelled_data'] = json.dumps([item['cancelled_count'] for item in plant_summary])
+        context['plant_overdue_data'] = json.dumps([item['overdue_count'] for item in plant_summary])
+        context['plant_late_close_data'] = json.dumps([item['late_close_count'] for item in plant_summary])
+        context['plant_chart_data'] = bool(plant_summary)
+        context['plant_status_rows'] = plant_status_rows
+        context['plant_summary'] = {
+            'plants_covered': len(plant_summary),
+            'top_plant_name': top_plant['plant_name'] if top_plant else 'N/A',
+            'top_plant_total': top_plant['total'] if top_plant else 0,
+            'top_plant_overdue': top_plant['overdue_count'] if top_plant else 0,
+        }
 
         return context
     
@@ -1235,6 +1554,10 @@ class ExportHazardsView(LoginRequiredMixin, View):
         selected_severity = request.GET.get('severity')
         selected_status = request.GET.get('status')
         selected_month = request.GET.get('month')
+        selected_category = request.GET.get('category')
+        selected_department = request.GET.get('department')
+        selected_overdue = request.GET.get('overdue')
+        selected_closed = request.GET.get('closed')
 
         # The plant filter from the URL is ONLY applied if the user is an Admin/Superuser.
         if selected_plant and (user.is_superuser or (hasattr(user, 'role') and user.role.name == 'ADMIN')):
@@ -1249,8 +1572,15 @@ class ExportHazardsView(LoginRequiredMixin, View):
             queryset = queryset.filter(sublocation_id=selected_sublocation)
         if selected_severity:
             queryset = queryset.filter(severity__iexact=selected_severity)
-        if selected_status == 'open':
-            queryset = queryset.exclude(status__in=['RESOLVED', 'CLOSED'])
+        if selected_category:
+            queryset = queryset.filter(hazard_category=selected_category)
+        if selected_department:
+            queryset = queryset.filter(reported_by__department_id=selected_department)
+        queryset = filter_hazards_by_status(queryset, selected_status)
+        if selected_overdue == 'true':
+            queryset = queryset.filter(action_deadline__lt=datetime.date.today()).exclude(status__in=['RESOLVED', 'CLOSED'])
+        if selected_closed == 'true':
+            queryset = queryset.filter(status__in=['RESOLVED', 'CLOSED'])
         
         if selected_month:
             try:
@@ -1261,7 +1591,7 @@ class ExportHazardsView(LoginRequiredMixin, View):
         
         # Optimize database queries.
         queryset = queryset.select_related(
-            'plant', 'zone', 'location', 'sublocation', 'reported_by'
+            'plant', 'zone', 'location', 'sublocation', 'reported_by', 'reported_by__department'
         )
 
         # --- Excel generation code starts here ---
@@ -1278,7 +1608,7 @@ class ExportHazardsView(LoginRequiredMixin, View):
         # --- Headers ---
         headers = [
             'Report Number', 'Title', 'Type', 'Category', 'Severity', 'Status',
-            'Incident Datetime', 'Reported By', 'Reported Date', 'Plant', 'Zone',
+            'Incident Datetime', 'Reported By', 'Department', 'Reported Date', 'Plant', 'Zone',
             'Location', 'Sub-Location', 'Description', 'Action Deadline'
         ]
         sheet.append(headers)
@@ -1291,21 +1621,31 @@ class ExportHazardsView(LoginRequiredMixin, View):
 
         # --- Data Population ---
         for hazard in queryset:
+            reporter = hazard.reported_by
+            reporter_name = reporter.get_full_name().strip() if reporter else ''
+            if reporter and not reporter_name:
+                reporter_name = reporter.username or reporter.email or 'N/A'
+
+            reporter_department = getattr(getattr(reporter, 'department', None), 'name', 'N/A')
+            reported_by_display = reporter_name if reporter_name else 'N/A'
+            department_display = reporter_department if reporter_department else 'N/A'
+
             row_data = [
-                hazard.report_number,
-                hazard.hazard_title,
-                hazard.get_hazard_type_display(),
-                hazard.get_hazard_category_display(),
-                hazard.get_severity_display(),
-                hazard.get_status_display(),
+                hazard.report_number or '',
+                hazard.hazard_title or '',
+                hazard.get_hazard_type_display() if hazard.hazard_type else '',
+                hazard.get_hazard_category_display() if hazard.hazard_category else '',
+                hazard.get_severity_display() if hazard.severity else '',
+                hazard.effective_status_display if hazard.status else '',
                 hazard.incident_datetime.strftime('%Y-%m-%d %H:%M') if hazard.incident_datetime else '',
-                hazard.reported_by.get_full_name() if hazard.reported_by else 'N/A',
+                reported_by_display,
+                department_display,
                 hazard.created_at.strftime('%Y-%m-%d') if hazard.created_at else '',
                 hazard.plant.name if hazard.plant else 'N/A',
                 hazard.zone.name if hazard.zone else 'N/A',
                 hazard.location.name if hazard.location else 'N/A',
                 hazard.sublocation.name if hazard.sublocation else 'N/A',
-                hazard.hazard_description,
+                hazard.hazard_description or '',
                 hazard.action_deadline.strftime('%Y-%m-%d') if hazard.action_deadline else ''
             ]
             sheet.append(row_data)
