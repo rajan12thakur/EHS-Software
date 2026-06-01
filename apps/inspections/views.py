@@ -188,7 +188,7 @@ def category_list(request):
         categories = categories.filter(
             Q(category_name__icontains=search) |
             Q(category_code__icontains=search) |
-            Q(description__icontains=search)
+            Q(description__icontains=search)    
         )
     
     # Pagination
@@ -334,7 +334,7 @@ def question_create(request):
                 return redirect('inspections:question_create')
             return redirect('inspections:question_list')
     else:
-        form = InspectionQuestionForm()
+        form = InspectionQuestionForm() 
         
         # Pre-select category if provided
         category_id = request.GET.get('category')
