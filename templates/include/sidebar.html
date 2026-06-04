@@ -1513,9 +1513,32 @@
                           <p>Master</p>
                         </a>
                       </li>
+                      <li class="nav-item">
+                        <a href="{% url 'PPE:stock_list' %}" class="nav-link {% if request.resolver_match.url_name == 'master_list' %}active{% endif %}">
+                          <i class="nav-icon far fa-dot-circle"></i>
+                          <p>Stock</p>
+                        </a>
+                      </li>
                     </ul>
                 </li>
                 {% endif %}
+                <li class="nav-item {% if request.resolver_match.url_name == 'topic_list' or request.resolver_match.url_name == 'question_list' %}menu-open{% endif %}">
+                  <a href="#" class="nav-link {% if 'PPE' in request.path and request.resolver_match.url_name in 'category_list question_list template_list' %}active{% endif %}">
+                      <i class="nav-icon fas fa-cogs"></i>
+                        <p>
+                            Management
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+                    <ul class="nav nav-treeview">
+                      <li class="nav-item">
+                        <a href="{% url 'PPE:IssueManagement_list' %}" class="nav-link {% if request.resolver_match.url_name == 'category_list' %}active{% endif %}">
+                          <i class="nav-icon far fa-dot-circle"></i>
+                          <p>Report Issue</p>
+                        </a>
+                      </li>
+                    </ul>
+                </li>
               </ul>
         </li>           
         <li class="nav-item">

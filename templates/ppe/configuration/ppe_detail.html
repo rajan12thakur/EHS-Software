@@ -88,17 +88,17 @@
 
                         <!-- ✅ NEW FIELD: SIZE OF PPE -->
                        <tr>
-    <th>Size of PPE</th>
-    <td>
-        {% if ppe.size_quantities.all %}
-            {% for item in ppe.size_quantities.all %}
-                {{ item.size }}{% if not forloop.last %}, {% endif %}
-            {% endfor %}
-        {% else %}
-            <span class="text-muted">No sizes</span>
-        {% endif %}
-    </td>
-</tr>
+                            <th>Size of PPE</th>
+                            <td>
+                                {% if ppe.size_quantities.all %}
+                                    {% for item in ppe.size_quantities.all %}
+                                        {{ item.size }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">No sizes</span>
+                                {% endif %}
+                            </td>
+                        </tr>
 
                         <tr>
                             <th>Status</th>
