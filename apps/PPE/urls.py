@@ -24,4 +24,10 @@ urlpatterns = [
     # PPE Issue Management
     path('IssueManagement/list/', views.IssueManagement_list, name='IssueManagement_list'),
     path('IssueManagement/create/', views.IssueManagement_create, name='IssueManagement_create'),
+    path('IssueManagement/edit/<int:pk>/', views.edit_issue,name='edit_issue'),
+    path('IssueManagement/<int:pk>/', views.issue_detail,name='issue_detail'),
+    path('IssueManagement/delete/<int:pk>/', views.issue_delete,name='issue_delete')
+    
+    
+    
     ]

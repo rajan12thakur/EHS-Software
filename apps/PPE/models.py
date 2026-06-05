@@ -141,15 +141,12 @@ class PPEItem(models.Model):
             models.Index(fields=['category']),
             models.Index(fields=['is_active']),
         ]
-
     def __str__(self):
         return f"{self.ppe_code} - {self.name}"
-
     def save(self, *args, **kwargs):
         # Auto-generate PPE code
         if not self.ppe_code:
             self.ppe_code = self.generate_ppe_code()
-
         # Calculate expiry days
         if self.manufacturing_date and self.expiry_date:
             self.expiry_days = (
@@ -157,13 +154,10 @@ class PPEItem(models.Model):
             ).days
         else:
             self.expiry_days = 0
-
         super().save(*args, **kwargs)
-
     @classmethod
     def generate_ppe_code(cls):
         last_item = cls.objects.order_by('-id').first()
-
         if last_item and last_item.ppe_code:
             try:
                 last_number = int(last_item.ppe_code.replace('PPE', ''))
@@ -172,7 +166,6 @@ class PPEItem(models.Model):
                 new_number = 1
         else:
             new_number = 1
-
         return f"PPE{new_number:04d}"
 class PPESizeQuantity(models.Model):
     ppe_item = models.ForeignKey(
@@ -181,15 +174,11 @@ class PPESizeQuantity(models.Model):
         related_name="sizes"
     )
     size = models.CharField(max_length=50)
-
     available_quantity = models.PositiveIntegerField(default=0)
-    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
         unique_together = ("ppe_item", "size")
-
     def __str__(self):
         return f"{self.ppe_item.name} - {self.size}"
 class PPEStockTransaction(models.Model):  
@@ -318,7 +307,6 @@ class PPEIssueManagement(models.Model):
         max_length=20,
         choices=ISSUE_TO_CHOICES
     )
-
     employee = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -326,32 +314,26 @@ class PPEIssueManagement(models.Model):
         blank=True,
         related_name='ppe_issue_employee'
     )
-
     contractor_name = models.CharField(
         max_length=200,
         null=True,
         blank=True
     )
-
     department = models.ForeignKey(
         Department,
         on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
-
     size = models.ForeignKey(
         PPESizeQuantity,
         on_delete=models.PROTECT
     )
-
     quantity_issue = models.PositiveIntegerField()
-
     remarks = models.TextField(
         blank=True,
         null=True
     )
-
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -359,35 +341,26 @@ class PPEIssueManagement(models.Model):
         blank=True,
         related_name='ppe_issue_created'
     )
-
     created_at = models.DateTimeField(
         auto_now_add=True
     )
-
     updated_at = models.DateTimeField(
         auto_now=True
     )
-
     class Meta:
         db_table = 'ppe_issue_management'
         ordering = ['-id']
 
     def save(self, *args, **kwargs):
-
         if not self.issue_no:
             self.issue_no = self.generate_issue_no()
-
         # Auto department from employee
         if self.employee:
             self.department = self.employee.department
-
         super().save(*args, **kwargs)
-
     @classmethod
     def generate_issue_no(cls):
-
         last = cls.objects.order_by('-id').first()
-
         if last:
             try:
                 number = int(
@@ -400,8 +373,6 @@ class PPEIssueManagement(models.Model):
                 number = 1
         else:
             number = 1
-
         return f'PPE-ISS-{number:04d}'
-
     def __str__(self):
         return self.issue_no

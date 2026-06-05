@@ -1,0 +1,94 @@
+{% extends 'base/base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">PPE Issue Details</h4>
+        </div>
+        <div class="card-body">
+            <table class="table table-bordered">
+                <tr>
+                    <th width="30%">PPE Item</th>
+                    <td>{{ issue.ppe_item.name }}</td>
+                </tr>
+                <tr>
+                    <th>Employee</th>
+                    <td>{{ issue.employee }}</td>
+                </tr>
+                <tr>
+                    <th>Department</th>
+                    <td>{{ issue.department }}</td>
+                </tr>
+                <tr>
+                    <th>Available Quantity</th>
+                    <td>{{ issue.available_quantity }}</td>
+                </tr>
+                <tr>
+                    <th>Quantity Issued</th>
+                    <td>{{ issue.quantity_issue }}</td>
+                </tr>
+                <tr>
+                    <th>Issue Size</th>
+                    <td>
+                        {% if issue.size %}
+                            {{ issue.size }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Issue Date</th>
+                    <td>{{ issue.issue_date }}</td>
+                </tr>
+                <tr>
+                    <th>Remarks</th>
+                    <td>
+                        {% if issue.remarks %}
+                            {{ issue.remarks }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Status</th>
+                    <td>
+                        {% if issue.is_active %}
+                            <span class="badge bg-success">
+                                Active
+                            </span>
+                        {% else %}
+                            <span class="badge bg-danger">
+                                Inactive
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Created By</th>
+                    <td>{{ issue.created_by|default:"-" }}</td>
+                </tr>
+                <tr>
+                    <th>Created Date</th>
+                    <td>{{ issue.created_at }}</td>
+                </tr>
+                <tr>
+                    <th>Updated Date</th>
+                    <td>{{ issue.updated_at }}</td>
+                </tr>
+            </table>
+            <div class="mt-3">
+                <a href="{% url 'PPE:IssueManagement_list' %}"
+                   class="btn btn-secondary">
+                    Back
+                </a>
+                <a href="{% url 'PPE:edit_issue' issue.id %}"
+                   class="btn btn-primary">
+                    Edit
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

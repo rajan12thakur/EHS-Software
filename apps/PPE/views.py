@@ -19,7 +19,6 @@ from datetime import date
 @login_required
 def category_create(request):
     """Create new PPE Category"""
-    
     if request.method == 'POST':
         form = PPECategoryForm(request.POST)
         if form.is_valid():
@@ -30,21 +29,16 @@ def category_create(request):
             return redirect('PPE:category_list')
     else:
         form = PPECategoryForm()
-    
     context = {
         'form': form,
         'action': 'Create',
         'title': 'Create New Category'
     }
     return render(request, 'PPE/configuration/category_form.html', context)
-
-
 @login_required
 def category_edit(request, pk):
     """Edit existing category"""
-    
     category = get_object_or_404(PPECategory, pk=pk)
-    
     if request.method == 'POST':
         form = PPECategoryForm(request.POST, instance=category)
         if form.is_valid():
@@ -53,7 +47,6 @@ def category_edit(request, pk):
             return redirect('PPE:category_list')
     else:
         form = PPECategoryForm(instance=category)
-    
     context = {
         'form': form,
         'action': 'Edit',
@@ -65,9 +58,7 @@ def category_edit(request, pk):
 @login_required
 def category_list(request):
     """List all Categories List"""
-    
     categories = PPECategory.objects.order_by('category_name')
-    
     # Filter
     search = request.GET.get('search')
     if search:
@@ -77,7 +68,6 @@ def category_list(request):
             Q(description__icontains=search)
             
         )
-    
     # Pagination
     paginator = Paginator(categories, 10)
     page_number = request.GET.get('page')
@@ -108,22 +98,18 @@ def master_list(request):
     """list all ppe master"""
     ppe_list = PPEItem.objects.all()
     query = request.GET.get('search')
-
     if query:
         ppe_list = ppe_list.filter(
             Q(name__icontains=query) |
             Q(category__category_name__icontains=query)|
             Q(ppe_code__icontains=query)
         )
-
     context = {
         "ppe_list": ppe_list
     }
-
     paginator = Paginator(ppe_list, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-
     return render(
         request,
         'PPE/configuration/master_list.html',
@@ -131,18 +117,13 @@ def master_list(request):
             'page_obj': page_obj
         }
     )
-    
-
 @login_required
 def create_ppe(request):
-
     if request.method == 'POST':
         form = PPEItemForm(request.POST)
-
         if form.is_valid():
             ppe = form.save(commit=False)
             ppe.is_active = request.POST.get('is_active') == 'on'
-
             # Save PPE
             ppe.save()
             sizes = request.POST.getlist('size[]')
@@ -168,18 +149,14 @@ def create_ppe(request):
         'title': 'Create PPE Item'
     }
     return render(request, 'PPE/configuration/create_ppe.html', context)
-
 @login_required
 def ppe_detail(request, pk):
     ppe = get_object_or_404(PPEItem, pk=pk)
-
     size_quantities = PPESizeQuantity.objects.filter(ppe_item=ppe)
-
     context = {
         'ppe': ppe,
         'size_quantities': size_quantities,
     }
-
     return render(request, 'PPE/configuration/ppe_detail.html', context)
 @login_required
 def ppe_delete(request, pk):
@@ -195,28 +172,22 @@ def ppe_delete(request, pk):
 @login_required
 def master_edit(request, pk):
     ppe = get_object_or_404(PPEItem, pk=pk)
-
     if request.method == 'POST':
         form = PPEItemForm(request.POST, instance=ppe)
-
         if form.is_valid():
             ppe = form.save()
             #delete existing size
             ppe.size_quantities.all().delete()
-
             # Save updated sizes
             sizes = request.POST.getlist('size[]')
-
             for size in sizes:
                 if size.strip():
                     PPESizeQuantity.objects.create(
                         ppe_item=ppe,
                         size=size.strip()
                     )
-
             messages.success(request, "PPE updated successfully!")
             return redirect('PPE:master_list')
-
     return render(
         request,
         'PPE/configuration/create_ppe.html',
@@ -233,11 +204,9 @@ def stock_list(request):
         'ppe_item',
         'ppe_item__category'
     ).order_by('-created_at')
-    
     return render(request, 'ppe/configuration/stock_list.html', {
         'stocks': stocks
     })
-
 @login_required
 def stock_create(request):
     form = PPEStockTransactionForm(request.POST or None)
@@ -300,7 +269,6 @@ def stock_create(request):
                     'error': 'Please enter quantity.'
                 }
             )
-
         PPEStockTransaction.objects.create(
             ppe_item=ppe_item,
             size_quantities=size_quantities,
@@ -314,14 +282,11 @@ def stock_create(request):
             created_by=request.user,
             is_active=True
         )
-
         messages.success(
             request,
             "Stock saved successfully."
         )
-
         return redirect('PPE:stock_list')
-
     return render(
         request,
         'ppe/configuration/stock_form.html',
@@ -447,7 +412,6 @@ def IssueManagement_list(request):
         'ppe/Management/IssueManagement_list.html',
         context
     )
-
 @login_required
 def IssueManagement_create(request):
     selected_item = None
@@ -519,7 +483,6 @@ def IssueManagement_create(request):
         'available_quantity': available_quantity,
         'sizes': sizes,
         'employees': employees,
-
     }
     return render(
         request,
@@ -547,3 +510,117 @@ def get_employee_department(request):
         return JsonResponse({
             'department': ''
         })
+@login_required
+def edit_issue(request, pk):
+
+    issue = get_object_or_404(
+        PPEIssueManagement,
+        pk=pk
+    )
+
+    employees = User.objects.filter(
+        is_active=True
+    ).select_related(
+        'department'
+    )
+
+    selected_item = issue.ppe_item
+
+    available_quantity = (
+        PPEStockTransaction.objects.filter(
+            ppe_item=selected_item
+        ).aggregate(
+            total_stock=Sum('total')
+        )['total_stock'] or 0
+    )
+
+    sizes = PPESizeQuantity.objects.filter(
+        ppe_item=selected_item
+    )
+
+    if request.method == 'POST':
+
+        form = PPEIssueManagementForm(
+            request.POST,
+            instance=issue
+        )
+
+        if form.is_valid():
+
+            obj = form.save(commit=False)
+
+            if obj.employee:
+                obj.department = obj.employee.department
+
+            obj.save()
+
+            messages.success(
+                request,
+                'Issue Updated Successfully.'
+            )
+
+            return redirect(
+                'PPE:IssueManagement_list'
+            )
+
+    else:
+
+        form = PPEIssueManagementForm(
+            instance=issue
+        )
+
+    context = {
+    'form': form,
+    'issue': issue,
+    'selected_item': selected_item,
+    'available_quantity': available_quantity,
+    'sizes': sizes,
+    'employees': employees,
+}
+
+    return render(
+        request,
+        'ppe/Management/IssueManagement_create.html',
+        context
+    )
+@login_required
+def issue_detail(request, pk):
+
+    issue = get_object_or_404(
+        PPEIssueManagement,
+        pk=pk
+    )
+
+    available_quantity = (
+        PPEStockTransaction.objects.filter(
+            ppe_item=issue.ppe_item
+        ).aggregate(
+            total_stock=Sum('total')
+        )['total_stock'] or 0
+    )
+
+    sizes = PPESizeQuantity.objects.filter(
+        ppe_item=issue.ppe_item
+    )
+
+    context = {
+        'issue': issue,
+        'available_quantity': available_quantity,
+        'sizes': sizes,
+    }
+
+    return render(
+        request,
+        'ppe/Management/issue_detail.html',
+        context
+    )
+@login_required
+def issue_delete(request, pk):
+    issue = get_object_or_404(PPEIssueManagement, pk=pk)
+    if request.method == "POST":
+        issue.delete()
+        messages.success(request, "Issue deleted successfully")
+        return redirect('PPE:IssueManagement_list')
+    return render(request, 'ppe/management/issue_delete.html', {
+        'issue': issue
+    })

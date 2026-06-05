@@ -1,16 +1,11 @@
 {% extends 'base/base.html' %}
-
 {% block title %}Issue List{% endblock %}
 {% block page_title %}Issue List{% endblock %}
-
 {% block breadcrumb %}
-
 <li class="breadcrumb-item"><a href="{% url 'dashboards:home' %}">Home</a></li>
-<li class="breadcrumb-item active">PPE Master</li>
+<li class="breadcrumb-item active">Issue List</li>
 {% endblock %}
-
 {% block content %}
-
 <div class="row">
     <div class="col-md-12">
     <!-- Header with Add Button -->
@@ -23,29 +18,23 @@
         <div class="card-body">
             <form method="get" class="form-inline">
                 <div class="input-group" style="width: 96%;">
-                    
                     <input type="text"
                            name="search"
                            class="form-control"
-                           placeholder="Search PPE..."
+                           placeholder="Search Issue"
                            value="{{ request.GET.search }}">
-
                     <div class="input-group-append">
-
                         <button type="submit" class="btn btn-primary me-4">
                             <i class="fas fa-search"></i> Search
                         </button>
-
                         <a href="{% url 'PPE:master_list' %}" class="btn btn-secondary">
                             <i class="fas fa-undo"></i> Reset
                         </a>
-
                     </div>
                 </div>
             </form>
         </div>
     </div>
-
     <!-- PPE Table -->
     <div class="ehs-card">
         <div class="card-header">
@@ -53,7 +42,6 @@
                 <i class="fas fa-hard-hat"></i> Issue List
             </h3>
         </div>
-
         <div class="card-body">
             {% if page_obj %}
             <div class="table-responsive">
@@ -106,22 +94,21 @@
                                     Issued
                                 </span>
                             {% endif %}
-                        </td>
+                            </td>
                         <td>
                             {{ ppe.created_at|date:"d-m-Y H:i" }}
                         </td>
                         <td class="table-actions">
-                            <a href="#"
+                            <a href="{% url 'PPE:issue_detail' ppe.pk %}"
                             class="btn btn-sm btn-info"
                             title="View">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="#"
-                            class="btn btn-sm btn-warning"
-                            title="Edit">
-                                <i class="fas fa-edit"></i>
+                            <a href="{% url 'PPE:edit_issue' ppe.pk %}"
+                                class="btn btn-sm btn-warning">
+                                   <i class="fas fa-edit"></i>
                             </a>
-                            <a href="#"
+                            <a href="{% url 'PPE:issue_delete' ppe.pk %}"
                             class="btn btn-sm btn-danger"
                             title="Delete"
                             onclick="return confirm('Are you sure you want to delete this record?');">
@@ -190,11 +177,8 @@
                 </a>
             </div>
             {% endif %}
-
         </div>
     </div>
-
 </div>
-
 </div>
 {% endblock %}
