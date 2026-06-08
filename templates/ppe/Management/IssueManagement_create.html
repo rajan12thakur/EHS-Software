@@ -81,6 +81,11 @@
                 </div>
                 <hr>
                 <!-- Table -->
+                <div class="mt-2">
+                    <button type="button" id="addRow" class="btn btn-success">
+                        Add Employee
+                    </button>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead class="thead-light">
@@ -105,94 +110,48 @@
                                 </th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
+
+                        <tbody id="issueRows">
+
+                            <tr class="issue-row">
+
                                 <!-- Issue To -->
                                 <td>
-                                    <select
-                                        id="issue_to"
-                                        name="issue_to"
-                                        class="form-control">
-                                        <option value="">
-                                            Select
-                                        </option>
-                                        <option value="EMPLOYEE"
-                                        {% if issue.issue_to == 'EMPLOYEE' %}
-                                        selected
-                                        {% endif %}>
-                                            Employee
-                                        </option>
-                                        <option value="CONTRACTOR"
-                                        {% if issue.issue_to == 'CONTRACTOR' %}
-                                        selected
-                                        {% endif %}>
-                                            Contractor
-                                        </option>
+                                    <select class="issue_to form-control" name="issue_to[]">
+                                        <option value="">Select</option>
+                                        <option value="EMPLOYEE">Employee</option>
+                                        <option value="CONTRACTOR">Contractor</option>
                                     </select>
                                 </td>
                                 <!-- Employee -->
                                 <td>
-                                    <select
-                                        id="employee_div"
-                                        name="employee"
-                                        class="form-control">
+                                    <select class="employee_div form-control" name="employee[]">
+                                        <option value="">Select Employee</option>
 
-                                        <option value="">
-                                            Select Employee
-                                        </option>
                                         {% for emp in employees %}
-                                       <option
-                                        value="{{ emp.id }}"
-                                        data-dept="{{ emp.department.id }}"
-                                        data-deptname="{{ emp.department.name }}"
-                                        {% if issue.employee and issue.employee.id == emp.id %}
-                                            selected
-                                        {% endif %}
-                                    >
-                                        {{ emp.get_full_name }}
+                                        <option value="{{ emp.id }}" data-dept="{{ emp.department.id }}" data-deptname="{{ emp.department.name }}">
+                                            {{ emp.get_full_name }}
                                         </option>
                                         {% endfor %}
                                     </select>
-                                  <input
-                                            type="text"
-                                            id="contractor_div"
-                                            name="contractor_name"
-                                            class="form-control mt-1"
-                                            value="{{ issue.contractor_name|default:'' }}"
-                                            placeholder="Enter Contractor Name"
-                                            style="display:none;">
+
+                                    <input type="text" name="contractor_name[]" class="contractor_div form-control mt-1" placeholder="Enter Contractor Name" style="display:none;">
+
                                 </td>
                                 <!-- Department -->
                                 <td>
-                                        <input
-                                            type="text"
-                                            id="department_name"
-                                            class="form-control"
-                                            value="{% if issue.department %}{{ issue.department.name }}{% endif %}"
-                                            readonly>
-                                    <input
-                                            type="hidden"
-                                            id="department"
-                                            name="department"
-                                            value="{% if issue.department %}{{ issue.department.id }}{% endif %}">
-                                    <input
-                                            type="text"
-                                            id="contractor_department"
-                                            name="contractor_department"
-                                            class="form-control"
-                                            value="{{ issue.contractor_department|default:'' }}"
-                                            placeholder="Enter Department"
-                                            style="display:none;">
+
+                                    <input type="text" class="department_name form-control" readonly>
+                                   
+                                    <input type="hidden" class="department" name="department[]">
+                                    <input type="text" name="contractor_department[]" class="contractor_department form-control" placeholder="Enter Department" style="display:none;">
                                 </td>
                                 <!-- Size -->
                                 <td>
-                                    <select
-                                        name="size"
-                                        class="form-control"
-                                        required>
-                                        <option value="">
-                                            Select Size
-                                        </option>
+
+                                    <select name="size[]" class="form-control" required>
+                                        <option value=""> Select Size </option>
+
                                         {% for size in sizes %}
                                         <option
                                             value="{{ size.id }}"
@@ -208,21 +167,11 @@
                                 </td>
                                 <!-- Quantity -->
                                 <td>
-                                    <input
-                                            type="number"
-                                            name="quantity_issue"
-                                            class="form-control"
-                                            min="1"
-                                            value="{{ issue.quantity_issue|default:'' }}"
-                                            required>
+                                    <input type="number" name="quantity_issue[]" class="form-control" min="1" required>
                                 </td>
                                 <!-- Remarks -->
                                 <td>
-                                    <input
-                                        type="text"
-                                        name="remarks"
-                                        class="form-control"
-                                        value="{{ issue.remarks|default:'' }}">
+                                    <input type="text" name="remarks[]" class="form-control">
                                 </td>
                             </tr>
                         </tbody>
@@ -249,143 +198,164 @@
     </form>
 </div>
 <script>
-document.getElementById('issue_to')
-.addEventListener(
-    'change',
-    function(){
 
-        let value = this.value;
+let stockData = {};
 
-        let employeeDiv =
-            document.getElementById(
-                'employee_div'
-            );
+{% for size in sizes %}
+stockData["{{ size.id }}"] = {
+    size: "{{ size.size }}",
+    qty: {{ size.available_quantity }}
+};
+{% endfor %}
 
-        let contractorDiv =
-            document.getElementById(
-                'contractor_div'
-            );
 
-        let deptName =
-            document.getElementById(
-                'department_name'
-            );
+document .getElementById('addRow') .addEventListener('click',
+function(){
 
-        let deptId =
-            document.getElementById(
-                'department'
-            );
-
-        if(
-            value === 'EMPLOYEE'
-        ){
-            employeeDiv.style.display =
-                'block';
-            contractorDiv.style.display =
-                'none';
-            contractorDiv.value = '';
-        }
-        else if(
-            value === 'CONTRACTOR'
-        ){
-            employeeDiv.style.display =
-                'none';
-            contractorDiv.style.display =
-                'block';
-            employeeDiv.value = '';
-            deptName.value = '';
-            deptId.value = '';
-
-        }
-
-    }
-);
-const issueTo = document.getElementById('issue_to');
-const departmentName = document.getElementById('department_name');
-const department = document.getElementById('department');
-const contractorDepartment = document.getElementById('contractor_department');
-function toggleFields() {
-    if (issueTo.value === 'CONTRACTOR') {
-        departmentName.style.display = 'none';
-        contractorDepartment.style.display = 'block';
-
-        department.value = '';
-        departmentName.value = '';
-
-    } else {
-
-        departmentName.style.display = 'block';
-        contractorDepartment.style.display = 'none';
-
-        contractorDepartment.value = '';
-    }
-}
-
-issueTo.addEventListener('change', toggleFields);
-
-toggleFields(); // page load
-document
-.getElementById('employee_div')
-.addEventListener(
-    'change',
-    function(){
-
-        let selected =
-            this.options[
-                this.selectedIndex
-            ];
-
-        let deptName =
-            selected.getAttribute(
-                'data-deptname'
-            );
-
-        let deptId =
-            selected.getAttribute(
-                'data-dept'
-            );
-
-        document.getElementById(
-            'department_name'
-        ).value = deptName || '';
-
-        document.getElementById(
-            'department'
-        ).value = deptId || '';
-
-    }
-);
-window.onload = function() {
-
-    toggleFields();
-
-    let employee =
-        document.getElementById(
-            'employee_div'
+    const firstRow =
+        document.querySelector(
+            '.issue-row'
         );
 
-    if (employee.value) {
+    const clone =
+        firstRow.cloneNode(true);
 
-        let selected =
-            employee.options[
-                employee.selectedIndex
+    clone.querySelectorAll(
+        'input'
+    ).forEach(
+        input => input.value=''
+    );
+
+    clone.querySelectorAll(
+        'select'
+    ).forEach(
+        select => select.selectedIndex=0
+    );
+
+    const remaining = getRemainingStock();
+
+    const sizeSelect = clone.querySelector('[name="size[]"]');
+
+    sizeSelect.innerHTML = '<option value="">Select Size</option>';
+
+    Object.keys(remaining).forEach(function(id){
+
+        let option = document.createElement('option');
+
+        option.value=id;
+
+        option.text=
+            remaining[id].size +
+            ' = ' +
+            remaining[id].qty;
+
+        sizeSelect.appendChild(
+            option
+        );
+
+    });
+
+    document.getElementById('issueRows').appendChild(clone);
+
+    clone.querySelector('.contractor_div').style.display='none';
+
+    clone.querySelector('.contractor_department').style.display='none';
+
+});
+
+function getRemainingStock(){
+
+    let remaining = JSON.parse(
+        JSON.stringify(stockData)
+    );
+
+    document
+    .querySelectorAll('.issue-row')
+    .forEach(function(row){
+
+        let size = row.querySelector(
+            '[name="size[]"]'
+        ).value;
+
+        let qty = parseInt(
+            row.querySelector(
+                '[name="quantity_issue[]"]'
+            ).value || 0
+        );
+
+        if(
+            remaining[size]
+        ){
+            remaining[size].qty -= qty;
+        }
+
+    });
+
+    return remaining;
+
+}
+
+document.addEventListener('change', function(e){
+
+    const row = e.target.closest('.issue-row');
+
+    if(!row) return;
+
+    if(e.target.classList.contains('issue_to')){
+
+        const employee =
+            row.querySelector('.employee_div');
+
+        const contractor =
+            row.querySelector('.contractor_div');
+
+        const dept =
+            row.querySelector('.department_name');
+
+        const contractorDept =
+            row.querySelector('.contractor_department');
+
+        if(e.target.value === 'EMPLOYEE'){
+
+            employee.style.display='block';
+            contractor.style.display='none';
+
+            dept.style.display='block';
+            contractorDept.style.display='none';
+
+        }
+
+        if(e.target.value === 'CONTRACTOR'){
+
+            employee.style.display='none';
+            contractor.style.display='block';
+
+            dept.style.display='none';
+            contractorDept.style.display='block';
+        }
+
+    }
+
+    if(e.target.classList.contains('employee_div')){
+
+        const selected =
+            e.target.options[
+                e.target.selectedIndex
             ];
 
-        document.getElementById(
-            'department_name'
-        ).value =
+        row.querySelector('.department_name').value =
             selected.getAttribute(
                 'data-deptname'
             ) || '';
 
-        document.getElementById(
-            'department'
-        ).value =
+        row.querySelector('.department').value =
             selected.getAttribute(
                 'data-dept'
             ) || '';
+
     }
-};
+
+});
 </script>
 
 {% endblock %}

@@ -428,53 +428,215 @@ def IssueManagement_create(request):
             id=ppe_item_id
         )
         available_quantity = (
-            PPEStockTransaction.objects.filter(
+            PPESizeQuantity.objects.filter(
                 ppe_item=selected_item
             ).aggregate(
-                total_stock=Sum('total')
+                total_stock=Sum('available_quantity')
             )['total_stock'] or 0
         )
         sizes = PPESizeQuantity.objects.filter(
             ppe_item=selected_item
         )
     if request.method == 'POST':
-        print(request.POST)
-        form = PPEIssueManagementForm(
-            request.POST
+        issue_date = request.POST.get('issue_date')
+        print("Issue Date =", issue_date)
+
+        
+        ppe_item_id = request.POST.get('ppe_item')
+
+        issue_to_list = request.POST.getlist(
+            'issue_to[]'
         )
-        if form.is_valid():
-            issue = form.save(
-                commit=False
+
+        employee_list = request.POST.getlist(
+            'employee[]'
+        )
+
+        contractor_list = request.POST.getlist(
+            'contractor_name[]'
+        )
+
+        department_list = request.POST.getlist(
+            'department[]'
+        )
+
+        contractor_department_list = request.POST.getlist(
+            'contractor_department[]'
+        )
+
+        size_list = request.POST.getlist(
+            'size[]'
+        )
+
+        qty_list = request.POST.getlist(
+            'quantity_issue[]'
+        )
+
+        remarks_list = request.POST.getlist(
+            'remarks[]'
+        )
+
+        if not ppe_item_id:
+
+            messages.error(
+                request,
+                "Please select PPE Item."
             )
-            stock_qty = (
-                PPEStockTransaction.objects.filter(
-                    ppe_item=issue.ppe_item
-                ).aggregate(
-                    total_stock=Sum('total')
-                )['total_stock'] or 0
+
+            return redirect(
+                request.path
             )
-            issue.available_quantity = stock_qty
-            if issue.quantity_issue > stock_qty:
+
+        ppe_item = PPEItem.objects.get(
+            id=ppe_item_id
+        )
+
+        for (
+            issue_to,
+            employee_id,
+            contractor_name,
+            department_id,
+            contractor_department,
+            size_id,
+            qty,
+            remarks
+
+        ) in zip_longest(
+
+            issue_to_list,
+            employee_list,
+            contractor_list,
+            department_list,
+            contractor_department_list,
+            size_list,
+            qty_list,
+            remarks_list
+
+        ):
+
+            if not size_id or not qty:
+                continue
+
+            qty = int(qty)
+
+            selected_size = PPESizeQuantity.objects.get(
+                id=size_id
+            )
+
+            # Stock Validation
+
+            if qty > selected_size.available_quantity:
+
                 messages.error(
                     request,
-                    f"Only {stock_qty} quantity available."
+                    f"{selected_size.size} has only "
+                    f"{selected_size.available_quantity} quantity available."
                 )
-            else:
-                if issue.employee:
-                    issue.department = (
-                        issue.employee.department
-                    )
-                issue.created_by = request.user
-                issue.save()
-                messages.success(
-                    request,
-                    "PPE Issued Successfully."
-                )
+
                 return redirect(
-                    'PPE:IssueManagement_list'
+                    request.path +
+                    f'?ppe_item={ppe_item.id}'
                 )
-        else:
-            print(form.errors)
+
+            employee = None
+
+            if employee_id:
+
+                employee = User.objects.get(
+                    id=employee_id
+                )
+
+            issue = PPEIssueManagement.objects.create(
+
+                issue_date=issue_date,
+
+                ppe_item=ppe_item,
+
+                available_quantity=
+                    selected_size.available_quantity,
+
+                issue_to=issue_to,
+
+                employee=employee,
+
+                contractor_name=
+                    contractor_name,
+
+                department_id=
+                    department_id
+                    if department_id
+                    else None,
+
+                size=selected_size,
+
+                quantity_issue=qty,
+
+                remarks=remarks,
+
+                created_by=request.user
+
+            )
+
+            # -----------------------
+            # Reduce Stock
+            # -----------------------
+
+            selected_size.available_quantity -= qty
+
+            selected_size.save()
+
+            # -----------------------
+            # Calculate Balance
+            # -----------------------
+
+            updated_total_stock = (
+                PPESizeQuantity.objects.filter(
+                    ppe_item=ppe_item
+                ).aggregate(
+                    total_stock=Sum(
+                        'available_quantity'
+                    )
+                )['total_stock'] or 0
+            )
+
+            # -----------------------
+            # Transaction Log
+            # -----------------------
+
+            PPEStockTransaction.objects.create(
+
+                ppe_item=ppe_item,
+
+                size=selected_size,
+
+                transaction_type='ISSUE',
+
+                quantity=qty,
+
+                total=updated_total_stock,
+
+                transaction_date=issue_date,
+
+                reference_number=
+                    issue.issue_no,
+
+                remarks=
+                    remarks,
+
+                created_by=request.user,
+
+                is_active=True
+
+            )
+
+        messages.success(
+            request,
+            "PPE Issued Successfully."
+        )
+
+        return redirect(
+            'PPE:IssueManagement_list'
+        )
     else:
         form = PPEIssueManagementForm()
     context = {
@@ -489,6 +651,10 @@ def IssueManagement_create(request):
         'ppe/Management/IssueManagement_create.html',
         context
     )
+
+
+
+
 @login_required
 def get_employee_department(request):
     employee_id = request.GET.get(

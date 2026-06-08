@@ -183,9 +183,12 @@ class PPESizeQuantity(models.Model):
         return f"{self.ppe_item.name} - {self.size}"
 class PPEStockTransaction(models.Model):  
     TRANSACTION_CHOICES = (
-        ('STOCK OPENING', 'Opening Stock'),
-        ('STOCK IN', 'Stock In'),
-        ('STOCK ADJUSTMENT', 'Stock Adjustment'),
+        ('OPENING', 'Opening Stock'),
+        ('STOCK_IN', 'Stock In'),
+        ('ADJUSTMENT', 'Stock Adjustment'),
+        ('ISSUE', 'PPE Issue'),
+        ('RETURN', 'PPE Return'),
+        ('REPLACEMENT', 'PPE Replacement'),
     )
     UNIT_CHOICES = (
         ('NOS', 'Nos'),
